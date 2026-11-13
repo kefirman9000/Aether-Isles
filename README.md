@@ -1,26 +1,30 @@
 # Gridlock City
 
-A top-down open-city crime game in the spirit of the original 2D GTA games, for PC and mobile browsers. Steal cars, answer ringing payphones for jobs, cause chaos and try to lose the cops.
+An open-city crime game in the spirit of the original GTA games, for PC and mobile browsers, played from a pseudo-3D chase camera in a low-res pixel style. Steal cars, answer ringing payphones for jobs, cause chaos and try to lose the cops.
 
 **Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/Aether-Isles/
 
-**Experimental chase-cam version:** `chase.html` (https://kefirman9000.github.io/Aether-Isles/chase.html) plays the same city, cops and guns from a pseudo-3D camera behind your car, in the low-res pixel style of Rust Belt Rally. On foot, W/S walks, A/D turns and the mouse aims anywhere on screen.
+**Top-down 2D version:** the original top-down game is kept as `2d.html` (https://kefirman9000.github.io/Aether-Isles/2d.html).
 
 > This repo used to hold *Aether Isles: Swarm of the Warden*. It's been replaced for now; the old game is still in the git history (commit `85a66b8`).
 
 ## Controls
 | PC | Phone | Action |
 |---|---|---|
-| WASD / arrows | Left-thumb joystick | Walk. In a car, the phone joystick is point-to-drive: push where you want to go |
+| W / S | Left-thumb joystick | Walk forward and back · gas and brake/reverse. In a car, the phone joystick is point-to-drive: push where you want to go |
+| A / D | Left-thumb joystick | Turn on foot · steer in a car |
+| Right-drag | | Turn on foot |
 | Mouse + left click | Drag the right side of the screen (or FIRE to auto-aim) | Aim and shoot. Works as a drive-by from inside a car, and fires the cannon in a tank |
 | F / E / Enter | CAR | Get in, get out, or jack a car |
-| Space | DRIFT | Handbrake |
+| Space | DRIFT / JUMP | Jump on foot · handbrake in a car |
 | Q / mouse wheel | GUN | Switch weapon |
 | R | RADIO | Change radio station |
 | P / Esc | II (top middle) | Pause |
 | M | | Mute |
 
 ## Features
+- **Chase camera:** a pseudo-3D view from behind your car or character, drawn at low resolution with hard pixels (in the style of Rust Belt Rally). Buildings, cars and props are 3D blocks; people are pixel billboards. The ground is ray-marched over a height map, so the city has rolling hills and cars roll downhill.
+- **City and countryside:** Old Town brick and warehouses, Uptown glass towers, Lotus Quarter shophouses with awnings and neon, stepped downtown skyscrapers and plazas, suburbs with gable-roofed houses, and parks with ponds and winding paths. Past the city limits there are forested mountains to the north and west, ocean to the south and farmland to the east.
 - **Three gangs, three turfs:** the Red Sabres, Chrome Saints and Jade Lotus each run a corner of the city, with their own colors, members and cars. Downtown belongs to the cops.
 - **Respect:** every gang has a respect meter. Do jobs for a gang and it likes you more while its rival likes you less. Kill a gang's members and they'll shoot on sight, and at very low respect their cars do drive-bys.
 - **Gang payphones:** phones are colored by the gang that owns them. Gangs that hate you stop calling. Jobs: Special Delivery, Hit the Golden Viper, Briefcase Run, Hot Potato (lose 3 stars), and Turf War (wipe out a rival crew).
@@ -33,7 +37,7 @@ A top-down open-city crime game in the spirit of the original 2D GTA games, for 
 - **Car radio:** three stations of generated music (punk, synthwave and street beats) that come on when you get in a car.
 - **Day and night:** a full day cycle with headlights, streetlights, police light glow, and rain storms with thunder that make the roads slippery.
 - **Heavier action:** ragdolling bodies, crash debris, tire smoke, screen shake, slow-motion explosions and a CHAOS combo that multiplies cash for chained destruction.
-- **Procedural city:** a 12×12-block city with a tall downtown, leaning, GTA2-style 3D buildings, grimy streets, parks, lots, a hospital and a police station.
+- **Procedural city:** a 12×12-block grid of streets, so traffic, cops and missions work everywhere.
 - **Updater:** Menu or pause → Check for updates. It only contacts GitHub when you press it.
 
 Your cash is saved in your browser (localStorage).

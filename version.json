@@ -1,4 +1,4 @@
 {
-  "version": "2.5.1",
-  "notes": "Fixed the springy wiggle when the car straightens itself on the road. Lane assist now works like GTA2's: a one-step turn that never adds spin."
+  "version": "3.0.0",
+  "notes": "Gridlock City goes pseudo-3D: a chase camera behind your car in the low-res Rust Belt Rally style, a new city with districts, suburbs, parks and hills, mountains, ocean and farmland past the city limits, box car collisions, GTA-style run-overs, jumping and fairer police. The old top-down game is still in 2d.html."
 }
