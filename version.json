@@ -1,4 +1,4 @@
 {
-  "version": "2.5.0",
-  "notes": "Every car now uses real GTA2 handling values from nyc.gci (Bug, Aniston BD4, Taxi, Z-Type, Box Truck, Cop Car, Special Agent Car, SWAT Van, Tank), plus GTA2's turbo, damage-slows-you-down and armor (anti strength) rules."
+  "version": "2.5.1",
+  "notes": "Fixed the springy wiggle when the car straightens itself on the road. Lane assist now works like GTA2's: a one-step turn that never adds spin."
 }
