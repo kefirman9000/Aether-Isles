@@ -40,11 +40,11 @@ canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v2.1.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v2.2.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='2.1.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='2.2.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -73,7 +73,7 @@ function shade(hex,k){const key=hex+k;if(shadeCache[key])return shadeCache[key];
 function rrect(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect){ctx.roundRect(x,y,w,h,r)}else{ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()}}
 
 // ================= MAP =================
-const T=32,P=14,NB=8,W=NB*P+4,WPX=W*T;
+const T=32,P=14,NB=12,W=NB*P+4,WPX=W*T;
 const ROAD=0,WALK=1,BLD=2,GRASS=3,TREE=4,LOT=5,SPRAY=6,CRUSH=7;
 const map=new Uint8Array(W*W);
 const tileAt=(x,y)=>(x<0||y<0||x>=W||y>=W)?BLD:map[y*W+x];
@@ -83,7 +83,8 @@ const solidPx=(x,y)=>isSolid(tileAt(Math.floor(x/T),Math.floor(y/T)));
 const walkable=t=>t===WALK||t===GRASS||t===LOT||t===SPRAY||t===CRUSH;
 const crusherPads=[];
 const buildings=[],trees=[],walkTiles=[],lotBlocks=[],sprayPads=[],parkedSpots=[];
-const SPECIAL={'1,1':'hospital','6,6':'police','3,5':'spray','5,2':'spray','2,6':'crusher'};
+const SPECIAL={'1,1':'hospital','9,9':'police','3,4':'spray','8,2':'spray','2,9':'spray','10,7':'spray','4,8':'crusher','9,4':'crusher'};
+let tallBlock=false;
 const ROOFS=['#6e6a64','#7a6656','#5a636b','#77756b','#5f5248','#4c5555','#857c6a','#636b58','#6e5a5e','#555868','#7d5f55','#646c73'];
 let hospitalSpawn,policeSpawn;
 const laneCoord=(d,k)=>d===0?(k*P+3)*T:d===2?(k*P+1)*T:d===1?(k*P+1)*T:(k*P+3)*T;
@@ -102,7 +103,7 @@ function subdivide(x,y,w,h,d){
       if(R()<0.6)parkedSpots.push({x:(x+w/2)*T,y:(y+h/2)*T,a:w>=h?0:PI/2});
       return;
     }
-    addBuilding(x,y,w,h,pick([1,1.5,2,2,2.5,3,3,3.5,4,4.5]),pick(ROOFS));return;
+    addBuilding(x,y,w,h,tallBlock?pick([3,3.5,4,4.5,5,5.5,6,6.5]):pick([1,1.5,2,2,2.5,3,3,3.5,4,4.5]),pick(ROOFS));return;
   }
   if(sw&&(w>=h||!sh)){const s=2+Math.floor(R()*(w-3));subdivide(x,y,s,h,d+1);subdivide(x+s,y,w-s,h,d+1);}
   else{const s=2+Math.floor(R()*(h-3));subdivide(x,y,w,s,d+1);subdivide(x,y+s,w,h-s,d+1);}
@@ -140,7 +141,7 @@ function genMap(){
       addBuilding(x0,y0,8,8,kind==='police'?3:2.5,kind==='police'?'#3c4659':'#bdbab0',kind);
       const sp={x:(x0+4)*T,y:(by*P+13+.5)*T};
       if(kind==='hospital')hospitalSpawn=sp;else policeSpawn=sp;
-    }else subdivide(x0,y0,8,8,0);
+    }else{tallBlock=bx>=NB/2&&by>=NB/2&&R()<0.75;subdivide(x0,y0,8,8,0);}
   }
   for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(map[y*W+x]===WALK)walkTiles.push([x,y]);
 }
@@ -150,7 +151,7 @@ for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++){const cx=ix*P*T,cy=iy*P*T;
   for(const o of [[-0.5,-0.5],[4.5,4.5],[4.5,-0.5],[-0.5,4.5]]){const x=cx+o[0]*T,y=cy+o[1]*T;if(tileAt(Math.floor(x/T),Math.floor(y/T))===WALK&&R()<0.7)streetLights.push({x,y});}}
 // ---- gangs ----
 const GANGS=[{name:'Red Sabres',col:'#a3222b',car:'#4f1418'},{name:'Chrome Saints',col:'#c4c7cc',car:'#2a2c31'},{name:'Jade Lotus',col:'#1f9a62',car:'#173d2d'}];
-function zoneOf(x,y){const bx=Math.floor(x/T/P),by=Math.floor(y/T/P);if(bx<4&&by<4)return 0;if(bx>=4&&by<4)return 1;if(bx<4&&by>=4)return 2;return -1}
+function zoneOf(x,y){const bx=Math.floor(x/T/P),by=Math.floor(y/T/P);const H=NB/2;if(bx<H&&by<H)return 0;if(bx>=H&&by<H)return 1;if(bx<H&&by>=H)return 2;return -1}
 const respect=[0,0,0];
 const rivalOf=g=>(g+1)%3;
 function addRespect(g,n){respect[g]=clamp(respect[g]+n,-5,5)}
@@ -433,7 +434,8 @@ function farApart(list,x,y,minD){for(const q of list)if(dist2(q.x,q.y,x,y)<minD*
 (function genPickups(){
   const kinds=['smg','shotgun','rocket','health','health','cash','cash','flame','molotov','health','cash','smg','shotgun','molotov','frenzy','frenzy','frenzy','health'];
   let tries=0;
-  while(pickups.length<kinds.length&&tries<2000){tries++;
+  kinds.push(...kinds);
+  while(pickups.length<kinds.length&&tries<5000){tries++;
     const [tx,ty]=pick(walkTiles);const x=(tx+.5)*T,y=(ty+.5)*T;
     if(farApart(pickups,x,y,T*14))pickups.push({x,y,kind:kinds[pickups.length],taken:false,t:0,fixed:true});
   }
@@ -441,7 +443,7 @@ function farApart(list,x,y,minD){for(const q of list)if(dist2(q.x,q.y,x,y)<minD*
 const phones=[];
 (function genPhones(){
   let tries=0;
-  while(phones.length<7&&tries<3000){tries++;
+  while(phones.length<14&&tries<5000){tries++;
     const [tx,ty]=pick(walkTiles);
     let adj=false;for(let d=0;d<4;d++)if(tileAt(tx+DX[d],ty+DY[d])===BLD)adj=true;
     if(!adj)continue;
@@ -475,7 +477,7 @@ function startMission(g){
       if(d>T*10&&d<T*38&&farApart(items,x,y,T*9))items.push({x,y,got:false});}
     mission={type,title:'Briefcase Run',desc:'Grab the 4 briefcases before the cops do',items,timer:110};
   }else if(type==='turf'){
-    const rv=rivalOf(g),zc=[[2,2],[6,2],[2,6]][rv];
+    const rv=rivalOf(g),zc=[[NB/4,NB/4],[NB*3/4,NB/4],[NB/4,NB*3/4]][rv];
     const targets=[];let tries=0;
     while(targets.length<6&&tries<3000){tries++;const [tx,ty]=pick(walkTiles);const x=(tx+.5)*T,y=(ty+.5)*T;
       if(zoneOf(x,y)!==rv||dist2(x,y,zc[0]*P*T,zc[1]*P*T)>(T*24)**2||!farApart(targets,x,y,T*3))continue;
@@ -1602,7 +1604,7 @@ function drawHUD(){
   const sx0=Math.max(0,srcX),sy0=Math.max(0,srcY),sx1=Math.min(W,srcX+span),sy1=Math.min(W,srcY+span);
   if(sx1>sx0&&sy1>sy0)ctx.drawImage(mmc,sx0,sy0,sx1-sx0,sy1-sy0,mpx+(sx0-srcX)*k,mpy+(sy0-srcY)*k,(sx1-sx0)*k,(sy1-sy0)*k);
   ctx.globalAlpha=1;ctx.imageSmoothingEnabled=true;
-  {const zr=[[0,0,4*P,4*P],[4*P,0,W,4*P],[0,4*P,4*P,W]];for(let g=0;g<3;g++){const r=zr[g];ctx.fillStyle=GANGS[g].col;ctx.globalAlpha=0.13;ctx.fillRect(mpx+(r[0]-srcX)*k,mpy+(r[1]-srcY)*k,(r[2]-r[0])*k,(r[3]-r[1])*k);}ctx.globalAlpha=1;}
+  {const hp2=NB/2*P,zr=[[0,0,hp2,hp2],[hp2,0,W,hp2],[0,hp2,hp2,W]];for(let g=0;g<3;g++){const r=zr[g];ctx.fillStyle=GANGS[g].col;ctx.globalAlpha=0.13;ctx.fillRect(mpx+(r[0]-srcX)*k,mpy+(r[1]-srcY)*k,(r[2]-r[0])*k,(r[3]-r[1])*k);}ctx.globalAlpha=1;}
   const toMM=(x,y)=>[mpx+(x/T-srcX)*k,mpy+(y/T-srcY)*k];
   const edge=(x,y)=>[clamp(x,mpx+6,mpx+ms-6),clamp(y,mpy+6,mpy+ms-6)];
   for(const sp of sprayPads){const [x,y]=edge(...toMM(sp.x,sp.y));ctx.fillStyle='#3ee07a';ctx.fillRect(x-4,y-4,8,8);ctx.fillStyle='#000';ctx.font='bold 7px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('$',x,y+.5);}

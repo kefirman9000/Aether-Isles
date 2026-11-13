@@ -29,7 +29,7 @@ A top-down open-city crime game in the spirit of the original 2D GTA games, for 
 - **Car radio:** three stations of generated music (punk, synthwave and street beats) that come on when you get in a car.
 - **Day and night:** a full day cycle with headlights, streetlights, police light glow, and rain storms with thunder that make the roads slippery.
 - **Heavier action:** ragdolling bodies, crash debris, tire smoke, screen shake, slow-motion explosions and a CHAOS combo that multiplies cash for chained destruction.
-- **Procedural city:** leaning, GTA2-style 3D buildings, grimy streets, parks, lots, a hospital and a police station.
+- **Procedural city:** a 12×12-block city with a tall downtown, leaning, GTA2-style 3D buildings, grimy streets, parks, lots, a hospital and a police station.
 - **Updater:** Menu or pause → Check for updates. It only contacts GitHub when you press it.
 
 Your cash is saved in your browser (localStorage).
