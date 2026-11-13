@@ -44,11 +44,11 @@ canvas{display:block;width:100vw;height:100vh;cursor:none;image-rendering:pixela
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v3.3.1 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v3.3.2 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='3.3.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.3.2',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1892,7 +1892,7 @@ for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++){
     if(x<0||y<0||x>=WPX||y>=WPX||tileAt(Math.floor(x/T),Math.floor(y/T))!==WALK)continue;TLIGHTS.push({x,y,a,ew,ix,iy});}}
 const TLC=[[60,230,110],[255,200,40],[255,50,40]];
 function drawTL(o,fg){
-  if(!proj(o.x,o.y,0))return;BX=PX;BY=PY;BK=PK;bb(-0.9,0,0.9,34,lit([40,42,46],1,fg));
+  obox(o.x,o.y,0,0.9,0.9,0,34,[40,42,46],null,fg);
   const ca=Math.cos(o.a),sa=Math.sin(o.a),hx=o.x+ca*1.5,hy=o.y+sa*1.5;
   obox(hx,hy,o.a,1.8,2.6,32,46,[28,28,30],null,fg);
   if((CX-hx)*ca+(CY-hy)*sa<=0)return;
@@ -2218,6 +2218,50 @@ function drawCar3(c,fg){
 }
 
 // ---------- people & props ----------
+// blocky voxel-style trees and props, built from the same shaded boxes as the buildings and cars
+const TRUNK=[96,64,38],TRUNK2=[70,46,46];
+function treeBoxes(t){
+  const r=t.r,h=t.h,base=rgbOf(t.c),out=[],rnd=k=>((hash((t.x*7)|0,(t.y*13)|0+k)&1023)/1023);
+  const sh=(k)=>mixA(base,k>0?[255,255,255]:[0,0,0],Math.abs(k));
+  if(t.sp==='pine'){const th=8*h;out.push([0,0,1.6*h,1.6*h,0,th+2,TRUNK]);
+    for(let i=0;i<4;i++){const w=r*(1.05-i*0.24),z0=th+i*r*0.62;out.push([0,0,w,w,z0,z0+r*0.7,sh(i%2?0.06:-0.08)]);}
+    out.push([0,0,r*0.16,r*0.16,th+4*r*0.62,th+4*r*0.62+r*0.4,sh(0.1)]);}
+  else{const th=(t.sp==='sakura'?11:13)*h,wide=t.sp==='sakura'?1.25:1;out.push([0,0,1.8*h,1.8*h,0,th+3,t.sp==='sakura'?TRUNK2:TRUNK]);
+    out.push([0,0,r*0.78*wide,r*0.78*wide,th,th+r*1.15,sh(-0.05)]);
+    for(let i=0;i<3;i++){const a=rnd(i)*TAU,d=r*(0.45+rnd(i+5)*0.25),s=r*(0.42+rnd(i+9)*0.2)*wide;out.push([Math.cos(a)*d*wide,Math.sin(a)*d*wide,s,s,th+r*(0.25+rnd(i+3)*0.5),th+r*(0.25+rnd(i+3)*0.5)+s*1.2,sh(rnd(i+11)*0.24-0.12)]);}
+    out.push([r*0.1,-r*0.1,r*0.45*wide,r*0.45*wide,th+r*1.1,th+r*1.55,sh(0.16)]);
+    if(t.sp==='sakura')for(let i=0;i<3;i++){const a=rnd(i+20)*TAU,d=r*0.7;out.push([Math.cos(a)*d,Math.sin(a)*d,r*0.16,r*0.16,th+r*(0.9+rnd(i+30)*0.4),th+r*(1.1+rnd(i+30)*0.4),[255,236,244]]);}}
+  t.rot=rnd(40)*PI;return t.bx=out;
+}
+function drawTree3(t,fg){
+  const bx=t.bx||treeBoxes(t),ca=Math.cos(t.rot),sa=Math.sin(t.rot),lod=fg>0.55;
+  const list=[];for(let i=0;i<bx.length;i++){if(lod&&i>2)break;const b=bx[i],x=t.x+b[0]*ca-b[1]*sa,y=t.y+b[0]*sa+b[1]*ca;list.push([(x-CX)*CC+(y-CY)*CS,x,y,b]);}
+  // trunk first, then crown blocks back to front, lower ones before the ones above them
+  list.sort((p,q)=>p[3]===bx[0]?-1:q[3]===bx[0]?1:(q[0]-p[0])||(p[3][4]-q[3][4]));
+  for(const[,x,y,b]of list)obox(x,y,t.rot,b[2]/2,b[3]/2,b[4],b[5],b[6],mixA(b[6],[255,255,255],0.08),fg);
+}
+function drawProp3(o,fg){
+  const a=o.a||0;
+  switch(o.k){
+    case 'hedge':obox(o.x,o.y,a,15,3.2,0,9,[44,84,40],[58,102,50],fg);return;
+    case 'rail':obox(o.x,o.y,a,20,1,6,10,[196,198,204],null,fg);obox(o.x,o.y,a,1,1,0,9,[110,110,116],null,fg);return;
+    case 'seawall':obox(o.x,o.y,a,20,3,-6,9,[150,146,138],[170,166,158],fg);return;
+    case 'bench':{const ca=Math.cos(a),sa=Math.sin(a);obox(o.x+ca*5,o.y+sa*5,a,1,6,0,4,[40,40,42],null,fg);obox(o.x-ca*5,o.y-sa*5,a,1,6,0,4,[40,40,42],null,fg);
+      obox(o.x,o.y,a,8,3,4,5.5,[118,80,50],null,fg);obox(o.x-sa*3,o.y+ca*3,a,8,0.8,5.5,10,[110,74,46],null,fg);return;}
+    case 'hydrant':obox(o.x,o.y,0,2,2,0,7,[200,40,36],[220,60,50],fg);obox(o.x,o.y,0,3,1,3.5,5,[170,30,30],null,fg);return;
+    case 'bin':obox(o.x,o.y,0,3,3,0,9,[40,70,50],[30,50,36],fg);return;
+    case 'mail':obox(o.x,o.y,0,0.8,0.8,0,6,[40,40,44],null,fg);obox(o.x,o.y,0,3,2.5,6,13,[40,80,170],[50,90,180],fg);return;
+    case 'news':obox(o.x,o.y,0,2.5,3,0,10,[220,50,40],[200,40,30],fg,[230,230,220]);return;
+    case 'planter':obox(o.x,o.y,0,6,6,0,6,[130,124,116],[60,48,36],fg);return;
+    case 'bush':{const c=rgbOf(o.c);obox(o.x,o.y,(o.x*0.1)%PI,6,6,0,8,c,mixA(c,[255,255,255],0.12),fg);obox(o.x+3,o.y-2,(o.x*0.1)%PI,3.5,3.5,4,11,mixA(c,[255,255,255],0.08),null,fg);return;}
+    case 'rock':obox(o.x,o.y,(o.y*0.07)%PI,5.5,4,0,5,[120,118,112],[140,138,132],fg);obox(o.x+2,o.y+1,(o.y*0.07)%PI,3,2.5,4,7,[132,130,124],null,fg);return;
+    case 'fountain':{obox(o.x,o.y,0,30,30,0,4,[170,166,158],[150,146,138],fg);obox(o.x,o.y,0,3,3,0,14,[176,170,160],null,fg);obox(o.x,o.y,0,8,8,12,15,[176,170,160],[120,170,200],fg);
+      if(!proj(o.x,o.y,0))return;BX=PX;BY=PY;BK=PK;L3.globalAlpha=0.75;
+      for(let i=0;i<8;i++){const ph=(game.t*1.4+i/8)%1,sx=Math.sin(i*2.4)*9*ph,z=15+ph*22-ph*ph*26;bb(sx-0.8,z,sx+0.8,z+2,'#cfe8ff');}
+      bb(-1,15,1,34,'#e4f2ff');L3.globalAlpha=1;return;}
+  }
+}
+
 function drawPed3(p,isPl,fg){
   if(p.injured){flat(p.x,p.y,0.6,8,4.5,0.5,litH(p.col,1,fg));flat(p.x-Math.cos(0.6)*11,p.y-Math.sin(0.6)*11,0.6,3.5,3.5,0.7,litH(p.skin||'#e0ac69',1,fg));if(proj(p.x,p.y,16+Math.sin(game.t*4)*2)&&Math.floor(game.t*3)%2){const s=Math.max(2,4*PK);L3.fillStyle='#ff2a2a';L3.fillRect(R2(PX-s/3),R2(PY-s),Math.max(1,R2(s*0.66)),R2(s*2));L3.fillRect(R2(PX-s),R2(PY-s/3),R2(s*2),Math.max(1,R2(s*0.66)));}if(!MIRROR){p._b=[PX-6*PK,PY-6*PK,PX+6*PK,PY+2*PK];p._f=PF;p._fr=frameNo;}return;}
   const jz=isPl?player.jz||0:0;
@@ -2240,37 +2284,12 @@ function drawPed3(p,isPl,fg){
   if(!away&&k>1.2){L3.fillStyle=lit([20,20,20],1,fg);L3.fillRect(R2(PX-1.2*k),R2(PY-21*k),1,1);L3.fillRect(R2(PX+0.8*k),R2(PY-21*k),1,1);}
 }
 function drawBody3(m,z){const ca=Math.cos(m.a),sa=Math.sin(m.a);flat(m.x,m.y,m.a,8,4.5,z,litH(m.col,1,fogAt(PF)));flat(m.x+ca*-11,m.y+sa*-11,m.a,3.5,3.5,z+0.2,litH(m.cop?'#1b2a55':m.skin,1,fogAt(PF)));}
-function drawTree3(t,fg){if(!proj(t.x,t.y,0))return;BX=PX;BY=PY;BK=PK;const pine=t.sp==='pine',th=(pine?7:13)*t.h;
-  bb(-1.6*t.h,0,1.6*t.h,th+2,lit(t.sp==='sakura'?[70,46,46]:[90,61,34],1,fg));
-  if(pine){for(let i=0;i<3;i++){const zb=th+i*t.r*0.75,zt=zb+t.r*1.3,w=t.r*(1.15-i*0.28);if(!proj(t.x,t.y,zb))return;const xb=PX,yb=PY,k=PK;proj(t.x,t.y,zt);
-      L3.fillStyle=litH(t.c,0.9+i*0.1,fg);L3.beginPath();L3.moveTo(xb-w*k,yb);L3.lineTo(xb+w*k,yb);L3.lineTo(PX,PY);L3.closePath();L3.fill();}return;}
-  if(!proj(t.x,t.y,th+t.r*0.85))return;const r=t.r*(t.sp==='sakura'?1.25:1.1)*PK,X=PX,Y=PY;
-  const blob=(ox,oy,rad,col)=>{L3.fillStyle=col;L3.beginPath();L3.arc(X+ox*r,Y+oy*r,Math.max(1,rad*r),0,TAU);L3.fill();};
-  blob(t.o1*0.6+0.25,0.15,0.72,litH(t.c,0.78,fg));blob(t.o2*0.6-0.3,0.12,0.7,litH(t.c,0.86,fg));blob(0,-0.15,0.85,litH(t.c,1,fg));blob(-0.25+t.o1*0.2,-0.42,0.42,litH(t.c,1.25,fg));
-  if(t.sp==='sakura'&&r>3){L3.fillStyle=lit([255,240,246],1,fg);for(let i=0;i<6;i++)L3.fillRect(R2(X+(((i*37+t.o1*90)%14+14)%14-7)/7*r*0.8),R2(Y+(((i*53+t.o2*70)%12+12)%12-6)/6*r*0.6),1,1);}
-}
-function drawProp3(o,fg){
-  if(o.k==='hedge'){obox(o.x,o.y,o.a,15,3.2,0,9,[44,84,40],[58,102,50],fg);return;}
-  if(o.k==='rail'){obox(o.x,o.y,o.a,20,1,6,10,[196,198,204],null,fg);obox(o.x,o.y,o.a,1,1,0,9,[110,110,116],null,fg);return;}
-  if(o.k==='seawall'){obox(o.x,o.y,o.a,20,3,-6,9,[150,146,138],[170,166,158],fg);return;}
-  if(!proj(o.x,o.y,0))return;BX=PX;BY=PY;BK=PK;
-  switch(o.k){
-    case 'bench':{const c=lit([110,74,46],1,fg),l=lit([40,40,42],1,fg);bb(-6,0,-5,5,l);bb(5,0,6,5,l);bb(-7,4,7,5.5,c);bb(-7,7,7,10,c);break;}
-    case 'hydrant':bb(-2,0,2,7,lit([200,40,36],1,fg));bb(-3,4,3,5.5,lit([170,30,30],1,fg));break;
-    case 'bin':bb(-3,0,3,9,lit([40,70,50],1,fg));bb(-3.4,8.5,3.4,10,lit([30,50,36],1,fg));break;
-    case 'mail':bb(-0.8,0,0.8,6,lit([40,40,44],1,fg));bb(-3,6,3,13,lit([40,80,170],1,fg));break;
-    case 'news':bb(-3,0,3,10,lit([220,50,40],1,fg));bb(-2,5,2,8,lit([230,230,220],1,fg));break;
-    case 'planter':bb(-6,0,6,6,lit([130,124,116],1,fg));bb(-6,5,6,6.5,lit([150,144,136],1,fg));break;
-    case 'bush':L3.fillStyle=litH(o.c,1,fg);L3.beginPath();L3.ellipse(PX,PY-4*PK,Math.max(1,8*PK),Math.max(1,5*PK),0,0,TAU);L3.fill();L3.fillStyle=litH(o.c,1.25,fg);L3.beginPath();L3.ellipse(PX-2*PK,PY-6*PK,Math.max(1,4*PK),Math.max(1,2.5*PK),0,0,TAU);L3.fill();break;
-    case 'rock':L3.fillStyle=lit([120,118,112],1,fg);L3.beginPath();L3.ellipse(PX,PY-2*PK,Math.max(1,6*PK),Math.max(1,3.5*PK),0,0,TAU);L3.fill();break;
-    case 'fountain':{const c=lit([176,170,160],1,fg);bb(-2,0,2,14,c);bb(-8,12,8,15,c);L3.globalAlpha=0.75;
-      for(let i=0;i<8;i++){const ph=(game.t*1.4+i/8)%1,sx=Math.sin(i*2.4)*9*ph,z=15+ph*22-ph*ph*26;bb(sx-0.8,z,sx+0.8,z+2,'#cfe8ff');}
-      bb(-1,15,1,34,'#e4f2ff');L3.globalAlpha=1;break;}
-  }
-}
-
-function drawLamp3(s,fg){if(!proj(s.x,s.y,0))return;BX=PX;BY=PY;BK=PK;bb(-0.9,0,0.9,62,lit([32,32,36],1,fg));bb(-3.2,60,3.2,63,lit([232,223,192],1,fg,LIGHTK>0.1));
-  if(LIGHTK>0.05&&proj(s.x,s.y,61))glow(PX,PY,5*PK,'#ffb050',0.75*LIGHTK);}
+function drawLamp3(s,fg){
+  if(s.ax==null){const tx=Math.floor(s.x/T),ty=Math.floor(s.y/T);let bd=-1;for(let d=0;d<4;d++){if(tileAt(tx+DX[d],ty+DY[d])===ROAD){bd=d;break;}}s.ax=bd<0?1:DX[bd];s.ay=bd<0?0:DY[bd];}
+  const hx=s.x+s.ax*12,hy=s.y+s.ay*12,a=Math.atan2(s.ay,s.ax);
+  obox(s.x,s.y,0,1.1,1.1,0,62,[44,46,50],null,fg);obox((s.x+hx)/2,(s.y+hy)/2,a,6.5,0.8,60,62,[44,46,50],null,fg);
+  obox(hx,hy,a,3.2,2.2,58,61,[60,62,66],[60,62,66],fg);
+  if(proj(hx,hy,57.8)){const s2=Math.max(1,2.6*PK);L3.fillStyle=lit([240,228,190],1,fg,LIGHTK>0.1);L3.fillRect(R2(PX-s2),R2(PY-s2*0.3),R2(s2*2),Math.max(1,R2(s2*0.5)));if(LIGHTK>0.05)glow(PX,PY,5*PK,'#ffb050',0.75*LIGHTK);}}
 const PK_LAB={smg:'SMG',rocket:'RKT',health:'+',cash:'$',shotgun:'SG',flame:'FLM',molotov:'MOL',frenzy:'X',bribe:'-*',dual:'x2'};
 const PK_COL={smg:'#7a5a2e',rocket:'#4d6b2e',health:'#e4e4e4',cash:'#2e7b3a',shotgun:'#6a4a2a',flame:'#a8401c',molotov:'#5c7a2e',frenzy:'#151515',bribe:'#1f3f9f',dual:'#7a5a2e'};
 function drawPickup3(k,fg){const bob=Math.sin(game.t*4+k.x)*2.5;if(!proj(k.x,k.y,0))return;BX=PX;BY=PY;BK=PK;
@@ -2278,8 +2297,9 @@ function drawPickup3(k,fg){const bob=Math.sin(game.t*4+k.x)*2.5;if(!proj(k.x,k.y
   bb(-6,6+bob,6,18+bob,litH(PK_COL[k.kind],1,fg,true));bb(-6,6+bob,6,7+bob,'rgba(0,0,0,.35)');
   if(PK>0.75){L3.font=`${Math.max(6,R2((k.kind==='health'||k.kind==='cash'?11:6.5)*PK))}px "Pixelify Sans",monospace`;L3.textAlign='center';L3.textBaseline='middle';L3.fillStyle=k.kind==='health'||k.kind==='frenzy'?'#e01b24':'#fff';L3.fillText(PK_LAB[k.kind],R2(PX),R2(PY-(12+bob)*PK));}
   glow(PX,PY-12*PK,4*PK,PK_COL[k.kind]==='#151515'?'#ff3030':'#fff6c0',0.18+0.25*LIGHTK);}
-function drawPhone3(ph,ring,fg){if(!proj(ph.x,ph.y,0))return;BX=PX;BY=PY;BK=PK;const col=ring?'#ffd600':(ph.gang>=0?GANGS[ph.gang].col:'#2f6fb3');
-  bb(-1,0,1,12,lit([40,40,44],1,fg));bb(-5,12,5,26,litH(col,1,fg,ring));bb(-3,15,3,23,lit([17,17,17],1,fg));
+function drawPhone3(ph,ring,fg){const col=rgbOf(ring?'#ffd600':(ph.gang>=0?GANGS[ph.gang].col:'#2f6fb3'));
+  obox(ph.x,ph.y,0,5,5,0,28,col,mixA(col,[255,255,255],0.2),fg,null,null,ring);obox(ph.x,ph.y,0,5.2,4,6,22,[30,40,52],null,fg);obox(ph.x,ph.y,0,5.4,5.4,26,29,mixA(col,[0,0,0],0.3),null,fg);
+  if(!proj(ph.x,ph.y,0))return;BX=PX;BY=PY;BK=PK;
   if(ring){const f=(game.t*1.2)%1;glow(PX,PY-19*PK,(5+f*10)*PK,'#ffd600',0.8*(1-f));}}
 function drawCase3(it,fg){if(!proj(it.x,it.y,0))return;BX=PX;BY=PY;BK=PK;const bob=Math.sin(game.t*5)*1.5;bb(-6,4+bob,6,12+bob,lit([107,62,30],1,fg));bb(-2.5,12+bob,2.5,14+bob,lit([58,32,14],1,fg));bb(-1,7+bob,1,9+bob,'#d4af37');glow(PX,PY-8*PK,6*PK,'#ffd600',0.35+0.3*Math.sin(game.t*5));}
 function ring3(x,y,r,z,col,lw){L3.beginPath();let first=true;for(let i=0;i<=24;i++){const a=i/24*TAU;if(!proj(x+Math.cos(a)*r,y+Math.sin(a)*r,z)){first=true;continue;}if(first){L3.moveTo(PX,PY);first=false;}else L3.lineTo(PX,PY);}L3.strokeStyle=col;L3.lineWidth=lw;L3.stroke();}
