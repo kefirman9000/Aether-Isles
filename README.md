@@ -10,7 +10,7 @@ A top-down open-city crime game in the spirit of the original 2D GTA games, for 
 | PC | Phone | Action |
 |---|---|---|
 | WASD / arrows | Left-thumb joystick | Walk. In a car, the phone joystick is point-to-drive: push where you want to go |
-| Mouse + left click | FIRE (auto-aims) | Aim and shoot. Works as a drive-by from inside a car |
+| Mouse + left click | Drag the right side of the screen (or FIRE to auto-aim) | Aim and shoot. Works as a drive-by from inside a car, and fires the cannon in a tank |
 | F / E / Enter | CAR | Get in, get out, or jack a car |
 | Space | DRIFT | Handbrake |
 | Q / mouse wheel | GUN | Switch weapon |
@@ -23,8 +23,10 @@ A top-down open-city crime game in the spirit of the original 2D GTA games, for 
 - **Respect:** every gang has a respect meter. Do jobs for a gang and it likes you more while its rival likes you less. Kill a gang's members and they'll shoot on sight, and at very low respect their cars do drive-bys.
 - **Gang payphones:** phones are colored by the gang that owns them. Gangs that hate you stop calling. Jobs: Special Delivery, Hit the Golden Viper, Briefcase Run, Hot Potato (lose 3 stars), and Turf War (wipe out a rival crew).
 - **Kill Frenzies:** grab a ☠ pickup for a timed rampage, either wrecking cars with rockets or taking out a gang with an SMG.
-- **Weapons:** pistol, SMG, shotgun, flamethrower, Molotovs and rockets. Drive-by shooting from cars.
-- **Wanted level (1–5 stars):** cops chase, arrest on foot, and shoot at 3+ stars. At 4+ SWAT vans join in and shoot from their cars. Spray shops ($500) clear it.
+- **Gunplay:** pistol, dual pistols, SMG, shotgun (a fixed 5-pellet fan), flamethrower, Molotovs (hold to charge a throw on phone/keyboard) and rockets. Fire rates follow GTA2. Bullets carry your movement speed, enemies flinch when hit, and you get recoil, shell casings, a crosshair and hit markers. Cops and gangs miss the way GTA2's do: often while moving, sometimes even when standing still.
+- **Driving:** each car is simulated with front and rear tire grip that breaks loose when pushed, so you get real slides and handbrake drifts. Steering gets gentler at speed, brakes build pressure, there are 3 gears (listen for the shifts), and a lane-assist squares the car up to the road when you're not steering. Rain cuts grip.
+- **Wanted level (6 stars):** wanted points work like GTA2. A civilian kill is worth a little, a cop kill a lot, and anything a cop sees you do gets you at least 1 star. One star fades if you stay out of sight for about 30 seconds. Anything higher sticks until you hit a spray shop ($500) or grab a cop bribe (-1 star).
+- **Who comes after you:** police at 1–3 stars, SWAT joining at 4, FBI only at 5, and army trucks plus a tank at 6. Roadblocks start at 3 stars. Cops head to where they last saw you, so breaking line of sight matters. You can steal the tank.
 - **Car crusher:** drive a car onto the crusher pad to sell it for scrap. Sports cars and police cars pay the most.
 - **Car radio:** three stations of generated music (punk, synthwave and street beats) that come on when you get in a car.
 - **Day and night:** a full day cycle with headlights, streetlights, police light glow, and rain storms with thunder that make the roads slippery.
@@ -34,7 +36,7 @@ A top-down open-city crime game in the spirit of the original 2D GTA games, for 
 
 Your cash is saved in your browser (localStorage).
 
-Gameplay ideas are inspired by the classic top-down GTA games. All code here is original.
+Gameplay systems are modeled on how GTA2 works (studied from the community GTA2 decompilation). All code here is original.
 
 ## 💜 Support
 Gridlock City is free, with no ads or purchases. If you enjoy it, you can support development through [GitHub Sponsors](https://github.com/sponsors/kefirman9000).

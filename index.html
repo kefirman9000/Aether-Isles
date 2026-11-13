@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Bungee&display=swap" rel="stylesheet">
 <style>
 html,body{margin:0;height:100%;background:#111;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
+canvas{display:block;width:100vw;height:100vh;cursor:none}
 #menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(20,20,28,.82),rgba(0,0,0,.95));color:#eee;z-index:5}
 #menu .box{max-width:560px;width:92%;text-align:center}
 #menu h1{font-family:Black Ops One,Impact,sans-serif;font-size:clamp(38px,9vw,72px);margin:0;line-height:1;color:#e9dfc4;text-shadow:3px 3px 0 #8a0f14,6px 6px 0 #000;letter-spacing:1px}
@@ -35,16 +35,16 @@ canvas{display:block;width:100vw;height:100vh;cursor:crosshair}
 <b>Space</b><span>Handbrake (drift!)</span>
 <b>Q / Wheel</b><span>Switch weapon</span>
 <b>R</b><span>Change radio station (in a car)</span>
-<b>Click in a car</b><span>Drive-by shooting</span>
+<b>Click in a car</b><span>Drive-by shooting (tanks fire their cannon)</span>
 <b>P / Esc</b><span>Pause · <b style="display:inline">M</b> mute</span>
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v2.2.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v2.3.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='2.2.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='2.3.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -168,6 +168,9 @@ const CT={
   truck:{name:'Hauler',L:74,Wd:28,max:300,acc:190,grip:12,turn:2.1,hp:200,mass:2.4,cols:['#525252','#4a5e30','#7a4824','#24303c'],truck:true},
   taxi:{name:'Cabbie',L:52,Wd:24,max:450,acc:340,grip:10,turn:2.9,hp:110,mass:1,cols:['#d6a80c'],taxi:true},
   police:{name:'Squad Car',L:54,Wd:25,max:590,acc:520,grip:11.5,turn:3.2,hp:150,mass:1.4,cols:['#e4e4e4'],police:true},
+  fbi:{name:'Fed Cruiser',L:54,Wd:25,max:650,acc:580,grip:12.5,turn:3.3,hp:230,mass:1.7,cols:['#141414'],police:true,fbi:true},
+  armytruck:{name:'Army Truck',L:78,Wd:30,max:340,acc:270,grip:13,turn:2.2,hp:450,mass:3.4,cols:['#4a5a2a'],police:true,army:true,truck:true},
+  tank:{name:'Tank',L:70,Wd:42,max:190,acc:240,grip:30,turn:1.7,hp:2600,mass:9,cols:['#55602e'],police:true,army:true,tank:true},
   swat:{name:'SWAT Van',L:64,Wd:28,max:470,acc:420,grip:12,turn:2.6,hp:280,mass:2.6,cols:['#1c1e24'],police:true,swat:true},
 };
 let cars=[];
@@ -184,20 +187,73 @@ function acquireLane(c){
 }
 const TRAFFIC_TYPES=['sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police'];
 
+// GTA2-style handling: rigid body, front & rear axle tire forces with a grip limit (skid),
+// turn-in grip shift, handbrake that kills rear grip and ramps rear braking, speed-scaled steering,
+// brake pressure build-up, 3 gears, and a lane-assist that squares the car to the road.
+const FWD_BIAS={compact:1,sedan:0.5,taxi:0.5,truck:0,sports:0,police:0.2,fbi:0.2,swat:0.3,armytruck:0.3,tank:0.5};
+function physOf(c){
+  const t=c.t;if(t.ph)return t.ph;
+  const L=t.L,Wd=t.Wd;
+  t.ph={lf:L*0.32,lr:L*0.32,I:(L*L+Wd*Wd)/12,C:16,muF:t.grip*88,muR:t.grip*84,turnIn:0.18,rearStab:1,hbSlide:0.22,
+    steer:0.5*(t.turn/3),rearSteer:0.12,fBias:FWD_BIAS[c.type]!=null?FWD_BIAS[c.type]:0.4,roll:0.17};
+  return t.ph;
+}
+function carGear(c){const t=c.t,v=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a);return v<t.max*0.34?1:v<t.max*0.68?2:3;}
 function driveCar(c,thr,steer,hb,dt){
-  const t=c.t,ca=Math.cos(c.a),sa=Math.sin(c.a);
-  let vf=c.vx*ca+c.vy*sa,vr=-c.vx*sa+c.vy*ca;
-  const max=t.max*(c.hp<t.hp*0.3?0.7:1);
-  if(thr>0){if(vf<0)vf+=t.acc*2.2*thr*dt;else vf+=t.acc*thr*dt*(1-Math.max(0,vf)/max*0.55);}
-  else if(thr<0){if(vf>10)vf+=t.acc*2.4*thr*dt;else vf+=t.acc*0.6*thr*dt;}
-  else{vf*=Math.max(0,1-1.1*dt);if(Math.abs(vf)<4)vf=0;}
-  if(vf>max)vf=max;if(vf<-max*0.35)vf=-max*0.35;
-  if(hb)vf*=Math.max(0,1-1.6*dt);
-  vr*=Math.exp(-(hb?1.5:t.grip*(1-rain*0.3))*dt);
-  c.vx=ca*vf-sa*vr;c.vy=sa*vf+ca*vr;
-  const sf=clamp(vf/90,-1,1);
-  c.a+=steer*t.turn*sf*dt*(hb?1.4:1);
-  c.skid=Math.abs(vr)>110||(hb&&Math.abs(vf)>110);
+  const t=c.t,ph=physOf(c);c.driven=true;
+  if(t.tank){ // tanks pivot on the spot
+    const ca=Math.cos(c.a),sa=Math.sin(c.a);let vf=c.vx*ca+c.vy*sa;
+    vf=lerp(vf,thr*t.max*(thr<0?0.6:1),Math.min(1,dt*1.5));
+    c.va=lerp(c.va,steer*t.turn,Math.min(1,dt*6));c.a+=c.va*dt;
+    c.vx=Math.cos(c.a)*vf;c.vy=Math.sin(c.a)*vf;c.skid=false;return;
+  }
+  const dmg=c.hp<t.hp*0.3?0.7:1,wet=1-rain*0.3;
+  const ca0=Math.cos(c.a),sa0=Math.sin(c.a),vf0=c.vx*ca0+c.vy*sa0;
+  const braking=thr<0&&vf0>15,reversing=thr<0&&!braking;
+  c.brakeP=braking?Math.min(1,(c.brakeP||0.35)+dt*2.4):0.35;
+  c.hbP=hb?Math.min(1,(c.hbP||0)+dt*0.9):0;
+  const spd=hyp(c.vx,c.vy);
+  const sf=clamp(1-Math.pow(spd/(t.max*1.1),2),0.3,1);
+  const delta=steer*ph.steer*sf;
+  const n=dt>0.02?2:1,h=dt/n;let skid=false;
+  for(let k=0;k<n;k++){
+    const ca=Math.cos(c.a),sa=Math.sin(c.a),vf=c.vx*ca+c.vy*sa;
+    const gr=vf<t.max*0.34?1.3:vf<t.max*0.68?1.0:0.72;
+    let drive=0;
+    if(thr>0)drive=vf<-10?t.acc*2.4:(vf<t.max*dmg?t.acc*gr*thr*dmg:0);
+    else if(reversing)drive=vf>-t.max*0.35?t.acc*0.6*thr:0;
+    let ax=0,ay=0,tq=0;
+    for(let w=0;w<2;w++){
+      const front=w===0,d=front?ph.lf:-ph.lr,rx=ca*d,ry=sa*d;
+      const pvx=c.vx-c.va*ry,pvy=c.vy+c.va*rx;
+      const wa=c.a+(front?delta:-delta*ph.rearSteer*Math.max(0,1-spd/180));
+      const wc=Math.cos(wa),ws=Math.sin(wa);
+      const lon=pvx*wc+pvy*ws,lat=-pvx*ws+pvy*wc;
+      let grip=steer?(front?1+ph.turnIn:1-ph.turnIn):1;if(!front)grip*=ph.rearStab;
+      let mu=(front?ph.muF:ph.muR)*wet;
+      if(!front&&hb){grip*=ph.hbSlide;mu*=lerp(0.55,ph.hbSlide*1.3,c.hbP);}
+      let fl=-lat*ph.C*grip;
+      if(Math.abs(fl)>mu){fl=Math.sign(fl)*mu;if(Math.abs(lat)>45&&spd>70)skid=true;}
+      const bias=front?ph.fBias:1-ph.fBias;
+      let flon=drive*bias-lon*ph.roll;
+      if(braking)flon-=Math.sign(lon)*t.acc*1.0*c.brakeP*(front?1.2:0.8);
+      if(!front&&hb&&Math.abs(lon)>5)flon-=Math.sign(lon)*t.acc*1.4*c.hbP;
+      if(thr===0&&Math.abs(lon)<8)flon-=lon*6;
+      const fx=wc*flon-ws*fl,fy=ws*flon+wc*fl;
+      ax+=fx;ay+=fy;tq+=rx*fy-ry*fx;
+    }
+    c.vx+=ax*h;c.vy+=ay*h;c.va+=tq/ph.I*h;c.va*=Math.exp(-1.2*h);
+    c.a+=c.va*h;
+  }
+  // hard top-speed cap
+  {const ca=Math.cos(c.a),sa=Math.sin(c.a),vf=c.vx*ca+c.vy*sa,cap=t.max*dmg;if(vf>cap){const e=vf-cap;c.vx-=ca*e;c.vy-=sa*e;}}
+  // GTA2 lane assist: gas on, no steering, roughly lined up with the road -> square up
+  if(c.driver==='player'&&steer===0&&thr>0&&spd>80&&Math.abs(c.va)<1.2){
+    const tx=Math.floor(c.x/T),ty=Math.floor(c.y/T);
+    if(tileAt(tx,ty)===ROAD){const axis=Math.round(c.a/(PI/2))*(PI/2),e=angDiff(axis,c.a);
+      if(Math.abs(e)<0.44&&Math.abs(e)>0.002){const r=clamp(e,-1.4*dt,1.4*dt),cr=Math.cos(r),sr=Math.sin(r);c.a+=r;const vx=c.vx*cr-c.vy*sr;c.vy=c.vx*sr+c.vy*cr;c.vx=vx;}}
+  }
+  c.skid=skid||(hb&&spd>110);
 }
 function carCircles(c){
   const ca=Math.cos(c.a),sa=Math.sin(c.a),o=c.t.L/2-c.t.Wd/2;
@@ -298,7 +354,7 @@ function carExplode(c){
   if(c.driver&&c.driver!=='player'){c.driver=null;}
   c.ai=null;
   explode(c.x,c.y,c.burnBy);
-  if(c.burnBy==='player'){crime(c.t.police?2:0.6);chaos();addMoney((c.t.police?250:100)*combo.n);if(frenzy&&frenzy.kind==='cars')frenzyHit();if(c.gang!=null){addRespect(c.gang,-0.6);addRespect(rivalOf(c.gang),0.3);}}
+  if(c.burnBy==='player'){crime(c.t.police?500:200,1);chaos();addMoney((c.t.police?250:100)*combo.n);if(frenzy&&frenzy.kind==='cars')frenzyHit();if(c.gang!=null){addRespect(c.gang,-0.6);addRespect(rivalOf(c.gang),0.3);}}
   if(nearPlayer(c.x,c.y,520))slowT=Math.max(slowT,0.4);
   if(mission&&mission.type==='hit'&&mission.car===c)missionPass();
 }
@@ -322,7 +378,7 @@ const SHIRTS=['#7e4a3a','#33568f','#4f6b3f','#5a4a6a','#8a5a2a','#a9a69e','#2f5e
 const SKIN=['#f1c27d','#e0ac69','#c68642','#8d5524','#ffdbac','#a86b3c'];
 const HAIR=['#222','#4a2f1b','#8b5a2b','#d9b35b','#777','#111','#b5651d'];
 function makePed(x,y,cop){
-  const p={x,y,a:R()*TAU,vx:0,vy:0,col:cop?'#2b4c9b':pick(SHIRTS),skin:pick(SKIN),hair:pick(HAIR),state:cop?'cop':'walk',tx:x,ty:y,dir:Math.floor(R()*4),panic:0,fx:0,fy:0,hp:cop?50:25,cop:!!cop,shootT:rr(.5,1.2),anim:R()*9,moving:false,gun:false,car:null,gone:false,cross:false,gang:null,angry:0,target:false,id:++uid};
+  const p={x,y,a:R()*TAU,vx:0,vy:0,flash:0,stagger:0,heavy:false,kind:null,col:cop?'#2b4c9b':pick(SHIRTS),skin:pick(SKIN),hair:pick(HAIR),state:cop?'cop':'walk',tx:x,ty:y,dir:Math.floor(R()*4),panic:0,fx:0,fy:0,hp:cop?50:25,cop:!!cop,shootT:rr(.5,1.2),anim:R()*9,moving:false,gun:false,car:null,gone:false,cross:false,gang:null,angry:0,target:false,id:++uid};
   peds.push(p);return p;
 }
 function pedPickNext(p){
@@ -359,7 +415,7 @@ function killPed(p,by,fvx,fvy,burnt){
   if(p.target&&mission&&mission.type==='turf'){mission.left--;if(mission.left>0)note(mission.left+' left');}
   if(nearPlayer(p.x,p.y,800))sfx('splat',0.8);
   panicAround(p.x,p.y,220);
-  if(by==='player'){crime(p.cop?2.5:p.gang!=null?0.6:1);}
+  if(by==='player'){crime(p.cop?500:p.gang!=null?1:100,copWitness(p.x,p.y)?1:0);}
   if(p.car&&p.car.copsOut>0)p.car.copsOut--;
 }
 
@@ -387,26 +443,43 @@ function explode(x,y,by){
 }
 
 // ================= PLAYER / STATE =================
+// fire intervals follow GTA2's reload ticks (pistol 20, dual 10, smg 2, shotgun 40) scaled for 60fps play
 const WEAPONS=[
-  {name:'Pistol',rate:.3,dmg:30,spd:950,spread:.035,kind:'b',cdmg:7},
-  {name:'SMG',rate:.085,dmg:18,spd:1000,spread:.11,kind:'b',cdmg:4},
-  {name:'Shotgun',rate:.75,dmg:24,spd:900,spread:.26,kind:'b',cdmg:6,pellets:6},
-  {name:'Flamethrower',rate:.045,dmg:0,spd:380,spread:.18,kind:'f',cdmg:2.5},
-  {name:'Molotovs',rate:.8,dmg:0,spd:430,spread:.03,kind:'m',cdmg:0},
-  {name:'Rockets',rate:1.0,dmg:0,spd:520,spread:0,kind:'r',cdmg:0},
+  {name:'Pistol',rate:.4,dmg:30,spd:980,spread:0,kind:'b',cdmg:7,kick:3},
+  {name:'SMG',rate:.075,dmg:18,spd:1000,spread:.045,kind:'b',cdmg:4,kick:1.4},
+  {name:'Shotgun',rate:.8,dmg:24,spd:900,spread:0,kind:'b',cdmg:6,fan:[0,-6,6,-12,12],kick:8},
+  {name:'Flamethrower',rate:.045,dmg:0,spd:380,spread:.18,kind:'f',cdmg:2.5,kick:0},
+  {name:'Molotovs',rate:.8,dmg:0,spd:430,spread:.03,kind:'m',cdmg:0,kick:0},
+  {name:'Rockets',rate:1.0,dmg:0,spd:520,spread:0,kind:'r',cdmg:0,kick:7},
+  {name:'Dual Pistols',rate:.2,dmg:30,spd:980,spread:.01,kind:'b',cdmg:7,dual:true,kick:2.5},
 ];
-const player={x:0,y:0,a:0,vx:0,vy:0,hp:100,car:null,w:0,ammo:[Infinity,0,0,0,0,0],cool:0,anim:0,hurt:0,moving:false};
+const player={x:0,y:0,a:0,vx:0,vy:0,hp:100,car:null,w:0,ammo:[Infinity,0,0,0,0,0,0],cool:0,anim:0,hurt:0,moving:false};
 const game={state:'menu',t:0,paused:false,timer:0,started:false};
 let money=0;try{money=+(localStorage.getItem('gridlock_money')||0)||0}catch(e){}
 function saveMoney(){try{localStorage.setItem('gridlock_money',String(money))}catch(e){}}
 function addMoney(n){money=Math.max(0,money+n);saveMoney();if(n>0)moneyPop={n,t:1.4};}
 let moneyPop=null;
 let heat=0,evadeT=0,bustT=0,copSpawnT=0;
-const TH=[0,1,2.5,4.5,7,10];
-function stars(){let s=0;for(let i=1;i<=5;i++)if(heat>=TH[i])s=i;return s}
-function crime(n){const before=stars();heat=Math.min(14,heat+n);evadeT=0;if(stars()>before&&before===0)note('The cops are after you!');}
+// GTA2 wanted points: 600/1600/3000/5000/8000/12000 for 1-6 stars.
+const TH=[0,600,1600,3000,5000,8000,12000];
+let seenT=0,lastSeenX=0,lastSeenY=0,roadblockT=12;
+function stars(){let s=0;for(let i=1;i<=6;i++)if(heat>=TH[i])s=i;return s}
+function crime(points,minStars){const before=stars();heat=Math.min(TH[6],heat+points);if(minStars&&heat<TH[minStars])heat=TH[minStars];
+  if(stars()>before){seenT=0;lastSeenX=player.x;lastSeenY=player.y;if(before===0)note('The cops are after you!');}}
+function copWitness(x,y){
+  for(const c of cars)if(c.driver==='cop'&&!c.wreck&&dist2(c.x,c.y,x,y)<430*430&&los(c.x,c.y,x,y))return true;
+  for(const p of peds)if(p.cop&&!p.gone&&dist2(p.x,p.y,x,y)<380*380&&los(p.x,p.y,x,y))return true;
+  return false;
+}
+const COPKIND=c=>c.t.tank?'tank':c.t.army?'army':c.t.fbi?'fbi':c.t.swat?'swat':'police';
+const DISPATCH=[null,{police:1},{police:2},{police:2},{police:2,swat:1},{fbi:3},{army:2,tank:1}];
+const KIND_TYPE={police:'police',swat:'swat',fbi:'fbi',army:'armytruck',tank:'tank'};
+// GTA2 NPC aim: standing still -> 1 in 3 dead on, else +-10deg; moving -> mostly off by 10 or 16deg
+function npcAim(a,moving){const D10=10*PI/180,D16=16*PI/180;let r;
+  if(moving){r=Math.floor(R()*5);if(r===0)r=Math.floor(R()*5);}else r=Math.floor(R()*3);
+  return a+[0,-D10,D10,-D16,D16][r];}
 function clearHeat(){
-  heat=0;evadeT=0;
+  heat=0;evadeT=0;seenT=0;
   for(const c of cars)if(c.ai&&c.ai.mode==='chase'){acquireLane(c);}
   for(const p of peds)if(p.cop&&p.state==='cop'){p.state='walk';p.gun=false;pedPickNext(p);}
 }
@@ -415,7 +488,7 @@ function nearPlayer(x,y,r){return dist2(x,y,player.x,player.y)<r*r}
 
 function respawnAt(sp){
   if(player.car){player.car.driver=null;player.car.traffic=true;player.car=null;}
-  player.x=sp.x;player.y=sp.y;player.hp=100;player.vx=player.vy=0;player.w=0;player.ammo=[Infinity,0,0,0,0,0];
+  player.x=sp.x;player.y=sp.y;player.hp=100;player.vx=player.vy=0;player.w=0;player.ammo=[Infinity,0,0,0,0,0,0];
   clearHeat();frenzy=null;
   for(const p of peds)if(p.cop&&dist2(p.x,p.y,sp.x,sp.y)<300*300)p.gone=true;
   game.state='play';
@@ -432,7 +505,7 @@ function note(text){ticker.push({text,t:4});if(ticker.length>4)ticker.shift()}
 const pickups=[];
 function farApart(list,x,y,minD){for(const q of list)if(dist2(q.x,q.y,x,y)<minD*minD)return false;return true}
 (function genPickups(){
-  const kinds=['smg','shotgun','rocket','health','health','cash','cash','flame','molotov','health','cash','smg','shotgun','molotov','frenzy','frenzy','frenzy','health'];
+  const kinds=['bribe','bribe','dual','smg','shotgun','rocket','health','health','cash','cash','flame','molotov','health','cash','smg','shotgun','molotov','frenzy','frenzy','frenzy','health'];
   let tries=0;
   kinds.push(...kinds);
   while(pickups.length<kinds.length&&tries<5000){tries++;
@@ -484,7 +557,7 @@ function startMission(g){
       const p=makePed(x,y,false);makeGang(p,rv);p.target=true;p.hp=50;pedPickNext(p);targets.push(p);}
     mission={type,title:'Turf War',desc:'Take out 6 '+GANGS[rv].name+' on their turf',targets,left:targets.length,timer:180};
   }else{
-    mission={type,title:'Hot Potato',desc:'You\'re carrying stolen goods. Lose a 3-star wanted level!',timer:150,elapsed:0};
+    mission={type,title:'Hot Potato',desc:'You\'re carrying stolen goods. Lose a 3-star wanted level: spray shops or cop bribes.',timer:150,elapsed:0};
     heat=Math.max(heat,TH[3]);evadeT=0;
   }
   mission.max=mission.timer;mission.gang=g;
@@ -529,7 +602,7 @@ function gangAttack(p,tg,d,dt){
   p.vx=Math.cos(a)*sp;p.vy=Math.sin(a)*sp;p.moving=sp!==0;p.anim+=dt*20;
   p.x+=p.vx*dt;p.y+=p.vy*dt;circleTiles(p,6);
   p.shootT-=dt;
-  if(p.shootT<=0){p.shootT=rr(.8,1.5);const aa=a+rr(-.14,.14);fireBullet(p.x+Math.cos(aa)*12,p.y+Math.sin(aa)*12,aa,850,'gang',6,'b',5);sfx('shot',nearPlayer(p.x,p.y,600)?0.45:0.15);puff(p.x+Math.cos(aa)*14,p.y+Math.sin(aa)*14,0,0,0.06,9,'#fff2a8','flash');}
+  if(p.shootT<=0){p.shootT=rr(.8,1.5);const aa=npcAim(a,sp!==0);fireBullet(p.x+Math.cos(aa)*12,p.y+Math.sin(aa)*12,aa,850,'gang',6,'b',5);sfx('shot',nearPlayer(p.x,p.y,600)?0.45:0.15);puff(p.x+Math.cos(aa)*14,p.y+Math.sin(aa)*14,0,0,0.06,9,'#fff2a8','flash');}
 }
 // ================= SPAWNING =================
 function laneSpotNear(x,y){
@@ -549,15 +622,33 @@ function spawnTraffic(forcePolice,chase){
     const s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);
     if(!s||carNear(s.x,s.y,100))continue;
     const z=zoneOf(s.x,s.y),gangCar=!forcePolice&&z>=0&&R()<0.22;
-    const type=forcePolice?(stars()>=4&&R()<0.5?'swat':'police'):gangCar?pick(['sedan','sports','sedan']):pick(TRAFFIC_TYPES);
+    const type=forcePolice?(typeof forcePolice==='string'?forcePolice:'police'):gangCar?pick(['sedan','sports','sedan']):pick(TRAFFIC_TYPES);
     const c=makeCar(type,s.x,s.y,s.dir*PI/2,gangCar?GANGS[z].car:undefined);
     if(gangCar)c.gang=z;
     c.traffic=true;c.driver=c.t.police?'cop':'ai';
+    if(c.t.tank||c.t.army||c.t.fbi||c.t.swat)c.traffic=false,c.special=true;
     c.ai=newAI(chase?'chase':'lane',s.dir,s.k);
     const sp=c.ai.cruise*0.8;c.vx=DX[s.dir]*sp;c.vy=DY[s.dir]*sp;
     return c;
   }
   return null;
+}
+function spawnRoadblock(s){
+  const c0=player.car,sp=hyp(c0.vx,c0.vy),dx=c0.vx/sp,dy=c0.vy/sp;
+  for(let tries=0;tries<6;tries++){
+    const dd=viewR*0.85+tries*60,px=c0.x+dx*dd,py=c0.y+dy*dd;
+    const tx=Math.floor(px/T),ty=Math.floor(py/T);if(tx<0||ty<0||tx>=W||ty>=W)continue;
+    const mx=tx%P,my=ty%P;if((mx<4)===(my<4))continue;
+    const vert=mx<4,k=vert?Math.floor(tx/P):Math.floor(ty/P);
+    const type=s>=6?'armytruck':s>=5?'fbi':s>=4?'swat':'police';
+    const spots=vert?[[(k*P+1)*T,(ty+.5)*T],[(k*P+3)*T,(ty+.5)*T]]:[[(tx+.5)*T,(k*P+1)*T],[(tx+.5)*T,(k*P+3)*T]];
+    if(spots.some(q=>carNear(q[0],q[1],70)))continue;
+    for(const q of spots){const c=makeCar(type,q[0],q[1],vert?0:PI/2);c.traffic=true;c.roadblock=true;}
+    const back=vert?[0,Math.sign(dy)*40]:[Math.sign(dx)*40,0];
+    for(let i=0;i<2;i++){const q=spots[i],cp=makePed(q[0]+back[0],q[1]+back[1],true);cp.state='cop';cp.heavy=s>=4;cp.kind=type;cp.gun=true;}
+    note('Roadblock ahead!');return true;
+  }
+  return false;
 }
 function spawnPed(){
   for(let i=0;i<8;i++){
@@ -659,23 +750,29 @@ function aiLane(c,dt){
   driveCar(c,thr,steer,false,dt);
 }
 function aiChase(c,dt){
-  const ai=c.ai,tg=player.car||player,px=tg.x,py=tg.y;
+  const ai=c.ai,tg=player.car||player,hidden=seenT>1.2,px=hidden?lastSeenX:tg.x,py=hidden?lastSeenY:tg.y;
   const d=hyp(px-c.x,py-c.y),spd=hyp(c.vx,c.vy);
   let gx=px,gy=py;
-  if(!(d<230&&los(c.x,c.y,px,py))){const n=ffNext(c.x,c.y,4);if(n){gx=n[0];gy=n[1];}}
+  if(hidden&&d<90){ai.searchA=(ai.searchA||R()*TAU)+dt*0.6;gx=c.x+Math.cos(ai.searchA)*200;gy=c.y+Math.sin(ai.searchA)*200;}
+  else if(!(d<230&&los(c.x,c.y,px,py))){const n=ffNext(c.x,c.y,4);if(n){gx=n[0];gy=n[1];}}
   const diff=angDiff(Math.atan2(gy-c.y,gx-c.x),c.a);
   let thr=1,steer=clamp(diff*2.6,-1,1);
   if(Math.abs(diff)>0.9&&spd>240)thr=-0.4;
   if(spd<25){ai.stuckT+=dt;if(ai.stuckT>1.1){ai.revT=0.9;ai.stuckT=0}}else ai.stuckT=0;
   if(ai.revT>0){ai.revT-=dt;thr=-1;steer=-steer;}
-  if(!player.car&&d<190&&game.state==='play'){
+  if(c.t.tank&&Math.abs(diff)>0.6)thr=0.2;
+  if(!player.car&&d<190&&game.state==='play'&&!hidden&&!c.t.tank){
     thr=spd>40?-1:0;
-    if(spd<70&&c.copsOut<1){const p1=ejectDriver(c,false);p1.state='cop';if(stars()>=2){const p2=makePed(c.x-Math.sin(c.a)*(c.t.Wd/2+10),c.y+Math.cos(c.a)*(c.t.Wd/2+10),true);p2.state='cop';p2.car=c;c.copsOut++;}return;}
+    if(spd<70&&c.copsOut<1){const crewN=c.t.army?3:c.t.swat||c.t.fbi?2:1;const p1=ejectDriver(c,false);p1.state='cop';p1.heavy=!!(c.t.swat||c.t.fbi||c.t.army);p1.kind=c.type;
+      for(let i=1;i<crewN;i++){const q=makePed(c.x-Math.sin(c.a)*(c.t.Wd/2+10)+rr(-10,10),c.y+Math.cos(c.a)*(c.t.Wd/2+10)+rr(-10,10),true);q.state='cop';q.car=c;q.heavy=p1.heavy;q.kind=c.type;q.hp=p1.heavy?80:50;c.copsOut++;}
+      if(false&&stars()>=2){const p2=makePed(c.x-Math.sin(c.a)*(c.t.Wd/2+10),c.y+Math.cos(c.a)*(c.t.Wd/2+10),true);p2.state='cop';p2.car=c;c.copsOut++;}return;}
   }
   driveCar(c,thr,steer,false,dt);
 }
 function updatePed(p,dt){
   p.moving=false;
+  if(p.flash>0)p.flash-=dt;
+  if(p.stagger>0){p.stagger-=dt;return;}
   if(p.state==='cop'){updateCop(p,dt);return;}
   if(p.gang!=null){
     if(p.angry>0)p.angry-=dt;
@@ -712,17 +809,18 @@ function updateCop(p,dt){
       for(const q of peds)if(q!==p&&q.car===p.car&&q.state==='cop'){q.gone=true;}return;}
     const a=Math.atan2(cy-p.y,cx-p.x);p.a=lerpAng(p.a,a,0.3);p.vx=Math.cos(a)*150;p.vy=Math.sin(a)*150;
   }else{
-    const see=d<330&&los(p.x,p.y,px,py);
+    const hidden=seenT>1.2,see=!hidden&&d<330&&los(p.x,p.y,px,py);
     let gx=px,gy=py;
     if(!(d<170&&see)){const n=ffNext(p.x,p.y,2);if(n){gx=n[0];gy=n[1];}}
     const a=Math.atan2(gy-p.y,gx-p.x);p.a=lerpAng(p.a,see?Math.atan2(py-p.y,px-p.x):a,0.3);
-    let sp=152;if(s>=3&&see&&d<200)sp=55;
+    const shoots=s>=3||p.heavy;
+    let sp=152;if(shoots&&see&&d<200)sp=55;
     if(d>13){p.vx=Math.cos(a)*sp;p.vy=Math.sin(a)*sp}else{p.vx=p.vy=0}
-    if(s>=3){p.gun=true;p.shootT-=dt;
-      if(p.shootT<=0&&see&&d<320){p.shootT=rr(.65,1.2);const aa=Math.atan2(py-p.y,px-p.x)+rr(-.12,.12);
-        fireBullet(p.x+Math.cos(aa)*12,p.y+Math.sin(aa)*12,aa,850,'cop',7,'b',5);sfx('shot',nearPlayer(p.x,p.y,600)?0.5:0.2);
+    if(shoots){p.gun=true;p.shootT-=dt;
+      if(p.shootT<=0&&see&&d<320){p.shootT=p.heavy?rr(.25,.5):rr(.65,1.2);const aa=npcAim(Math.atan2(py-p.y,px-p.x),hyp(p.vx,p.vy)>5&&d>13);
+        fireBullet(p.x+Math.cos(aa)*12,p.y+Math.sin(aa)*12,aa,850,'cop',p.heavy?9:7,'b',5);sfx('shot',nearPlayer(p.x,p.y,600)?0.5:0.2);
         puff(p.x+Math.cos(aa)*14,p.y+Math.sin(aa)*14,0,0,0.06,9,'#fff2a8','flash');}}
-    if(!player.car&&d<16)busted();
+    if(!player.car&&d<16&&!hidden)busted();
     if(player.car&&d<player.car.t.L/2+16&&hyp(player.car.vx,player.car.vy)<35)bustT+=dt*1.5;
   }
   p.moving=true;p.anim+=dt*25;
@@ -730,8 +828,8 @@ function updateCop(p,dt){
 }
 
 // ================= BULLETS =================
-let bullets=[];
-function fireBullet(x,y,a,spd,own,dmg,kind,cdmg,life){bullets.push({x,y,vx:Math.cos(a)*spd,vy:Math.sin(a)*spd,life:kind==='r'?2.2:kind==='f'?0.3:kind==='m'?(life||0.9):0.75,own,dmg,kind,cdmg,a})}
+let bullets=[],hitMarks=[],throwCharge=0,fireWasHeld=false;
+function fireBullet(x,y,a,spd,own,dmg,kind,cdmg,life,ivx,ivy){bullets.push({x,y,vx:Math.cos(a)*spd+(ivx||0),vy:Math.sin(a)*spd+(ivy||0),life:kind==='r'?2.2:kind==='f'?0.3:kind==='m'?(life||0.9):0.75,own,dmg,kind,cdmg,a})}
 function molotovBurst(x,y,by){
   sfx('crash',0.6);sfx('flame',3);
   for(let i=0;i<7;i++){const a=R()*TAU,d=rr(0,34);fires.push({x:x+Math.cos(a)*d,y:y+Math.sin(a)*d,t:rr(3.5,5),by});}
@@ -765,10 +863,11 @@ function updateBullets(dt){
           if(b.kind==='m'){b.life=0;break outer;}
           if(b.kind==='r'){b.life=0;explode(b.x,b.y,b.own);break outer;}
           p.hp-=b.dmg;addMark({k:'blood',x:p.x+rr(-4,4),y:p.y+rr(-4,4),r:rr(3,6)});
+          if(b.own==='player'){hitMarks.push({x:p.x,y:p.y,t:0.18,kill:p.hp<=0});p.flash=0.08;p.stagger=0.22;const bl=hyp(b.vx,b.vy)||1;p.x+=b.vx/bl*5;p.y+=b.vy/bl*5;if(nearPlayer(p.x,p.y,900))sfx('hit');}
           if(p.hp<=0)killPed(p,b.own==='player'?'player':null);
           else if(p.gang!=null){p.angry=12;}
           else if(!p.cop){p.state='flee';p.panic=6;p.fx=b.x-b.vx;p.fy=b.y-b.vy;}
-          else if(b.own==='player'){crime(0.5);}
+          else if(b.own==='player'){crime(0,1);}
           b.life=0;break outer;
         }
       }
@@ -780,7 +879,8 @@ function updateBullets(dt){
           if(b.kind==='r'){b.life=0;explode(b.x,b.y,b.own);break outer;}
           if(b.kind==='m'){b.life=0;break outer;}
           damageCar(c,b.cdmg,b.own==='player'?'player':null);
-          if(b.own==='player'&&c.t.police&&c.driver)crime(0.3);
+          if(b.own==='player')hitMarks.push({x:b.x,y:b.y,t:0.12,kill:false});
+          if(b.own==='player'&&c.t.police&&c.driver)crime(0,1);
           if(b.kind==='f'){b.life=0;break outer;}
           for(let k=0;k<3;k++)puff(b.x,b.y,rr(-90,90),rr(-90,90),0.25,2,'#ffe08a','spark');
           if(nearPlayer(b.x,b.y,500))sfx('hit');
@@ -824,7 +924,7 @@ cv.addEventListener('wheel',e=>{pressed.swap=true;e.preventDefault()},{passive:f
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 // touch
-const joy={id:null,ox:0,oy:0,x:0,y:0,active:false};
+const joy={id:null,ox:0,oy:0,x:0,y:0,active:false},aimJoy={id:null,ox:0,oy:0,x:0,y:0,active:false};
 const tbtn={fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
 function touchScale(){return clamp(Math.min(VW,VH)/420,0.72,1.2)}
 function btnLayout(){const s=touchScale(),pad=16*s,bx=VW-pad,by=VH-pad-8;
@@ -849,10 +949,13 @@ function onTouch(e){
         if(hitBtn==='radio'&&player.car)setStation(radio.st+1);if(hitBtn==='pause')togglePause();}
       else if(x<VW*0.5&&y>VH*0.3&&joy.id===null){
         joy.id=t.identifier;joy.ox=clamp(x,JH.r,VW*0.5);joy.oy=clamp(y,VH*0.3,VH-JH.r*0.6);joy.x=0;joy.y=0;joy.active=true;}
+      else if(x>=VW*0.5&&y>VH*0.22&&aimJoy.id===null){aimJoy.id=t.identifier;aimJoy.ox=x;aimJoy.oy=y;aimJoy.x=0;aimJoy.y=0;aimJoy.active=true;}
     }else if(e.type==='touchmove'){
       if(t.identifier===joy.id){let dx=x-joy.ox,dy=y-joy.oy;const l=hyp(dx,dy),m=JH.r;if(l>m){dx=dx/l*m;dy=dy/l*m}joy.x=dx/m;joy.y=dy/m;}
+      if(t.identifier===aimJoy.id){let dx=x-aimJoy.ox,dy=y-aimJoy.oy;const l=hyp(dx,dy),m=JH.r*0.8;if(l>m){dx=dx/l*m;dy=dy/l*m}aimJoy.x=dx/m;aimJoy.y=dy/m;}
     }else{
       if(t.identifier===joy.id){joy.id=null;joy.active=false;joy.x=joy.y=0;}
+      if(t.identifier===aimJoy.id){aimJoy.id=null;aimJoy.active=false;aimJoy.x=aimJoy.y=0;}
       for(const k in tbtn)if(tbtn[k].id===t.identifier){tbtn[k].id=null;tbtn[k].on=false;}
     }
   }
@@ -938,7 +1041,8 @@ function sfx(n,vol){vol=vol==null?1:vol;switch(n){
 function updateAudio(){
   if(!AC||!eng)return;const t=AC.currentTime;
   if(player.car&&!muted&&game.state==='play'){const s=hyp(player.car.vx,player.car.vy);
-    eng.o1.frequency.setTargetAtTime(48+s*0.2,t,0.05);eng.o2.frequency.setTargetAtTime(24+s*0.1,t,0.05);eng.g.gain.setTargetAtTime(0.05+Math.min(0.06,s/7000),t,0.1);}
+    const c=player.car,vf=Math.max(0,c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a)),g=carGear(c),lo=[0,0,0.34,0.68][g]*c.t.max,hi=[0,0.34,0.68,1.05][g]*c.t.max,rpm=clamp((vf-lo)/(hi-lo),0,1);
+    const ef=c.t.tank?30+rpm*25:42+g*8+rpm*70;eng.o1.frequency.setTargetAtTime(ef,t,0.04);eng.o2.frequency.setTargetAtTime(ef*0.5,t,0.04);eng.g.gain.setTargetAtTime(0.05+Math.min(0.06,s/7000),t,0.1);}
   else eng.g.gain.setTargetAtTime(0,t,0.1);
   let sd=1e9;if(heat>0)for(const c of cars)if(c.ai&&c.ai.mode==='chase')sd=Math.min(sd,hyp(c.x-player.x,c.y-player.y));
   siren.g.gain.setTargetAtTime(heat>0&&!muted?clamp(1-sd/1000,0,1)*0.05:0,t,0.15);
@@ -958,9 +1062,9 @@ function tryEnterCar(){
   if(hadDriver){ejectDriver(best,!wasCop);
     let witness=false;for(const c of cars)if(c.driver==='cop'&&c!==best&&dist2(c.x,c.y,player.x,player.y)<450*450)witness=true;
     for(const p of peds)if(p.cop&&!p.gone&&dist2(p.x,p.y,player.x,player.y)<400*400)witness=true;
-    if(witness||wasCop)crime(1);
+    if(witness||wasCop)crime(0,1);
   }
-  if(best.t.police)crime(1);
+  if(best.t.police)crime(best.t.army?1000:0,1);
   player.car=best;best.driver='player';best.ai=null;best.traffic=false;best.lastBy='player';
   sfx('door');note(best.t.name+(hadDriver?' (jacked)':''));
   setStation(best.t.police?RADIO.length-1:Math.floor(R()*(RADIO.length-1)));
@@ -978,6 +1082,12 @@ function playerFire(){
   const w=WEAPONS[player.w];
   if(player.cool>0||player.ammo[player.w]<=0)return;
   const inCar=!!player.car;
+  if(inCar&&player.car.t.tank){ // stolen tank: main gun
+    if(player.cool>0)return;player.cool=1.1;const c=player.car;
+    const wx2=(mouse.x-VW/2)/cam.zoom+cam.x,wy2=(mouse.y-VH/2)/cam.zoom+cam.y;
+    const ta=aimJoy.active?Math.atan2(aimJoy.y,aimJoy.x):(mouse.used&&!touchMode)?Math.atan2(wy2-c.y,wx2-c.x):c.a;c.turret=ta;
+    fireBullet(c.x+Math.cos(ta)*42,c.y+Math.sin(ta)*42,ta,600,'player',0,'r',0);sfx('boom',0.5);shake=Math.max(shake,8);
+    puff(c.x+Math.cos(ta)*44,c.y+Math.sin(ta)*44,0,0,0.08,22,'#fff2a8','flash');return;}
   if(inCar&&w.kind!=='b'&&w.kind!=='f')return;
   player.cool=w.rate*(inCar?1.4:1);
   if(player.ammo[player.w]!==Infinity)player.ammo[player.w]--;
@@ -986,29 +1096,36 @@ function playerFire(){
   const hostile=p=>p.state==='cop'||p.angry>0||(p.gang!=null&&respect[p.gang]<=-2);
   if(inCar){
     const c=player.car;
-    if(mouse.used&&!touchMode)a=Math.atan2(wy-c.y,wx-c.x);
+    if(aimJoy.active)a=Math.atan2(aimJoy.y,aimJoy.x);
+    else if(mouse.used&&!touchMode)a=Math.atan2(wy-c.y,wx-c.x);
     else{let best=null,bs=1e9;
       for(const p of peds){if(p.gone)continue;const d=hyp(p.x-c.x,p.y-c.y);if(d<320&&hostile(p)&&d<bs){bs=d;best=p;}}
       for(const o of cars){if(o===c||o.wreck)continue;const d=hyp(o.x-c.x,o.y-c.y);if(d<300&&(o.vip||o.driver==='cop'||(o.gang!=null&&respect[o.gang]<=-2))&&d<bs){bs=d;best=o;}}
       a=best?Math.atan2(best.y-c.y,best.x-c.x):c.a-PI/2;}
     ox=c.x+Math.cos(a)*(c.t.Wd/2+8);oy=c.y+Math.sin(a)*(c.t.Wd/2+8);
   }else{
-    if(touchMode||!mouse.used){
+    if(aimJoy.active){a=Math.atan2(aimJoy.y,aimJoy.x);let best=null,bs=0.2;for(const p of peds){if(p.gone)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>360)continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),a));if(da<bs){bs=da;best=p;}}if(best)a=Math.atan2(best.y-player.y,best.x-player.x);}
+    else if(touchMode||!mouse.used){
       let best=null,bs=0.65;
       for(const p of peds){if(p.gone)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>340)continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),player.a));const sc=da+(hostile(p)?-0.3:0)+d/1500;if(da<0.65&&sc<bs){bs=sc;best=p;}}
       if(best)a=Math.atan2(best.y-player.y,best.x-player.x);
     }
     ox=player.x+Math.cos(a)*14;oy=player.y+Math.sin(a)*14;
-    if(w.kind==='m')life=(mouse.used&&!touchMode)?clamp(hyp(wx-player.x,wy-player.y)/w.spd,0.15,0.9):0.6;
+    if(w.kind==='m')life=(mouse.used&&!touchMode&&!aimJoy.active)?clamp(hyp(wx-player.x,wy-player.y)/w.spd,0.15,0.9):0.2+throwCharge*0.7;
   }
-  const n=w.pellets||1;
-  for(let i=0;i<n;i++)fireBullet(ox,oy,a+rr(-w.spread,w.spread),w.spd*(n>1?rr(.85,1.1):1),'player',w.dmg,w.kind,w.cdmg,life);
+  const ivx=inCar?player.car.vx:player.vx,ivy=inCar?player.car.vy:player.vy;
+  if(w.fan){for(const deg of w.fan)fireBullet(ox,oy,a+deg*PI/180,w.spd*rr(.92,1.05),'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
+  else if(w.dual){for(const sd of [-1,1])fireBullet(ox-Math.sin(a)*5*sd,oy+Math.cos(a)*5*sd,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
+  else fireBullet(ox,oy,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,w.kind==='b'?ivx:0,w.kind==='b'?ivy:0);
+  const n=w.fan?5:1;
+  if(w.kick){cam.x-=Math.cos(a)*w.kick;cam.y-=Math.sin(a)*w.kick;if(w.kick>=7)shake=Math.max(shake,w.kick*0.6);}
+  if(w.kind==='b'){const ca2=Math.cos(a+PI/2),sa2=Math.sin(a+PI/2);puff(ox,oy,ca2*rr(60,110)+rr(-20,20),sa2*rr(60,110)+rr(-20,20),rr(.25,.4),2,'#d9b24a','debris');}
   if(w.kind!=='f'&&w.kind!=='m')puff(ox,oy,0,0,0.05,w.kind==='r'||n>1?14:9,'#fff2a8','flash');
   sfx(w.kind==='r'?'rocket':w.kind==='f'?'flame':w.kind==='m'?'throw':n>1?'shotgun':player.w===1?'smg':'shot');
   if(w.kind==='b'||w.kind==='r')panicAround(player.x,player.y,260);
   let copNear=false;for(const c of cars)if(c.driver==='cop'&&dist2(c.x,c.y,player.x,player.y)<420*420)copNear=true;
   for(const p of peds)if(p.cop&&!p.gone&&dist2(p.x,p.y,player.x,player.y)<380*380)copNear=true;
-  if(copNear&&heat<TH[1])crime(TH[1]-heat);
+  if(copNear&&copWitness(player.x,player.y))crime(0,1);
   if(player.ammo[player.w]<=0){player.w=0;note('Out of ammo');}
 }
 function swapWeapon(){for(let i=1;i<=WEAPONS.length;i++){const n=(player.w+i)%WEAPONS.length;if(player.ammo[n]>0){if(n!==player.w){player.w=n;note(WEAPONS[n].name);}return;}}}
@@ -1039,7 +1156,12 @@ function update(dt){
       if(player.moving)player.anim+=dt*m*13;
       if(mouse.used&&!touchMode){const wx=(mouse.x-VW/2)/cam.zoom+cam.x,wy=(mouse.y-VH/2)/cam.zoom+cam.y;player.a=Math.atan2(wy-player.y,wx-player.x);}
       else if(m>0.15)player.a=lerpAng(player.a,Math.atan2(my,mx),Math.min(1,dt*14));
-      if(mouse.down||keys.KeyK||keys.ControlLeft||keys.ControlRight||tbtn.fire.on)playerFire();
+      if(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.3)player.a=Math.atan2(aimJoy.y,aimJoy.x);
+      const held=mouse.down||keys.KeyK||keys.ControlLeft||keys.ControlRight||tbtn.fire.on||(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.6);
+      const w=WEAPONS[player.w],charging=w.kind==='m'&&!(mouse.used&&!touchMode&&!aimJoy.active);
+      if(charging){if(held)throwCharge=Math.min(1,throwCharge+dt/0.9);else if(fireWasHeld){playerFire();throwCharge=0;}}
+      else if(held)playerFire();
+      fireWasHeld=held;
     }else{
       const c=player.car;
       let thr=0,st=0;
@@ -1050,7 +1172,7 @@ function update(dt){
           else{thr=-m;st=clamp(-angDiff(want,c.a+PI)*2,-1,1);}}}
       const hb=!!(keys.Space||tbtn.brake.on);
       driveCar(c,thr,st,hb,dt);
-      if(mouse.down||keys.KeyK||keys.ControlLeft||keys.ControlRight||tbtn.fire.on)playerFire();
+      if(mouse.down||keys.KeyK||keys.ControlLeft||keys.ControlRight||tbtn.fire.on||(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.6))playerFire();
     }
   }else{
     game.timer-=dt;
@@ -1074,15 +1196,17 @@ function update(dt){
       if(c.driver==='cop'&&c.ai.mode==='lane'&&heat>0&&dist2(c.x,c.y,player.x,player.y)<650*650)c.ai.mode='chase';
       if(c.ai.mode==='chase'&&heat<=0)acquireLane(c);
       if(c.ai.mode==='chase')aiChase(c,dt);else aiLane(c,dt);
-      if(game.state==='play'&&((c.gang!=null&&respect[c.gang]<=-3)||(c.driver==='cop'&&c.ai&&c.ai.mode==='chase'&&stars()>=4))){
+      if(c.t.tank&&c.driver==='cop'){const tg=player.car||player,want=Math.atan2(tg.y-c.y,tg.x-c.x);c.turret=lerpAng(c.turret==null?c.a:c.turret,want,Math.min(1,dt*2.5));
+        c.shootT-=dt;const d=hyp(tg.x-c.x,tg.y-c.y);if(game.state==='play'&&c.shootT<=0&&d<480&&Math.abs(angDiff(want,c.turret))<0.15&&los(c.x,c.y,tg.x,tg.y)){c.shootT=rr(2.4,3.4);fireBullet(c.x+Math.cos(c.turret)*42,c.y+Math.sin(c.turret)*42,c.turret,560,'cop',0,'r',0);sfx('boom',0.35);shake=Math.max(shake,4);}}
+      else if(game.state==='play'&&((c.gang!=null&&respect[c.gang]<=-3)||(c.driver==='cop'&&c.ai&&c.ai.mode==='chase'&&(stars()>=4||c.t.fbi||c.t.army)))){
         c.shootT-=dt;const tg=player.car||player,d=hyp(tg.x-c.x,tg.y-c.y);
-        if(c.shootT<=0&&d<260&&los(c.x,c.y,tg.x,tg.y)){c.shootT=rr(.9,1.6);const aa=Math.atan2(tg.y-c.y,tg.x-c.x)+rr(-.12,.12);
+        if(c.shootT<=0&&d<260&&los(c.x,c.y,tg.x,tg.y)){c.shootT=rr(.9,1.6);const aa=npcAim(Math.atan2(tg.y-c.y,tg.x-c.x),true);
           fireBullet(c.x+Math.cos(aa)*(c.t.Wd/2+8),c.y+Math.sin(aa)*(c.t.Wd/2+8),aa,850,c.driver==='cop'?'cop':'gang',6,'b',5);sfx('smg',nearPlayer(c.x,c.y,600)?0.5:0.2);}}
     }else if(c.driver!=='player'){
       if(Math.abs(c.vx)+Math.abs(c.vy)>1||Math.abs(c.va)>0.01)driveCar(c,0,0,true,dt);
     }
     // integrate
-    c.x+=c.vx*dt;c.y+=c.vy*dt;c.a+=c.va*dt;c.va*=Math.exp(-5*dt);
+    c.x+=c.vx*dt;c.y+=c.vy*dt;if(!c.driven){c.a+=c.va*dt;c.va*=Math.exp(-5*dt);}c.driven=false;
     carTiles(c);
     carCircles(c);
     c.flash-=dt;
@@ -1145,20 +1269,28 @@ function update(dt){
   updateBullets(dt);
   updateFires(dt);
 
-  // ---- wanted ----
+  // ---- wanted (GTA2-style) ----
   if(heat>0&&game.state==='play'){
-    let near=false;
-    for(const c of active)if(c.driver==='cop'&&dist2(c.x,c.y,player.x,player.y)<520*520){near=true;break;}
-    if(!near)for(const p of peds)if(p.cop&&p.state==='cop'&&!p.gone&&dist2(p.x,p.y,player.x,player.y)<450*450){near=true;break;}
-    if(near)evadeT=0;else evadeT+=dt;
-    const s=stars();
-    if(evadeT>7+s*2.2){heat=TH[s-1];evadeT=0;if(heat<=0){clearHeat();note('You lost the cops');}}
-    ffT-=dt;if(ffT<=0){ffT=0.35;buildFF(player.x,player.y);}
-    // spawn chasing cops
+    const s=stars(),tg=player.car||player;
+    let seen=false;
+    for(const c of active)if(c.driver==='cop'&&c.ai&&c.ai.mode==='chase'&&dist2(c.x,c.y,tg.x,tg.y)<620*620&&los(c.x,c.y,tg.x,tg.y)){seen=true;break;}
+    if(!seen)for(const p of peds)if(p.cop&&p.state==='cop'&&!p.gone&&dist2(p.x,p.y,tg.x,tg.y)<520*520&&los(p.x,p.y,tg.x,tg.y)){seen=true;break;}
+    if(seen){seenT=0;lastSeenX=tg.x;lastSeenY=tg.y;}else seenT+=dt;
+    evadeT=seenT;
+    // only a 1-star level wears off by itself (~30s unseen); higher needs a spray shop or bribe
+    if(s===1&&seenT>30){clearHeat();note('The cops lost interest');}
+    ffT-=dt;if(ffT<=0){ffT=0.35;buildFF(seen||seenT<1?tg.x:lastSeenX,seen||seenT<1?tg.y:lastSeenY);}
+    // dispatch crews for this level, dismiss ones that don't belong
+    const want=DISPATCH[s]||{},have={};
+    for(const c of cars)if(c.driver==='cop'&&c.ai&&c.ai.mode==='chase'&&!c.wreck){const k=COPKIND(c);have[k]=(have[k]||0)+1;
+      if((have[k])>(want[k]||0)){acquireLane(c);c.traffic=true;have[k]--;}}
     copSpawnT-=dt;
-    const want=[0,1,2,3,5,7][stars()];
-    let have=0;for(const c of cars)if(c.driver==='cop'&&c.ai&&c.ai.mode==='chase'&&!c.wreck)have++;
-    if(have<want&&copSpawnT<=0){spawnTraffic(true,true);copSpawnT=stars()>=4?1.5:2.6;}
+    if(copSpawnT<=0)for(const k in want)if((have[k]||0)<want[k]){if(spawnTraffic(KIND_TYPE[k],true))copSpawnT=s>=4?1.6:2.6;break;}
+    // roadblocks from 3 stars
+    roadblockT-=dt;
+    if(s>=3&&roadblockT<=0&&player.car&&hyp(player.car.vx,player.car.vy)>150){
+      if(spawnRoadblock(s))roadblockT=rr(18,28);else roadblockT=2;
+    }
   }
   if(stars()>s0&&s0>=0)starFlash=1.2;
   starFlash=Math.max(0,starFlash-dt);
@@ -1173,7 +1305,7 @@ function update(dt){
     if(c===player.car||c.vip)return true;
     const d2=dist2(c.x,c.y,player.x,player.y);
     if(c.wreck&&c.wreckT>40&&d2>(viewR+100)**2)return false;
-    if(c.traffic&&d2>despR*despR&&!(mission&&mission.car===c))return false;
+    if((c.traffic||(c.special&&!(c.ai&&c.ai.mode==='chase')))&&d2>despR*despR&&!(mission&&mission.car===c))return false;
     return true;
   });
   const wantPeds=Math.round(clamp(viewR/18,30,55));
@@ -1186,7 +1318,9 @@ function update(dt){
     if(k.taken){k.t-=dt;if(k.t<=0)k.taken=false;continue;}
     if(game.state==='play'&&dist2(k.x,k.y,player.x,player.y)<(player.car?30:20)**2){
       if(k.kind==='health'&&player.hp>=100)continue;
-      if(k.kind==='frenzy'){if(frenzy)continue;startFrenzy();}
+      if(k.kind==='bribe'){if(heat<=0)continue;const st=stars();heat=TH[st-1];if(heat<=0)clearHeat();note('Cop bribe: -1 wanted level');}
+      else if(k.kind==='dual'){player.ammo[6]+=60;player.w=6;note('Dual pistols +60');}
+      else if(k.kind==='frenzy'){if(frenzy)continue;startFrenzy();}
       else if(k.kind==='smg'){player.ammo[1]+=120;player.w=1;note('SMG +120');}
       else if(k.kind==='shotgun'){player.ammo[2]+=24;player.w=2;note('Shotgun +24');}
       else if(k.kind==='flame'){player.ammo[3]+=300;player.w=3;note('Flamethrower');}
@@ -1194,7 +1328,7 @@ function update(dt){
       else if(k.kind==='rocket'){player.ammo[5]+=5;player.w=5;note('Rocket launcher +5');}
       else if(k.kind==='health'){player.hp=Math.min(100,player.hp+50);note('Health +50');}
       else if(k.kind==='cash'){const n=Math.round(rr(2,6))*50;addMoney(n);note('Found $'+n);}
-      k.taken=true;k.t=k.kind==='frenzy'?150:60;sfx('pickup');
+      k.taken=true;k.t=k.kind==='frenzy'?150:k.kind==='bribe'?90:60;sfx('pickup');
     }
   }
   // ---- phones / missions ----
@@ -1252,6 +1386,7 @@ function update(dt){
   // ---- frenzy / combo / zones / weather ----
   if(frenzy&&game.state==='play'){frenzy.timer-=dt;if(frenzy.timer<=0){showBig('FRENZY FAILED','','#ff4040',2.4);sfx('fail');frenzy=null;}}
   if(combo.t>0){combo.t-=dt;if(combo.t<=0)combo.n=0;}
+  for(const h of hitMarks)h.t-=dt;hitMarks=hitMarks.filter(h=>h.t>0);
   {const z=zoneOf(player.x,player.y);if(z!==curZone){curZone=z;zoneBanner={text:z>=0?GANGS[z].name.toUpperCase()+' TURF':'DOWNTOWN',sub:z>=0?respectLabel(z):'Police HQ district',col:z>=0?GANGS[z].col:'#cfd6e0',t:2.6};}}
   if(zoneBanner){zoneBanner.t-=dt;if(zoneBanner.t<=0)zoneBanner=null;}
   if(radioBanner){radioBanner.t-=dt;if(radioBanner.t<=0)radioBanner=null;}
@@ -1424,7 +1559,7 @@ function drawPed(p,isPlayer){
   ctx.fillStyle='rgba(0,0,0,.28)';ctx.beginPath();ctx.ellipse(2.5,2.5,6,8,0,0,TAU);ctx.fill();
   const sw=p.moving?Math.sin(p.anim)*4.5:0;
   ctx.fillStyle='#24242b';ctx.fillRect(-2+sw,-5,6,3);ctx.fillRect(-2-sw,2,6,3);
-  const col=isPlayer?'#d9731f':p.col;
+  const col=isPlayer?'#d9731f':(p.flash>0?'#ffffff':p.col);
   ctx.fillStyle=col;ctx.beginPath();ctx.ellipse(0,0,4.8,7.6,0,0,TAU);ctx.fill();
   // arms
   ctx.fillStyle=shade(col,0.8);
@@ -1432,11 +1567,24 @@ function drawPed(p,isPlayer){
   if(armed){ctx.fillRect(1,2,7,2.6);ctx.fillStyle='#1a1a1a';ctx.fillRect(6,1.6,isPlayer&&player.w===5?14:8,isPlayer&&player.w===5?4:3);}
   else{ctx.fillRect(-1+sw*0.5,-8,5,2.4);ctx.fillRect(-1-sw*0.5,5.6,5,2.4);}
   ctx.fillStyle=p.skin||'#e0ac69';ctx.beginPath();ctx.arc(0.6,0,3.9,0,TAU);ctx.fill();
-  if(p.cop){ctx.fillStyle='#1b2a55';ctx.beginPath();ctx.arc(0,0,4.1,0,TAU);ctx.fill();ctx.fillStyle='#0d1530';ctx.fillRect(2.5,-3.2,2.5,6.4);}
+  if(p.cop){ctx.fillStyle=p.kind==='swat'?'#15171c':p.kind==='fbi'?'#202020':(p.kind==='armytruck'||p.kind==='tank')?'#3d4a22':'#1b2a55';ctx.beginPath();ctx.arc(0,0,4.1,0,TAU);ctx.fill();ctx.fillStyle='#0d1530';ctx.fillRect(2.5,-3.2,2.5,6.4);}
   else{ctx.fillStyle=p.hair||'#222';ctx.beginPath();ctx.arc(-0.6,0,3.7,PI*0.5,PI*1.5);ctx.fill();}
   ctx.restore();
 }
+function drawTank(c){
+  const L=c.t.L,w=c.t.Wd;ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);
+  ctx.fillStyle='rgba(0,0,0,.35)';ctx.fillRect(-L/2+5,-w/2+5,L,w);
+  ctx.fillStyle=c.wreck?'#1b1a16':'#2a2d1f';ctx.fillRect(-L/2,-w/2,L,9);ctx.fillRect(-L/2,w/2-9,L,9);
+  ctx.strokeStyle='#15160f';ctx.lineWidth=2;const off=(c.trk=(c.trk||0)+hyp(c.vx,c.vy)*0.016)%8;for(let x=-L/2+off;x<L/2;x+=8){ctx.beginPath();ctx.moveTo(x,-w/2);ctx.lineTo(x,-w/2+9);ctx.moveTo(x,w/2-9);ctx.lineTo(x,w/2);ctx.stroke();}
+  ctx.fillStyle=c.wreck?'#26241e':(c.flash>0?'#fff':c.col);ctx.fillRect(-L/2+4,-w/2+8,L-8,w-16);
+  ctx.restore();
+  ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.turret==null?c.a:c.turret);
+  ctx.fillStyle=c.wreck?'#1b1a16':shade(c.col,0.8);ctx.fillRect(0,-3.5,44,7);
+  ctx.beginPath();ctx.arc(0,0,13,0,TAU);ctx.fill();ctx.fillStyle=shade(c.col,1.1);ctx.beginPath();ctx.arc(-2,-2,6,0,TAU);ctx.fill();
+  ctx.restore();
+}
 function drawCar(c){
+  if(c.t.tank)return drawTank(c);
   const t=c.t,L=t.L,w=t.Wd;
   ctx.save();ctx.translate(c.x,c.y);ctx.rotate(c.a);
   ctx.fillStyle='rgba(0,0,0,.35)';rrect(-L/2+4,-w/2+4,L,w,6);ctx.fill();
@@ -1472,8 +1620,8 @@ function drawPickup(k){
   const b=Math.sin(game.t*4+k.x)*2;
   ctx.save();ctx.translate(k.x,k.y+b);
   ctx.fillStyle='rgba(0,0,0,.3)';ctx.fillRect(-9,-7-b+3,20,18);
-  const lab={smg:'SMG',rocket:'RKT',health:'+',cash:'$',shotgun:'SG',flame:'FLM',molotov:'MOL',frenzy:'☠'}[k.kind];
-  const col={smg:'#7a5a2e',rocket:'#4d6b2e',health:'#e4e4e4',cash:'#2e7b3a',shotgun:'#6a4a2a',flame:'#a8401c',molotov:'#5c7a2e',frenzy:'#151515'}[k.kind];
+  const lab={smg:'SMG',rocket:'RKT',health:'+',cash:'$',shotgun:'SG',flame:'FLM',molotov:'MOL',frenzy:'☠',bribe:'-★',dual:'x2'}[k.kind];
+  const col={smg:'#7a5a2e',rocket:'#4d6b2e',health:'#e4e4e4',cash:'#2e7b3a',shotgun:'#6a4a2a',flame:'#a8401c',molotov:'#5c7a2e',frenzy:'#151515',bribe:'#1f3f9f',dual:'#7a5a2e'}[k.kind];
   ctx.fillStyle=col;ctx.fillRect(-10,-10,20,20);ctx.strokeStyle='rgba(0,0,0,.5)';ctx.lineWidth=1.5;ctx.strokeRect(-10,-10,20,20);
   ctx.fillStyle=k.kind==='health'||k.kind==='frenzy'?'#e01b24':'#fff';ctx.font=(k.kind==='health'||k.kind==='cash'||k.kind==='frenzy'?'bold 17px ':'bold 8px ')+'system-ui,sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lab,0,1);
   ctx.restore();
@@ -1556,15 +1704,15 @@ function drawHUD(){
   hudText('$'+money.toLocaleString(),mx,34*sc,Math.round(30*sc),'#7dff8a','right');
   if(moneyPop)hudText('+$'+moneyPop.n.toLocaleString(),mx,66*sc-(1.4-moneyPop.t)*20,Math.round(18*sc),`rgba(125,255,138,${Math.min(1,moneyPop.t)})`,'right');
   // stars
-  const s=stars(),blink=evadeT>2.5&&s>0&&Math.floor(game.t*4)%2===0;
-  for(let i=0;i<5;i++){const cx=mx-12*sc-i*27*sc,cy=72*sc+(moneyPop?14*sc:0);starPath(cx,cy,11*sc);
-    const on=(4-i)<s;ctx.fillStyle=on?(blink?'#7a6200':(starFlash>0&&Math.floor(game.t*10)%2?'#fff':'#ffd400')):'rgba(0,0,0,.35)';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='rgba(0,0,0,.8)';ctx.stroke();}
+  const s=stars(),blink=seenT>2.5&&s>0&&Math.floor(game.t*4)%2===0;
+  for(let i=0;i<6;i++){const cx=mx-11*sc-i*23*sc,cy=72*sc+(moneyPop?14*sc:0);starPath(cx,cy,10*sc);
+    const on=(5-i)<s;ctx.fillStyle=on?(blink?'#7a6200':(starFlash>0&&Math.floor(game.t*10)%2?'#fff':'#ffd400')):'rgba(0,0,0,.35)';ctx.fill();ctx.lineWidth=2;ctx.strokeStyle='rgba(0,0,0,.8)';ctx.stroke();}
   // health & weapon
   const hy=100*sc+(moneyPop?14*sc:0),bw=130*sc;
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw,hy,bw,10*sc);
   ctx.fillStyle=player.hp>35?'#ff4d5e':(Math.floor(game.t*6)%2?'#ff4d5e':'#7a0010');ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.hp/100,10*sc-4);
   if(player.car){const c=player.car;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw,hy+14*sc,bw,7*sc);ctx.fillStyle='#ffb02e';ctx.fillRect(mx-bw+2,hy+14*sc+2,(bw-4)*clamp(c.hp/c.t.hp,0,1),7*sc-4);
-    hudText(c.t.name.toUpperCase()+'  '+Math.round(hyp(c.vx,c.vy)*0.22)+' MPH',mx,hy+36*sc,Math.round(13*sc),'#ddd','right');
+    hudText(c.t.name.toUpperCase()+'  '+Math.round(hyp(c.vx,c.vy)*0.22)+' MPH  G'+carGear(c),mx,hy+36*sc,Math.round(13*sc),'#ddd','right');
     const w=WEAPONS[player.w];if(w.kind==='b'||w.kind==='f')hudText(w.name.toUpperCase()+(player.ammo[player.w]===Infinity?'':'  '+player.ammo[player.w]),mx,hy+54*sc,Math.round(12*sc),'#aaa','right');}
   else{const w=WEAPONS[player.w];hudText(w.name.toUpperCase()+(player.ammo[player.w]===Infinity?'':'  '+player.ammo[player.w]),mx,hy+28*sc,Math.round(15*sc),'#ddd','right');}
   // gang respect
@@ -1631,6 +1779,16 @@ function drawHUD(){
     ctx.globalAlpha=1;}
   // first-time hints
   if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE drift · click = drive-by · R radio · F get out':'WASD move · mouse aim & shoot · F steal a car',VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
+  // crosshair, hit markers, throw charge
+  if(!touchMode&&mouse.used&&game.state==='play'&&!game.paused){
+    const cx=mouse.x,cy=mouse.y,hm=hitMarks.length>0,g=player.cool>0?5:0;
+    ctx.strokeStyle=hm?'#ff4040':'rgba(255,255,255,.9)';ctx.lineWidth=2;ctx.beginPath();
+    ctx.moveTo(cx-14-g,cy);ctx.lineTo(cx-5-g,cy);ctx.moveTo(cx+5+g,cy);ctx.lineTo(cx+14+g,cy);ctx.moveTo(cx,cy-14-g);ctx.lineTo(cx,cy-5-g);ctx.moveTo(cx,cy+5+g);ctx.lineTo(cx,cy+14+g);ctx.stroke();
+    ctx.fillStyle='#fff';ctx.fillRect(cx-1,cy-1,2,2);
+  }
+  for(const h of hitMarks){const sx=(h.x-cam.x)*cam.zoom+VW/2,sy=(h.y-cam.y)*cam.zoom+VH/2,r=7+(0.18-h.t)*40;
+    ctx.strokeStyle=h.kill?'#ff3030':'#ffffff';ctx.globalAlpha=Math.min(1,h.t*8);ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(sx-r,sy-r);ctx.lineTo(sx-r/2,sy-r/2);ctx.moveTo(sx+r,sy-r);ctx.lineTo(sx+r/2,sy-r/2);ctx.moveTo(sx-r,sy+r);ctx.lineTo(sx-r/2,sy+r/2);ctx.moveTo(sx+r,sy+r);ctx.lineTo(sx+r/2,sy+r/2);ctx.stroke();ctx.globalAlpha=1;}
+  if(throwCharge>0&&!player.car){const sx=(player.x-cam.x)*cam.zoom+VW/2,sy=(player.y-cam.y)*cam.zoom+VH/2-26;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(sx-20,sy,40,6);ctx.fillStyle='#ffb300';ctx.fillRect(sx-19,sy+1,38*throwCharge,4);}
   if(touchMode)drawTouch();
   if(game.paused){ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(0,0,VW,VH);hudText('PAUSED',VW/2,VH/2-10,Math.round(48*sc),'#ffcc00','center');hudText(touchMode?'tap to resume':'press P to resume',VW/2,VH/2+34*sc,Math.round(15*sc),'#fff','center',`600 ${Math.round(15*sc)}px system-ui`);}
 }
@@ -1646,6 +1804,8 @@ function drawTouch(){
   ctx.globalAlpha=joy.active?0.3:0.18;ctx.fillStyle='#fff';ctx.beginPath();ctx.arc(bx,by,JH.r,0,TAU);ctx.fill();
   ctx.globalAlpha=0.5;ctx.strokeStyle='#fff';ctx.lineWidth=2;ctx.stroke();
   ctx.globalAlpha=joy.active?0.6:0.3;ctx.beginPath();ctx.arc(bx+joy.x*JH.r,by+joy.y*JH.r,JH.r*0.42,0,TAU);ctx.fill();
+  if(aimJoy.active){const r=JH.r*0.8;ctx.globalAlpha=0.25;ctx.fillStyle='#ff6060';ctx.beginPath();ctx.arc(aimJoy.ox,aimJoy.oy,r,0,TAU);ctx.fill();ctx.globalAlpha=0.6;ctx.beginPath();ctx.arc(aimJoy.ox+aimJoy.x*r,aimJoy.oy+aimJoy.y*r,r*0.4,0,TAU);ctx.fill();}
+  else if(game.t<15){ctx.globalAlpha=0.6;ctx.font=`600 ${Math.round(12*touchScale())}px system-ui`;ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText('drag right side to aim & shoot',VW*0.72,VH*0.45);}
   if(!joy.active&&game.t<15){ctx.globalAlpha=0.7;ctx.font=`600 ${Math.round(12*touchScale())}px system-ui`;ctx.fillStyle='#fff';ctx.textAlign='center';ctx.fillText(player.car?'point where to drive':'drag to move',bx,by-JH.r-12);}
   ctx.globalAlpha=1;
 }
