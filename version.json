@@ -1,4 +1,4 @@
 {
-  "version": "3.0.0",
-  "notes": "Gridlock City goes pseudo-3D: a chase camera behind your car in the low-res Rust Belt Rally style, a new city with districts, suburbs, parks and hills, mountains, ocean and farmland past the city limits, box car collisions, GTA-style run-overs, jumping and fairer police. The old top-down game is still in 2d.html."
+  "version": "3.1.0",
+  "notes": "Traffic lights and stop lines (traffic stops on red), you can lose the cops by staying out of sight, jumping clears cars, ponds and fountains, and parked cars on hills drive again."
 }

@@ -37,15 +37,16 @@ canvas{display:block;width:100vw;height:100vh;cursor:none;image-rendering:pixela
 <b>Q / Wheel</b><span>Switch weapon</span>
 <b>R</b><span>Change radio station (in a car)</span>
 <b>Click in a car</b><span>Drive-by shooting (tanks fire their cannon)</span>
+<b>Lose the cops</b><span>Stay out of their sight and your stars drop one at a time</span>
 <b>P / Esc</b><span>Pause · <b style="display:inline">M</b> mute</span>
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v3.0.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v3.1.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='3.0.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.1.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -224,6 +225,19 @@ function genMap(){
     else if(r<0.31)props.push({x:inX,y:inY,k:'bench'});
   }
 }
+
+// ---- traffic lights: each crossing cycles east-west green, yellow, then north-south green, yellow ----
+function tlState(ix,iy,ew){const t=(game.t+(hash(ix*13,iy*7)%18))%18;if(ew)return t<7?0:t<9?1:2;return t<9?2:t<16?0:1;} // 0 green 1 yellow 2 red
+const PT=P*T;
+function tlStopDist(c){
+  const d=c.ai.dir,hl=c.t.L/2;let ix,iy,dist,ew=d===0||d===2;
+  if(d===0){ix=Math.floor(c.x/PT)+1;iy=Math.round((c.y/T-2)/P);dist=(ix*P-1)*T-3-(c.x+hl);}
+  else if(d===2){ix=Math.floor(c.x/PT);iy=Math.round((c.y/T-2)/P);dist=(c.x-hl)-((ix*P+5)*T+3);}
+  else if(d===1){iy=Math.floor(c.y/PT)+1;ix=Math.round((c.x/T-2)/P);dist=(iy*P-1)*T-3-(c.y+hl);}
+  else{iy=Math.floor(c.y/PT);ix=Math.round((c.x/T-2)/P);dist=(c.y-hl)-((iy*P+5)*T+3);}
+  if(ix<0||iy<0||ix>NB||iy>NB||dist<-2||dist>220)return null;
+  const st=tlState(ix,iy,ew);if(st===0)return null;if(st===1&&dist<26)return null;return Math.max(0,dist);
+}
 genMap();
 const streetLights=[];
 for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++){const cx=ix*P*T,cy=iy*P*T;
@@ -313,7 +327,7 @@ function driveCar(c,thr,steer,hb,dt){
   const fx=Math.cos(c.a),fy=Math.sin(c.a),speed=hyp(vx,vy),aligned=vx*fx+vy*fy>=0;
   // HandleUserInputs: what the gas/brake keys mean depends on which way the car is rolling
   const gasKey=thr>0.02,brakeKey=thr<-0.02;
-  if(speed<1e-6){g.fg=gasKey;g.bg=brakeKey;g.fb=false;}
+  if(speed<0.004){g.fg=gasKey;g.bg=brakeKey;g.fb=false;}
   else if(aligned){if(g.bg){g.fg=g.bg=g.fb=false;}else{g.fg=gasKey;g.fb=brakeKey;g.bg=false;}}
   else if(g.fg){g.fg=g.bg=g.fb=false;}
   else{g.fb=gasKey;g.bg=brakeKey;g.fg=false;}
@@ -451,11 +465,11 @@ function pointInCar(c,x,y,pad){
   const lx=dx*ca+dy*sa,ly=-dx*sa+dy*ca;
   return Math.abs(lx)<c.t.L/2+(pad||0)&&Math.abs(ly)<c.t.Wd/2+(pad||0);
 }
-function circleTiles(o,r){
+function circleTiles(o,r,sw){
   let hit=null;
   const x0=Math.floor((o.x-r)/T),x1=Math.floor((o.x+r)/T),y0=Math.floor((o.y-r)/T),y1=Math.floor((o.y+r)/T);
   for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++){
-    if(!isSolid(tileAt(tx,ty)))continue;
+    {const tt=tileAt(tx,ty);if(!isSolid(tt)||(sw&&tt===WATER))continue;}
     const cx=clamp(o.x,tx*T,tx*T+T),cy=clamp(o.y,ty*T,ty*T+T);
     const dx=o.x-cx,dy=o.y-cy,d2=dx*dx+dy*dy;
     if(d2>=r*r)continue;
@@ -935,6 +949,7 @@ function aiLane(c,dt){
   let target=ai.cruise;
   if(ai.turn>=0){const along=(d===0||d===2)?c.x:c.y;if(Math.abs(along-ai.sw)<120)target=Math.min(target,100)}
   if(Math.abs(diff)>0.5)target=Math.min(target,100);
+  if(!(c.driver==='cop'&&heat>0)&&ai.cruise<250){const sd=tlStopDist(c);if(sd!=null)target=sd<5?0:Math.min(target,sd*1.7+4);}
   // obstacles ahead
   const fx=Math.cos(c.a),fy=Math.sin(c.a),D=c.t.L/2+22+spd*0.45,hw=c.t.Wd/2;
   let blocked=false;
@@ -1362,7 +1377,7 @@ function update(dt){
       player.x+=player.vx*dt;player.y+=player.vy*dt;
       if((keys.Space||tbtn.brake.on)&&player.jz<=0&&!player.jumpHeld){player.jv=175;player.jz=0.01;sfx('door',0.4);}player.jumpHeld=!!(keys.Space||tbtn.brake.on);
       if(player.jz>0||player.jv>0){player.jz+=player.jv*dt;player.jv-=640*dt;if(player.jz<=0){player.jz=0;player.jv=0;}}
-      circleTiles(player,7);
+      circleTiles(player,7,player.jz>4);
       player.moving=m>0.1&&player.jz<=0;
       if(player.moving)player.anim+=dt*m*13;
       if(mouse.used&&!touchMode){const [wx,wy]=mouseWorld();player.a=Math.atan2(wy-player.y,wx-player.x);}
@@ -1470,13 +1485,13 @@ function update(dt){
         const dx=player.x-cc[0],dy=player.y-cc[1],d2=dx*dx+dy*dy,rs=c.t.Wd/2+7;
         if(d2<rs*rs){const d=Math.sqrt(d2)||1,nx=dx/d,ny=dy/d;
           const toward=c.vx*nx+c.vy*ny;
+          if(player.jz>12)continue;
           player.x+=nx*(rs-d);player.y+=ny*(rs-d);
-          if(player.jz>9)continue;
           if(toward>150&&!c.wreck){hurtPlayer((toward-150)*0.18);player.vx=nx*toward*0.8;player.vy=ny*toward*0.8;addMark({k:'blood',x:player.x,y:player.y,r:6});sfx('splat',0.6);}
         }
       }
     }
-    circleTiles(player,7);
+    circleTiles(player,7,player.jz>4);
   }
   // bust timer
   if(game.state==='play'){
@@ -1495,7 +1510,7 @@ function update(dt){
     if(seen){seenT=0;lastSeenX=tg.x;lastSeenY=tg.y;}else seenT+=dt;
     evadeT=seenT;
     // only a 1-star level wears off by itself (~30s unseen); higher needs a spray shop or bribe
-    if(s===1&&seenT>30){clearHeat();note('The cops lost interest');}
+    if(seenT>6+s*4){if(s<=1){clearHeat();note('You lost the cops');}else{heat=TH[s-1];seenT=0;starFlash=1;note('Lost them for now: '+(s-1)+(s-1>1?' stars':' star'));}}
     ffT-=dt;if(ffT<=0){ffT=0.35;buildFF(seen||seenT<1?tg.x:lastSeenX,seen||seenT<1?tg.y:lastSeenY);}
     // dispatch crews for this level, dismiss ones that don't belong
     const want=DISPATCH[s]||{},have={};
@@ -1754,6 +1769,21 @@ for(let i=0;i<9;i++){const y=rr(300,WPX-300),x=WPX+rr(160,700);if(GH(x,y)>150)co
   buildings.push({x,y,w:rr(70,100),h:rr(60,80),hg:0.95,col:pick(['#a8322a','#c9b79c','#8a5a3a']),st:'house',roof:pick(['#5a2a22','#3e4652']),rx:true,chim:R()<0.5,door:0,ac:[],outside:true});}
 
 for(const b of buildings){b.id=++uid;b.base=Math.min(GH(b.x,b.y),GH(b.x+b.w,b.y),GH(b.x,b.y+b.h),GH(b.x+b.w,b.y+b.h))-1;if(!b.st)b.st='conc';b.ws=b.ws||22;b.wf=b.wf||.5;b.wh=b.wh||.55;b.rgb=rgbOf(b.col);if(b.roof)b.rrgb=rgbOf(b.roof);if(b.awn)b.argb=rgbOf(b.awn);if(b.nc)b.nrgb=rgbOf(b.nc);}
+const TLIGHTS=[];
+for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++){
+  for(const[x,y,a,ew]of[[(ix*P-0.5)*T+8,(iy*P+4.5)*T-8,PI,1],[(ix*P+4.5)*T-8,(iy*P-0.5)*T+8,0,1],[(ix*P-0.5)*T+8,(iy*P-0.5)*T+8,-PI/2,0],[(ix*P+4.5)*T-8,(iy*P+4.5)*T-8,PI/2,0]]){
+    if(x<0||y<0||x>=WPX||y>=WPX||tileAt(Math.floor(x/T),Math.floor(y/T))!==WALK)continue;TLIGHTS.push({x,y,a,ew,ix,iy});}}
+const TLC=[[60,230,110],[255,200,40],[255,50,40]];
+function drawTL(o,fg){
+  if(!proj(o.x,o.y,0))return;BX=PX;BY=PY;BK=PK;bb(-0.9,0,0.9,34,lit([40,42,46],1,fg));
+  const ca=Math.cos(o.a),sa=Math.sin(o.a),hx=o.x+ca*1.5,hy=o.y+sa*1.5;
+  obox(hx,hy,o.a,1.8,2.6,32,46,[28,28,30],null,fg);
+  if((CX-hx)*ca+(CY-hy)*sa<=0)return;
+  const st=tlState(o.ix,o.iy,o.ew),fx=hx+ca*1.9,fy=hy+sa*1.9,rx=-sa*1.5,ry=ca*1.5;
+  for(let i=0;i<3;i++){const z0=43.2-i*4,z1=z0+2.8,on=(2-i)===st,c=on?TLC[2-i]:mixA(TLC[2-i],[20,20,20],0.8);
+    quad(fx-rx,fy-ry,z0,fx+rx,fy+ry,z0,fx+rx,fy+ry,z1,fx-rx,fy-ry,z1,lit(c,1,fg,on));
+    if(on&&proj(fx,fy,(z0+z1)/2))glow(PX,PY,2.6*PK,rgbS(TLC[2-i]),0.35+0.5*LIGHTK);}
+}
 const ZT=new Uint8Array(W*W);for(let y=0;y<W;y++)for(let x=0;x<W;x++)ZT[y*W+x]=zoneOf((x+.5)*T,(y+.5)*T)+1;
 const CLOUDS=Array.from({length:18},(_,i)=>[i*0.349+Math.sin(i*7.1)*0.2,0.45+((i*0.37)%0.45),14+((i*13)%26),4+((i*5)%5)]);
 function camSees(x,y){const dx=x-CX,dy=y-CY,f=dx*CC+dy*CS;if(f<-40||f>FOG1+120)return false;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+60)*HALF+60)return false;return los(CX,CY,x,y);}
@@ -1818,10 +1848,12 @@ function renderGround(heads){
               if((mx===2&&u<2)||(mx===1&&u>=30)){if(v>5&&v<26){r=168;g=137;b=58;}}
               else if((mx===0&&u<2)||(mx===3&&u>=30)){r=85;g=87;b=92;}
               if((my===4||my===13)&&v>4&&v<28&&(u&7)>=3&&(u&7)<7){r=147;g=146;b=140;}
+              if((my===12&&mx<2&&v>=27&&v<30)||(my===5&&mx>=2&&v>=2&&v<5)){r=214;g=214;b=208;}
             }else if(my<4&&mx>=4){
               if((my===2&&v<2)||(my===1&&v>=30)){if(u>5&&u<26){r=168;g=137;b=58;}}
               else if((my===0&&v<2)||(my===3&&v>=30)){r=85;g=87;b=92;}
               if((mx===4||mx===13)&&u>4&&u<28&&(v&7)>=3&&(v&7)<7){r=147;g=146;b=140;}
+              if((mx===12&&my>=2&&u>=27&&u<30)||(mx===5&&my<2&&u>=2&&u<5)){r=214;g=214;b=208;}
             }
             if(h%11===0){const ex=u-((h>>4&15)+8),ey=v-((h>>8&15)+8);if(ex*ex*0.5+ey*ey*1.4<38){r-=13;g-=13;b-=12;}}
             if(h%13===0&&u>4&&u<28&&v>6&&v<22){r+=7;g+=7;b+=6;}
@@ -2205,7 +2237,7 @@ function render(){
   vb.sort(bldOrder);
   // ---- everything that stands up: slotted between buildings so walls hide what's behind them ----
   ITEMS.length=0;
-  const add=(kind,o,x,y,rad,f,hgt)=>{const dx=x-CX,dy=y-CY;if(f==null)f=dx*CC+dy*CS;if(f<-rad||f>R0)return;if(f<34&&(kind===2||kind===3||kind===5||kind===13))return;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+rad)*HALF+rad*2)return;
+  const add=(kind,o,x,y,rad,f,hgt)=>{const dx=x-CX,dy=y-CY;if(f==null)f=dx*CC+dy*CS;if(f<-rad||f>R0)return;if(f<34&&(kind===2||kind===3||kind===5||kind===13||kind===15))return;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+rad)*HALF+rad*2)return;
     const fc=Math.max(f,NEAR),k=FOC/fc,gz=GH(x,y),sx=HW+r*k,sw=rad*k,yb=HOR+(CZ-gz)*k,yt=HOR+(CZ-gz-(hgt||22))*k,ym=(yb+yt)/2;
     let slot=0;
     for(let i=vb.length-1;i>=0;i--){const b=vb[i];
@@ -2220,6 +2252,7 @@ function render(){
   for(const p of peds){if(p.gone)continue;add(1,p,p.x,p.y,6);}
   for(const t of trees)add(2,t,t.x,t.y,t.r+4,null,15+t.r*2);
   for(const s of streetLights)add(3,s,s.x,s.y,5,null,63);
+  for(const o of TLIGHTS)add(15,o,o.x,o.y,5,null,47);
   for(const o of props)add(13,o,o.x,o.y,o.k==='hedge'||o.k==='rail'||o.k==='seawall'?21:o.k==='fountain'?20:8,null,o.k==='fountain'?34:12);
   for(const k of pickups)if(!k.taken)add(4,k,k.x,k.y,8);
   phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8,null,27));
@@ -2264,6 +2297,7 @@ function drawItem(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o.
     case 10:sign3(o.x,o.y,46,'SPRAY $500','#11704a','#f5f1e2',10,fg);break;
     case 11:sign3(o.x,o.y,46,'CAR CRUSHER','#ffc21a','#0d0e16',10,fg);break;
     case 13:drawProp3(o,fg);break;
+    case 15:drawTL(o,fg);break;
     case 14:if(o===player)drawPed3(player,true,fg);else drawCar3(o,fg);break;
     case 12:sign3(o.x,o.y,30+Math.sin(game.t*4)*3,'DROP','#ffd600','#111111',11,fg);break;
   }
