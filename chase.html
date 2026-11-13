@@ -2066,6 +2066,30 @@ function drawBullet3(b){
   if(!proj(b.x,b.y,13))return;const x1=PX,y1=PY;if(!proj(b.x-b.vx*0.03,b.y-b.vy*0.03,13))return;
   L3.strokeStyle='rgba(255,240,170,.95)';L3.lineWidth=1;L3.beginPath();L3.moveTo(x1,y1);L3.lineTo(PX,PY);L3.stroke();}
 
+// ---------- draw order helpers ----------
+function convexHull(p){p.sort((a,b)=>a[0]-b[0]||a[1]-b[1]);const cr=(o,a,b)=>(a[0]-o[0])*(b[1]-o[1])-(a[1]-o[1])*(b[0]-o[0]);const lo=[],up=[];
+  for(const q of p){while(lo.length>=2&&cr(lo[lo.length-2],lo[lo.length-1],q)<=0)lo.pop();lo.push(q);}
+  for(let i=p.length-1;i>=0;i--){const q=p[i];while(up.length>=2&&cr(up[up.length-2],up[up.length-1],q)<=0)up.pop();up.push(q);}
+  lo.pop();up.pop();return lo.concat(up);}
+function inHull(h,x,y){const n=h.length;for(let i=0;i<n;i++){const a=h[i],b=h[(i+1)%n];if((b[0]-a[0])*(y-a[1])-(b[1]-a[1])*(x-a[0])<0)return false;}return true;}
+// screen outline of a box, clipped at the camera's near plane so buildings beside you get a real outline too
+const BOXE=[[0,1],[1,3],[3,2],[2,0],[4,5],[5,7],[7,6],[6,4],[0,4],[1,5],[2,6],[3,7]],_bc=[];for(let i=0;i<8;i++)_bc.push([0,0,0]);
+function boxHull(x0,y0,x1,y1,top){
+  for(let i=0;i<8;i++){const x=(i&1?x1:x0)-CX,y=(i&2?y1:y0)-CY,c=_bc[i];c[0]=x*CC+y*CS;c[1]=-x*CS+y*CC;c[2]=i&4?top:0;}
+  const pts=[],pr=c=>{const k=FOC/c[0];pts.push([HW+c[1]*k,HOR+(CZ-c[2])*k]);};
+  for(let i=0;i<8;i++)if(_bc[i][0]>=NEAR)pr(_bc[i]);
+  for(const e of BOXE){const a=_bc[e[0]],b=_bc[e[1]];if((a[0]>=NEAR)!==(b[0]>=NEAR)){const t=(NEAR-a[0])/(b[0]-a[0]);pr([NEAR,a[1]+(b[1]-a[1])*t,a[2]+(b[2]-a[2])*t]);}}
+  return pts.length>=3?convexHull(pts):null;
+}
+// buildings never overlap, so a gap along x or y separates any two; the one on the camera's side of the gap is in front
+function bldOrder(a,b){
+  const ax1=a.x+a.w,bx1=b.x+b.w,ay1=a.y+a.h,by1=b.y+b.h;
+  if(ax1<=b.x){if(CX<=ax1)return 1;if(CX>=b.x)return -1;}
+  else if(bx1<=a.x){if(CX<=bx1)return -1;if(CX>=a.x)return 1;}
+  if(ay1<=b.y){if(CY<=ay1)return 1;if(CY>=b.y)return -1;}
+  else if(by1<=a.y){if(CY<=by1)return -1;if(CY>=a.y)return 1;}
+  return b.dn-a.dn;
+}
 // ---------- frame ----------
 const ITEMS=[];
 function render(){
@@ -2097,43 +2121,49 @@ function render(){
   const vb=[];
   for(const b of buildings){
     const x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;
-    let fmin=1e9,fmax=-1e9,smin=1e9,smax=-1e9,behind=false;
-    for(let i=0;i<4;i++){const px=i&1?x1:x0,py=i&2?y1:y0,dx=px-CX,dy=py-CY,f=dx*CC+dy*CS;if(f<fmin)fmin=f;if(f>fmax)fmax=f;
-      if(f<NEAR)behind=true;else{const s=HW+(-dx*CS+dy*CC)*FOC/f;if(s<smin)smin=s;if(s>smax)smax=s;}}
+    let fmin=1e9,fmax=-1e9;
+    for(let i=0;i<4;i++){const f=((i&1?x1:x0)-CX)*CC+((i&2?y1:y0)-CY)*CS;if(f<fmin)fmin=f;if(f>fmax)fmax=f;}
     if(fmax<NEAR||fmin>FOG1)continue;
-    if(behind){smin=-1e9;smax=1e9;}else if(smax<0||smin>LW)continue;
-    const ex=Math.max(x0-CX,0,CX-x1),ey=Math.max(y0-CY,0,CY-y1);b.dn=hyp(ex,ey);b.s0=smin;b.s1=smax;vb.push(b);
+    // screen outline: convex hull of the projected corners (top includes a setback tier and roof extras)
+    const top=(b.tier?b.tier.hg2:b.hg)*BH+(b.st==='house'?16:b.ant?46:b.bill||b.wt?26:4);
+    const hull=boxHull(x0,y0,x1,y1,top);if(!hull)continue;
+    {let mnx=1e9,mxx=-1e9;for(const q of hull){if(q[0]<mnx)mnx=q[0];if(q[0]>mxx)mxx=q[0];}if(mxx<0||mnx>LW)continue;}
+    const ex=Math.max(x0-CX,0,CX-x1),ey=Math.max(y0-CY,0,CY-y1);b.dn=hyp(ex,ey);b.hull=hull;vb.push(b);
   }
-  vb.sort((a,b)=>b.dn-a.dn);
+  vb.sort(bldOrder);
   // ---- everything that stands up: slotted between buildings so walls hide what's behind them ----
   ITEMS.length=0;
-  const add=(kind,o,x,y,rad,f)=>{const dx=x-CX,dy=y-CY;if(f==null)f=dx*CC+dy*CS;if(f<-rad||f>R0)return;if(f<34&&(kind===2||kind===3||kind===5||kind===13))return;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+rad)*HALF+rad*2)return;
-    const fc=Math.max(f,NEAR),s0=HW+(r-rad)*FOC/fc,s1=HW+(r+rad)*FOC/fc;let slot=0;
-    for(let i=vb.length-1;i>=0;i--){const b=vb[i];if(b.s1<s0||b.s0>s1)continue;
-      if((CX<b.x&&x<b.x)||(CX>b.x+b.w&&x>b.x+b.w)||(CY<b.y&&y<b.y)||(CY>b.y+b.h&&y>b.y+b.h)){slot=i+1;break;}}
+  const add=(kind,o,x,y,rad,f,hgt)=>{const dx=x-CX,dy=y-CY;if(f==null)f=dx*CC+dy*CS;if(f<-rad||f>R0)return;if(f<34&&(kind===2||kind===3||kind===5||kind===13))return;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+rad)*HALF+rad*2)return;
+    const fc=Math.max(f,NEAR),k=FOC/fc,sx=HW+r*k,sw=rad*k,yb=HOR+CZ*k,yt=HOR+(CZ-(hgt||22))*k,ym=(yb+yt)/2;
+    let slot=0;
+    for(let i=vb.length-1;i>=0;i--){const b=vb[i];
+      if(!((CX<b.x&&x<b.x)||(CX>b.x+b.w&&x>b.x+b.w)||(CY<b.y&&y<b.y)||(CY>b.y+b.h&&y>b.y+b.h)))continue; // behind this one
+      const h=b.hull;
+      if(!(inHull(h,sx,yb)||inHull(h,sx,yt)||inHull(h,sx-sw,ym)||inHull(h,sx+sw,ym)||inHull(h,sx,ym)))continue; // not on screen together
+      slot=i+1;break;}
     ITEMS.push({kind,o,f,slot});};
-  for(const c of cars){if(c===player.car)continue;add(0,c,c.x,c.y,Math.max(c.t.L,c.t.Wd)/2+4);}
+  for(const c of cars){if(c===player.car)continue;add(0,c,c.x,c.y,Math.max(c.t.L,c.t.Wd)/2+4,null,c.t.truck||c.t.swat?34:24);}
+  if(player.car)add(14,player.car,player.car.x,player.car.y,Math.max(player.car.t.L,player.car.t.Wd)/2+4,null,30);
+  else if(game.state!=='wasted')add(14,player,player.x,player.y,6,null,26+(player.jz||0));
   for(const p of peds){if(p.gone)continue;add(1,p,p.x,p.y,6);}
-  for(const t of trees)add(2,t,t.x,t.y,t.r+4);
-  for(const s of streetLights)add(3,s,s.x,s.y,5);
-  for(const o of props)add(13,o,o.x,o.y,o.k==='hedge'?16:o.k==='fountain'?20:8);
+  for(const t of trees)add(2,t,t.x,t.y,t.r+4,null,15+t.r*2);
+  for(const s of streetLights)add(3,s,s.x,s.y,5,null,63);
+  for(const o of props)add(13,o,o.x,o.y,o.k==='hedge'?16:o.k==='fountain'?20:8,null,o.k==='fountain'?34:12);
   for(const k of pickups)if(!k.taken)add(4,k,k.x,k.y,8);
-  phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8));
+  phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8,null,27));
   if(mission&&mission.type==='cases')for(const it of mission.items)if(!it.got)add(6,it,it.x,it.y,8);
-  for(const p of parts)add(7,p,p.x,p.y,p.size);
-  for(const b of bullets)add(8,b,b.x,b.y,8);
+  for(const p of parts)add(7,p,p.x,p.y,p.size,null,40);
+  for(const b of bullets)add(8,b,b.x,b.y,8,null,16);
   for(const f of flyers)add(9,f,f.b.x,f.b.y,12);
-  for(const sp of sprayPads)add(10,sp,sp.x,sp.y,40);
-  for(const cp of crusherPads)add(11,cp,cp.x,cp.y,40);
-  if(mission&&mission.type==='deliver')add(12,mission,mission.x,mission.y,40);
+  for(const sp of sprayPads)add(10,sp,sp.x,sp.y,40,null,52);
+  for(const cp of crusherPads)add(11,cp,cp.x,cp.y,40,null,52);
+  if(mission&&mission.type==='deliver')add(12,mission,mission.x,mission.y,40,null,40);
   ITEMS.sort((a,b)=>a.slot-b.slot||b.f-a.f);
   let ii=0;
   for(let bi=0;bi<=vb.length;bi++){
     while(ii<ITEMS.length&&ITEMS[ii].slot<=bi){drawItem(ITEMS[ii]);ii++;}
     if(bi<vb.length){const b=vb[bi];const f=b.dn;drawBuilding(b,fogAt(f));}
   }
-  // the player is always closest to the camera
-  if(player.car)drawCar3(player.car,0);else if(game.state!=='wasted')drawPed3(player,true,0);
   // ---- weather ----
   if(rain>0.03){L3.fillStyle=`rgba(200,215,240,${0.45*rain})`;const n=Math.floor(110*rain);for(let i=0;i<n;i++){const fx=((i*61.3-game.t*40+cam.yaw*120)%LW+LW)%LW,fy=((i*37.1+game.t*(190+i%5*25))%LH+LH)%LH;L3.fillRect(fx|0,fy|0,1,4);}}
   if(boostLines())for(let i=0;i<8;i++){L3.fillStyle='rgba(255,255,255,.4)';const sx=R()<.5?rr(0,LW*.14):rr(LW*.86,LW),sy=rr(HOR,LH);L3.fillRect(sx|0,sy|0,1,R2(rr(6,14)));}
@@ -2162,6 +2192,7 @@ function drawItem(it){const o=it.o,fg=fogAt(it.f);
     case 10:sign3(o.x,o.y,46,'SPRAY $500','#11704a','#f5f1e2',10,fg);break;
     case 11:sign3(o.x,o.y,46,'CAR CRUSHER','#ffc21a','#0d0e16',10,fg);break;
     case 13:drawProp3(o,fg);break;
+    case 14:if(o===player)drawPed3(player,true,fg);else drawCar3(o,fg);break;
     case 12:sign3(o.x,o.y,30+Math.sin(game.t*4)*3,'DROP','#ffd600','#111111',11,fg);break;
   }
 }
