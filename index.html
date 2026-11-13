@@ -44,11 +44,11 @@ canvas{display:block;width:100vw;height:100vh;cursor:none;image-rendering:pixela
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v3.3.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v3.3.1 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='3.3.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.3.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -714,13 +714,13 @@ function nearPlayer(x,y,r){return dist2(x,y,player.x,player.y)<r*r}
 
 function respawnAt(sp){
   if(player.car){player.car.driver=null;player.car.traffic=true;player.car=null;}
-  player.x=sp.x;player.y=sp.y;player.body=0;player.a=0;player.jz=0;player.jv=0;cam.yaw=0;cam.dist=96;cam.h=40;cam.x=sp.x-96;cam.y=sp.y;player.hp=100;player.vx=player.vy=0;player.w=0;player.ammo=[Infinity,0,0,0,0,0,0];
+  fadeIn=1;player.x=sp.x;player.y=sp.y;player.body=0;player.a=0;player.jz=0;player.jv=0;cam.yaw=0;cam.dist=96;cam.h=40;cam.x=sp.x-96;cam.y=sp.y;player.hp=100;player.vx=player.vy=0;player.w=0;player.ammo=[Infinity,0,0,0,0,0,0];
   clearHeat();frenzy=null;
   for(const p of peds)if(p.cop&&dist2(p.x,p.y,sp.x,sp.y)<300*300)p.gone=true;
   game.state='play';
 }
-function wasted(){if(game.state!=='play')return;game.state='wasted';game.timer=3.2;showBig('WASTED','','#ff2a2a',3);sfx('fail');if(mission)missionFail(true);}
-function busted(){if(game.state!=='play')return;game.state='busted';game.timer=3.2;showBig('BUSTED','','#4da3ff',3);sfx('fail');if(mission)missionFail(true);}
+function wasted(){if(game.state!=='play')return;game.state='wasted';game.timer=DEATH_T;slowT=Math.max(slowT,1.1);showBig('WASTED','','#ff2a2a',3);sfx('fail');if(mission)missionFail(true);}
+function busted(){if(game.state!=='play')return;game.state='busted';game.timer=DEATH_T;slowT=Math.max(slowT,0.8);showBig('BUSTED','','#4da3ff',3);sfx('fail');if(mission)missionFail(true);}
 
 // ================= MESSAGES =================
 let big=null;const ticker=[];
@@ -1764,6 +1764,7 @@ function update(dt){
       dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=3.2;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
     if(keys.KeyC){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
+    if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);dist+=k*k*110;hgt+=k*k*90;rate*=0.15;}
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
     for(let s2=10;s2<=dist;s2+=6)if(solidPx(player.x-ca*s2,player.y-sa*s2)){dd=Math.max(24,s2-10);break;}
@@ -2368,6 +2369,13 @@ function render(){
   if(mir){const mw=Math.min(VW*0.34,440),mh=mw*MHm/MWm,mx=VW/2-mw/2,my=touchMode?54:10;
     ctx.fillStyle='#111';ctx.fillRect(mx-4,my-4,mw+8,mh+8);ctx.save();ctx.translate(mx+mw,my);ctx.scale(-1,1);ctx.drawImage(mirC,0,0,MWm,MHm,0,0,mw,mh);ctx.restore();
     ctx.strokeStyle='rgba(255,255,255,.35)';ctx.lineWidth=2;ctx.strokeRect(mx-4,my-4,mw+8,mh+8);MIRH=my+mh+6;}
+  // death / arrest: colour drains with a red or blue tint, then fade to black; fade back in after respawn
+  {const now=performance.now(),rdt=Math.min(0.1,(now-(fadeLast||now))/1000);fadeLast=now;
+    if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);
+      ctx.globalCompositeOperation='saturation';ctx.globalAlpha=Math.min(1,k*1.8);ctx.fillStyle='#808080';ctx.fillRect(0,0,VW,VH);
+      ctx.globalCompositeOperation='multiply';ctx.globalAlpha=Math.min(0.55,k);ctx.fillStyle=game.state==='wasted'?'#ff7a7a':'#7aa8ff';ctx.fillRect(0,0,VW,VH);
+      ctx.globalCompositeOperation='source-over';const b=clamp((k-0.62)/0.33,0,1);if(b>0){ctx.globalAlpha=b;ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);}ctx.globalAlpha=1;}
+    else if(fadeIn>0){fadeIn=Math.max(0,fadeIn-rdt*1.25);ctx.globalAlpha=fadeIn;ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}}
   ctx.imageSmoothingEnabled=true;
   drawHUD();
 }
@@ -2416,7 +2424,7 @@ function worldPass(top,bot,lightLvl,warm){
     ITEMS.push({kind,o,f,slot});};
   for(const c of cars){if(c===player.car)continue;add(0,c,c.x,c.y,Math.max(c.t.L,c.t.Wd)/2+4,null,c.t.truck||c.t.swat?34:24);}
   if(MIRROR){}else if(player.car)add(14,player.car,player.car.x,player.car.y,Math.max(player.car.t.L,player.car.t.Wd)/2+4,null,30);
-  else if(game.state!=='wasted')add(14,player,player.x,player.y,6,null,26+(player.jz||0));
+  else add(14,player,player.x,player.y,6,null,26+(player.jz||0));
   for(const p of peds){if(p.gone)continue;add(1,p,p.x,p.y,6);}
   for(const t of trees)add(2,t,t.x,t.y,t.r+4,null,15+t.r*2);
   for(const s of streetLights)add(3,s,s.x,s.y,5,null,63);
@@ -2447,6 +2455,7 @@ function worldPass(top,bot,lightLvl,warm){
   if(lightning>0){L3.fillStyle=`rgba(220,230,255,${lightning*0.35})`;L3.fillRect(0,0,LW,LH);}
 }
 // ---------- rear-view mirror: the same world pass, run into a small buffer looking backward ----------
+const DEATH_T=3.4;let fadeIn=0,fadeLast=0;
 let MIRROR=false,mirrorOn=true,MIRH=0;try{mirrorOn=localStorage.getItem('gc_mirror')!=='0'}catch(_){}
 const MWm=176,MHm=46,mirC=document.createElement('canvas'),mirX=mirC.getContext('2d'),mirG=document.createElement('canvas'),mirGX=mirG.getContext('2d');
 mirC.width=MWm;mirC.height=MHm;const mirImg=mirX.createImageData(MWm,MHm),mirBuf=new Uint32Array(mirImg.data.buffer);
@@ -2493,7 +2502,7 @@ function drawItem(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o.
     case 19:{if(!proj(o.x,o.y,0))break;BX=PX;BY=PY;BK=PK;const bob=Math.sin(game.t*3+o.x)*2,w=4+Math.abs(Math.sin(game.t*2+o.y))*2;bb(-w,5+bob,w,13+bob,lit([40,190,110],1,fg,true));bb(-w,8+bob,w,9.5+bob,lit([20,90,50],1,fg,true));glow(PX,PY-9*PK,5*PK,'#5fffb0',0.45);break;}
     case 17:ZOFF=o.z;drawHeli3(o,fg);break;
     case 18:sign3(o.x,o.y,30+Math.sin(game.t*4)*3,'TAXI STOP','#ffd600','#111111',10,fg);break;
-    case 14:if(o===player)drawPed3(player,true,fg);else drawCar3(o,fg);break;
+    case 14:if(o===player){if(game.state==='wasted'){flat(player.x,player.y,player.a,8,4.5,0.5,litH('#d9731f',1,fg));flat(player.x-Math.cos(player.a)*11,player.y-Math.sin(player.a)*11,player.a,3.5,3.5,0.7,litH('#e0ac69',1,fg));}else drawPed3(player,true,fg);}else drawCar3(o,fg);break;
     case 12:sign3(o.x,o.y,30+Math.sin(game.t*4)*3,'DROP','#ffd600','#111111',11,fg);break;
   }
 }
