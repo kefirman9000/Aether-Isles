@@ -41,11 +41,11 @@ canvas{display:block;width:100vw;height:100vh;cursor:none;image-rendering:pixela
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v2.5.0 chase-cam experiment · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v2.5.1 chase-cam experiment · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='2.5.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='2.5.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -286,13 +286,16 @@ function driveCar(c,thr,steer,hb,dt){
   {const sp=hyp(vx,vy),cap=(vx*fx+vy*fy>=0?H.max:H.g2s)*dmg;if(sp>cap){vx*=cap/sp;vy*=cap/sp;}}
   // ApplyArrowSteerAssist: on a road, gas held (pedal >= 2), no steering, within 25 deg of the lane
   // direction -> spin straight onto it, capped at 0.26 x speed (0.13 for long vehicles)
+  let assist=0;
   if(isP&&!turning&&g.pedal>=2&&aligned&&speed>0){
     const tx=Math.floor(c.x/T),ty=Math.floor(c.y/T);
     if(tileAt(tx,ty)===ROAD){const mx=tx%P,my=ty%P,vert=mx<4,horz=my<4;
       if(vert!==horz){const axis=vert?(Math.sin(c.a)>=0?PI/2:-PI/2):(Math.cos(c.a)>=0?0:PI),e=angDiff(axis,c.a);
-        if(Math.abs(e)<25*PI/180){const cap=(H.long?0.13:0.26)*hyp(vx,vy);w+=clamp(e,-cap,cap);}}}
+        if(Math.abs(e)<25*PI/180){const cap=(H.long?0.13:0.26)*hyp(vx,vy)*n;assist=clamp(e,-cap,cap);}}}
   }
-  c.a+=w*n;
+  // the assist only turns the car for this step and is subtracted again afterwards (Field74Subtract),
+  // so it never builds up spin
+  c.a+=w*n+assist;
   c.vx=vx*GT*TICK;c.vy=vy*GT*TICK;c.va=w*TICK;
   c.skid=(skidF>=H.skid*0.9||skidR>=H.skid*0.9)&&speed>0.04;
 }
