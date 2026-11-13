@@ -17,6 +17,8 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 | Mouse + left click | Drag the right side of the screen (or FIRE to auto-aim) | Aim and shoot. Works as a drive-by from inside a car, and fires the cannon in a tank |
 | F / E / Enter | CAR | Get in, get out, or jack a car |
 | Space | DRIFT / JUMP | Jump on foot · handbrake in a car |
+| C | | Hold to look behind |
+| V | | Rear-view mirror on/off |
 | Q / mouse wheel | GUN | Switch weapon |
 | R | RADIO | Change radio station |
 | P / Esc | II (top middle) | Pause |
@@ -34,6 +36,9 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Stunt ramps:** yellow-striped ramps sit in lanes around the city. Hit one fast for a slow-motion jump and a cash bonus.
 - **Police helicopter:** at 4+ stars a chopper circles you with a searchlight and can see you over buildings, which makes you harder to lose. At 5+ stars it shoots. Bring it down with gunfire or rockets.
 - **Taxi fares:** drive a taxi and passengers hail you. Stop beside them, then get them to the marker before the timer runs out. Fares in a row pay more.
+- **Seeing behind you:** a rear-view mirror at the top of the screen while you drive (V toggles it), hold C to look back, and red arrows at the screen edge when cops or attackers come up behind you.
+- **Ambulance and vigilante jobs:** in an ambulance, patients need picking up and rushing to the hospital. In a squad car, wreck fleeing suspects. Each completed job raises the level and the pay.
+- **Hidden packages:** 30 green packages are tucked into parks, yards, lots and plazas. Each pays $500, with a $5,000 bonus every 10.
 - **Traffic lights:** every intersection has working lights and stop lines, and traffic stops on red.
 - **Losing the cops:** stay out of sight and your wanted level drops one star at a time.
 - **Wanted level (6 stars):** wanted points work like GTA2. A civilian kill is worth a little, a cop kill a lot, and anything a cop sees you do gets you at least 1 star. One star fades if you stay out of sight for about 30 seconds. Anything higher sticks until you hit a spray shop ($500) or grab a cop bribe (-1 star).
