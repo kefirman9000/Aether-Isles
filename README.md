@@ -4,6 +4,8 @@ A top-down open-city crime game in the spirit of the original 2D GTA games, for 
 
 **Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/Aether-Isles/
 
+**Experimental chase-cam version:** `chase.html` (https://kefirman9000.github.io/Aether-Isles/chase.html) plays the same city, cops and guns from a pseudo-3D camera behind your car, in the low-res pixel style of Rust Belt Rally. On foot, W/S walks, A/D turns and the mouse aims anywhere on screen.
+
 > This repo used to hold *Aether Isles: Swarm of the Warden*. It's been replaced for now; the old game is still in the git history (commit `85a66b8`).
 
 ## Controls
