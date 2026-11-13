@@ -40,11 +40,11 @@ canvas{display:block;width:100vw;height:100vh;cursor:none}
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v2.3.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v2.4.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='2.3.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='2.4.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -187,9 +187,113 @@ function acquireLane(c){
 }
 const TRAFFIC_TYPES=['sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police'];
 
-// GTA2-style handling: rigid body, front & rear axle tire forces with a grip limit (skid),
-// turn-in grip shift, handbrake that kills rear grip and ramps rear braking, speed-scaled steering,
-// brake pressure build-up, 3 gears, and a lane-assist that squares the car to the road.
+// ===== Driving: a port of GTA2's per-tick car physics (CarPhysics in the GTA2 decompilation) =====
+// GTA2 works in "tile units per tick" at 30 ticks/s. We scale one GTA2 tile to GT pixels (about one car
+// length), run the same formulas, and raise per-tick factors to the power of (frame time x 30) so it runs
+// smoothly at any frame rate.
+const GT=56,TICK=30;
+// nyc.gci-style handling. 'compact' uses the stock Romero values from nyc.gci; the others are tuned
+// variations in the same format (front drive bias, front mass bias, brake friction, turn in, turn ratio,
+// rear end stability, handbrake slide, thrust, max speed, skid threshold, gear multipliers, gear speeds).
+const HANDLING={
+  compact:  {mass:16.5,fdb:1.0,fmb:0.5,brake:1.75,turnIn:0.145,turnRatio:0.45,res:1.25,hbs:0.18,thrust:0.152,max:0.245,skid:0.065,g1:0.55,g2:0.68,g3:1.0,g2s:0.107,g3s:0.165},
+  sedan:    {mass:20,  fdb:0.5,fmb:0.5,brake:1.6, turnIn:0.13, turnRatio:0.42,res:1.3, hbs:0.2, thrust:0.21, max:0.27, skid:0.07, g1:0.55,g2:0.7, g3:1.0,g2s:0.12, g3s:0.18},
+  taxi:     {mass:20,  fdb:0.5,fmb:0.5,brake:1.6, turnIn:0.13, turnRatio:0.42,res:1.3, hbs:0.2, thrust:0.215,max:0.275,skid:0.07, g1:0.55,g2:0.7, g3:1.0,g2s:0.12, g3s:0.18},
+  sports:   {mass:15,  fdb:0.0,fmb:0.45,brake:2.0,turnIn:0.16, turnRatio:0.5, res:1.1, hbs:0.22,thrust:0.24, max:0.37, skid:0.06, g1:0.6, g2:0.75,g3:1.0,g2s:0.16, g3s:0.25},
+  truck:    {mass:30,  fdb:0.0,fmb:0.6,brake:1.4, turnIn:0.1,  turnRatio:0.35,res:1.6, hbs:0.12,thrust:0.22, max:0.19, skid:0.08, g1:0.5, g2:0.65,g3:1.0,g2s:0.08, g3s:0.13},
+  police:   {mass:21,  fdb:0.0,fmb:0.5,brake:1.9, turnIn:0.15, turnRatio:0.48,res:1.2, hbs:0.2, thrust:0.26, max:0.35, skid:0.065,g1:0.6, g2:0.75,g3:1.0,g2s:0.15, g3s:0.23},
+  fbi:      {mass:22,  fdb:0.0,fmb:0.5,brake:2.0, turnIn:0.15, turnRatio:0.48,res:1.2, hbs:0.2, thrust:0.3, max:0.39, skid:0.065,g1:0.6, g2:0.75,g3:1.0,g2s:0.16, g3s:0.25},
+  swat:     {mass:30,  fdb:0.3,fmb:0.55,brake:1.7,turnIn:0.12, turnRatio:0.4, res:1.5, hbs:0.15,thrust:0.3,  max:0.29, skid:0.075,g1:0.55,g2:0.7, g3:1.0,g2s:0.12, g3s:0.19},
+  armytruck:{mass:34,  fdb:0.3,fmb:0.6,brake:1.5, turnIn:0.1,  turnRatio:0.35,res:1.6, hbs:0.12,thrust:0.3,  max:0.21, skid:0.08, g1:0.5, g2:0.65,g3:1.0,g2s:0.09, g3s:0.14},
+};
+for(const k in HANDLING)if(CT[k])CT[k].max=HANDLING[k].max*GT*TICK;
+function hand(c){
+  const t=c.t;if(t.h)return t.h;
+  const H=Object.assign({},HANDLING[c.type]||HANDLING.sedan);
+  H.m=H.mass*1.1;                                   // ConvertMass: mass * 1.1
+  const w=t.Wd/GT,h=t.L/GT,fm=H.m*H.fmb,rm=H.m*(1-H.fmb),base=(h*h*0.25+w*w)/12,hq=h*0.25;
+  H.cg=(hq*fm-hq*rm)/H.m;                           // centre of mass shift from front mass bias
+  H.I=fm*base+fm*(H.cg-hq)**2+rm*base+rm*(H.cg+hq)**2; // moment of inertia (front + rear halves)
+  H.fw=t.L*0.3/GT-H.cg;H.rw=-t.L*0.3/GT-H.cg;      // wheel offsets from the centre of mass
+  H.half=H.thrust/2;H.fifth=H.thrust/5;
+  H.long=t.L>64;
+  return t.h=H;
+}
+function carGear(c){const H=hand(c),v=hyp(c.vx,c.vy)/(GT*TICK);return v>H.g3s?3:v>H.g2s?2:1;}
+function driveCar(c,thr,steer,hb,dt){
+  if((c.driver==='ai'||c.driver==='cop')&&!c.t.tank)return driveCarAI(c,thr,steer,hb,dt);
+  const t=c.t;c.driven=true;
+  if(t.tank){ // tanks pivot on the spot
+    const ca=Math.cos(c.a),sa=Math.sin(c.a);let vf=c.vx*ca+c.vy*sa;
+    vf=lerp(vf,thr*t.max*(thr<0?0.6:1),Math.min(1,dt*1.5));
+    c.va=lerp(c.va,steer*t.turn,Math.min(1,dt*6));c.a+=c.va*dt;
+    c.vx=Math.cos(c.a)*vf;c.vy=Math.sin(c.a)*vf;c.skid=false;return;
+  }
+  const H=hand(c),n=dt*TICK,isP=c.driver==='player',m=H.m*(isP?1.05:1);
+  const g=c.g||(c.g={fg:false,bg:false,fb:false,pedal:0,bp:0,hbc:0});
+  let vx=c.vx/(GT*TICK),vy=c.vy/(GT*TICK),w=c.va/TICK;
+  const fx=Math.cos(c.a),fy=Math.sin(c.a),speed=hyp(vx,vy),aligned=vx*fx+vy*fy>=0;
+  // HandleUserInputs: what the gas/brake keys mean depends on which way the car is rolling
+  const gasKey=thr>0.02,brakeKey=thr<-0.02;
+  if(speed<1e-6){g.fg=gasKey;g.bg=brakeKey;g.fb=false;}
+  else if(aligned){if(g.bg){g.fg=g.bg=g.fb=false;}else{g.fg=gasKey;g.fb=brakeKey;g.bg=false;}}
+  else if(g.fg){g.fg=g.bg=g.fb=false;}
+  else{g.fb=gasKey;g.bg=brakeKey;g.fg=false;}
+  // ApplyThrottleInput: pedal ramps 0.25/tick up to 5 (AI part-throttle caps it lower)
+  if(g.fg||g.bg)g.pedal=Math.min(5*clamp(Math.abs(thr),0.2,1),g.pedal+0.25*n);else g.pedal=Math.max(0,g.pedal-0.25*n);
+  // ApplyBrakePhysics: pressure ramps 0.25/tick up to 1, times brake friction
+  if(g.fb)g.bp=Math.min(1,g.bp+0.25*n);else g.bp=0;
+  const brakeF=g.bp*H.brake*(rain>0.5?0.8:1);
+  g.hbc=hb?Math.min(128,g.hbc+n):0;
+  // UpdateSteeringAngle: player steering shrinks with speed^2, AI steering is fixed
+  const sfac=isP?Math.max(0.6-speed*speed,0.25)/(0.6*0.8):1;
+  const pointing=H.turnRatio*steer*sfac,turning=Math.abs(steer)>0.05;
+  // ComputeEngineTorque: half thrust + pedal * fifth thrust, times the gear multiplier
+  const dmg=c.hp<t.hp*0.3?0.7:1;let torque=0;
+  if(g.bg)torque=(speed===0&&hb)?0:-(H.half+g.pedal*H.fifth)*H.g1;
+  else if(g.fg)torque=(speed===0&&hb)?0:(H.half+g.pedal*dmg*H.fifth)*(speed>H.g3s?H.g3:speed>H.g2s?H.g2:H.g1);
+  const wet=1-rain*0.25;
+  let Fx=0,Fy=0,tq=0,skidF=0,skidR=0;
+  const wheel=(off,ang,frx,fry,drive)=>{
+    const rx=fx*off,ry=fy*off,pvx=vx-w*ry,pvy=vy+w*rx;
+    const wc=Math.cos(ang),ws=Math.sin(ang),lon=pvx*wc+pvy*ws,lat=-pvx*ws+pvy*wc;
+    const flon=-lon*fry+drive,flat=-lat*frx;
+    const wx=wc*flon-ws*flat,wy=ws*flon+wc*flat;
+    Fx+=wx;Fy+=wy;tq+=rx*wy-ry*wx;return Math.abs(flat);
+  };
+  // CalculateFrontWheelForce: grip 1 (+turn in while steering), rolling 0.139 + 80% of the brakes
+  skidF=wheel(H.fw,c.a+pointing,(turning?1+H.turnIn:1)*wet,0.139+brakeF*0.8,torque*H.fdb);
+  // CalculateRearWheelForce: grip 1 (-turn in), handbrake slide + ramping handbrake, x rear end stability;
+  // the rear steers against the front at low speed and with it at high speed
+  {let frx=(turning?1-H.turnIn:1)*wet,fry=0.139+brakeF*0.2;
+    if(hb){frx*=H.hbs;fry+=H.brake*g.hbc/128;}
+    frx*=H.res;fry*=H.res;
+    const rv=(0.6-speed)/(3.8*0.6);
+    skidR=wheel(H.rw,c.a-pointing*rv,frx,fry,torque*(1-H.fdb));}
+  // UpdateLinearAndAngularAccel + IntegrateAndClampVelocities
+  vx+=Fx/m*n;vy+=Fy/m*n;w+=tq/H.I*n;
+  if(Math.abs(vx)+Math.abs(vy)<1/256&&!g.fg&&!g.bg){vx=vy=0;}
+  if(Math.abs(w)<1/256&&!turning)w=0;
+  // StabilizeVelocityAtSpeed: every tick keep 90% of sideways speed, 97% of forward speed, 88% of spin
+  {const ca=Math.cos(c.a),sa=Math.sin(c.a);
+    if(Math.abs(vx)<=1/128&&Math.abs(vy)<=1/128){const k=Math.pow(0.9,n);vx*=k;vy*=k;}
+    else{let lon=vx*ca+vy*sa,lat=-vx*sa+vy*ca;lat*=Math.pow(0.9,n);lon*=Math.pow(0.97,n);vx=ca*lon-sa*lat;vy=sa*lon+ca*lat;}
+    w*=Math.pow(0.88,n);}
+  // EnforceGearSensitiveMaxSpeed: max speed going forwards, gear 2 speed going backwards
+  {const sp=hyp(vx,vy),cap=(vx*fx+vy*fy>=0?H.max:H.g2s)*dmg;if(sp>cap){vx*=cap/sp;vy*=cap/sp;}}
+  // ApplyArrowSteerAssist: on a road, gas held (pedal >= 2), no steering, within 25 deg of the lane
+  // direction -> spin straight onto it, capped at 0.26 x speed (0.13 for long vehicles)
+  if(isP&&!turning&&g.pedal>=2&&aligned&&speed>0){
+    const tx=Math.floor(c.x/T),ty=Math.floor(c.y/T);
+    if(tileAt(tx,ty)===ROAD){const mx=tx%P,my=ty%P,vert=mx<4,horz=my<4;
+      if(vert!==horz){const axis=vert?(Math.sin(c.a)>=0?PI/2:-PI/2):(Math.cos(c.a)>=0?0:PI),e=angDiff(axis,c.a);
+        if(Math.abs(e)<25*PI/180){const cap=(H.long?0.13:0.26)*hyp(vx,vy);w+=clamp(e,-cap,cap);}}}
+  }
+  c.a+=w*n;
+  c.vx=vx*GT*TICK;c.vy=vy*GT*TICK;c.va=w*TICK;
+  c.skid=(skidF>=H.skid*0.9||skidR>=H.skid*0.9)&&speed>0.04;
+}
+// AI drivers keep a simpler grip-limited controller so traffic and cops can hold their lanes
 const FWD_BIAS={compact:1,sedan:0.5,taxi:0.5,truck:0,sports:0,police:0.2,fbi:0.2,swat:0.3,armytruck:0.3,tank:0.5};
 function physOf(c){
   const t=c.t;if(t.ph)return t.ph;
@@ -198,8 +302,7 @@ function physOf(c){
     steer:0.5*(t.turn/3),rearSteer:0.12,fBias:FWD_BIAS[c.type]!=null?FWD_BIAS[c.type]:0.4,roll:0.17};
   return t.ph;
 }
-function carGear(c){const t=c.t,v=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a);return v<t.max*0.34?1:v<t.max*0.68?2:3;}
-function driveCar(c,thr,steer,hb,dt){
+function driveCarAI(c,thr,steer,hb,dt){
   const t=c.t,ph=physOf(c);c.driven=true;
   if(t.tank){ // tanks pivot on the spot
     const ca=Math.cos(c.a),sa=Math.sin(c.a);let vf=c.vx*ca+c.vy*sa;
@@ -248,7 +351,7 @@ function driveCar(c,thr,steer,hb,dt){
   // hard top-speed cap
   {const ca=Math.cos(c.a),sa=Math.sin(c.a),vf=c.vx*ca+c.vy*sa,cap=t.max*dmg;if(vf>cap){const e=vf-cap;c.vx-=ca*e;c.vy-=sa*e;}}
   // GTA2 lane assist: gas on, no steering, roughly lined up with the road -> square up
-  if(c.driver==='player'&&steer===0&&thr>0&&spd>80&&Math.abs(c.va)<1.2){
+  if(false&&steer===0&&thr>0&&spd>80&&Math.abs(c.va)<1.2){
     const tx=Math.floor(c.x/T),ty=Math.floor(c.y/T);
     if(tileAt(tx,ty)===ROAD){const axis=Math.round(c.a/(PI/2))*(PI/2),e=angDiff(axis,c.a);
       if(Math.abs(e)<0.44&&Math.abs(e)>0.002){const r=clamp(e,-1.4*dt,1.4*dt),cr=Math.cos(r),sr=Math.sin(r);c.a+=r;const vx=c.vx*cr-c.vy*sr;c.vy=c.vx*sr+c.vy*cr;c.vx=vx;}}
@@ -296,6 +399,7 @@ function carTiles(c){
       const imp=-vn;
       if(i!==0)c.va+=((ca*i*o)*ny-(sa*i*o)*nx)*imp*0.00025;
       c.vx*=0.97;c.vy*=0.97;
+      if(c.driver){const tang=Math.atan2(nx,-ny),tA=Math.abs(angDiff(tang,c.a))<PI/2?tang:tang+PI,e=angDiff(tA,c.a);c.va+=clamp(e,-1,1)*(PI/180)*TICK*0.5;}
       if(imp>110){
         damageCar(c,(imp-110)*0.07,c.driver==='player'?'player':null);
         if(c===player.car)shake=Math.max(shake,imp/45);
@@ -1041,7 +1145,7 @@ function sfx(n,vol){vol=vol==null?1:vol;switch(n){
 function updateAudio(){
   if(!AC||!eng)return;const t=AC.currentTime;
   if(player.car&&!muted&&game.state==='play'){const s=hyp(player.car.vx,player.car.vy);
-    const c=player.car,vf=Math.max(0,c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a)),g=carGear(c),lo=[0,0,0.34,0.68][g]*c.t.max,hi=[0,0.34,0.68,1.05][g]*c.t.max,rpm=clamp((vf-lo)/(hi-lo),0,1);
+    const c=player.car,H=c.t.tank?null:hand(c),vf=hyp(c.vx,c.vy)/(GT*TICK),g=c.t.tank?1:carGear(c),lo=H?[0,0,H.g2s,H.g3s][g]:0,hi=H?[0,H.g2s,H.g3s,H.max][g]:1,rpm=clamp((vf-lo)/(hi-lo||1),0,1);
     const ef=c.t.tank?30+rpm*25:42+g*8+rpm*70;eng.o1.frequency.setTargetAtTime(ef,t,0.04);eng.o2.frequency.setTargetAtTime(ef*0.5,t,0.04);eng.g.gain.setTargetAtTime(0.05+Math.min(0.06,s/7000),t,0.1);}
   else eng.g.gain.setTargetAtTime(0,t,0.1);
   let sd=1e9;if(heat>0)for(const c of cars)if(c.ai&&c.ai.mode==='chase')sd=Math.min(sd,hyp(c.x-player.x,c.y-player.y));

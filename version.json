@@ -1,4 +1,4 @@
 {
-  "version": "2.3.0",
-  "notes": "Rebuilt driving, police and gunplay based on how GTA2 works: real tire grip and drifting, gears, 6-level wanted system with SWAT/FBI/army/tank and roadblocks, GTA2 weapon timings, shotgun fan, dual pistols, crosshair, recoil, hit markers and twin-stick aiming on phones."
+  "version": "2.4.0",
+  "notes": "Your car now drives on a direct port of GTA2's car physics: pedal and brake ramps, per-wheel friction, speed-scaled steering, the per-tick stabilizer, gear-limited top speeds, GTA2's lane-centering assist and wall nudges. The compact uses the stock Romero handling values."
 }
