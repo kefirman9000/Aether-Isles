@@ -40,11 +40,11 @@ canvas{display:block;width:100vw;height:100vh;cursor:none}
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v2.4.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v2.5.0 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='2.4.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='2.5.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -192,21 +192,20 @@ const TRAFFIC_TYPES=['sedan','sedan','sedan','compact','compact','compact','taxi
 // length), run the same formulas, and raise per-tick factors to the power of (frame time x 30) so it runs
 // smoothly at any frame rate.
 const GT=56,TICK=30;
-// nyc.gci-style handling. 'compact' uses the stock Romero values from nyc.gci; the others are tuned
-// variations in the same format (front drive bias, front mass bias, brake friction, turn in, turn ratio,
-// rear end stability, handbrake slide, thrust, max speed, skid threshold, gear multipliers, gear speeds).
+// Handling values straight from GTA2's nyc.gci (the GTA2 car each type uses is in 'src').
 const HANDLING={
-  compact:  {mass:16.5,fdb:1.0,fmb:0.5,brake:1.75,turnIn:0.145,turnRatio:0.45,res:1.25,hbs:0.18,thrust:0.152,max:0.245,skid:0.065,g1:0.55,g2:0.68,g3:1.0,g2s:0.107,g3s:0.165},
-  sedan:    {mass:20,  fdb:0.5,fmb:0.5,brake:1.6, turnIn:0.13, turnRatio:0.42,res:1.3, hbs:0.2, thrust:0.21, max:0.27, skid:0.07, g1:0.55,g2:0.7, g3:1.0,g2s:0.12, g3s:0.18},
-  taxi:     {mass:20,  fdb:0.5,fmb:0.5,brake:1.6, turnIn:0.13, turnRatio:0.42,res:1.3, hbs:0.2, thrust:0.215,max:0.275,skid:0.07, g1:0.55,g2:0.7, g3:1.0,g2s:0.12, g3s:0.18},
-  sports:   {mass:15,  fdb:0.0,fmb:0.45,brake:2.0,turnIn:0.16, turnRatio:0.5, res:1.1, hbs:0.22,thrust:0.24, max:0.37, skid:0.06, g1:0.6, g2:0.75,g3:1.0,g2s:0.16, g3s:0.25},
-  truck:    {mass:30,  fdb:0.0,fmb:0.6,brake:1.4, turnIn:0.1,  turnRatio:0.35,res:1.6, hbs:0.12,thrust:0.22, max:0.19, skid:0.08, g1:0.5, g2:0.65,g3:1.0,g2s:0.08, g3s:0.13},
-  police:   {mass:21,  fdb:0.0,fmb:0.5,brake:1.9, turnIn:0.15, turnRatio:0.48,res:1.2, hbs:0.2, thrust:0.26, max:0.35, skid:0.065,g1:0.6, g2:0.75,g3:1.0,g2s:0.15, g3s:0.23},
-  fbi:      {mass:22,  fdb:0.0,fmb:0.5,brake:2.0, turnIn:0.15, turnRatio:0.48,res:1.2, hbs:0.2, thrust:0.3, max:0.39, skid:0.065,g1:0.6, g2:0.75,g3:1.0,g2s:0.16, g3s:0.25},
-  swat:     {mass:30,  fdb:0.3,fmb:0.55,brake:1.7,turnIn:0.12, turnRatio:0.4, res:1.5, hbs:0.15,thrust:0.3,  max:0.29, skid:0.075,g1:0.55,g2:0.7, g3:1.0,g2s:0.12, g3s:0.19},
-  armytruck:{mass:34,  fdb:0.3,fmb:0.6,brake:1.5, turnIn:0.1,  turnRatio:0.35,res:1.6, hbs:0.12,thrust:0.3,  max:0.21, skid:0.08, g1:0.5, g2:0.65,g3:1.0,g2s:0.09, g3s:0.14},
+  compact:{src:'Bug',mass:6.3,fdb:1.0,fmb:0.45,brake:1.265,turnIn:0.3,turnRatio:0.175,res:1.5,hbs:0.65,thrust:0.095,max:0.235,anti:1.0,skid:0.05,g1:0.55,g2:0.625,g3:1.0,g2s:0.125,g3s:0.152,turbo:0},
+  sedan:{src:'Aniston BD4',mass:14.5,fdb:0.6,fmb:0.5,brake:1.75,turnIn:0.145,turnRatio:0.45,res:1.25,hbs:0.18,thrust:0.146,max:0.3,anti:1.0,skid:0.085,g1:0.55,g2:0.725,g3:1.0,g2s:0.11,g3s:0.175,turbo:0},
+  taxi:{src:'Taxi',mass:14.5,fdb:1.0,fmb:0.55,brake:2.5,turnIn:0.15,turnRatio:0.45,res:1.0,hbs:0.2,thrust:0.13,max:0.219,anti:1.0,skid:0.065,g1:0.6,g2:0.75,g3:1.0,g2s:0.125,g3s:0.175,turbo:0},
+  sports:{src:'Z-Type',mass:15.0,fdb:1.0,fmb:0.5,brake:2.0,turnIn:0.4,turnRatio:0.35,res:1.175,hbs:0.4,thrust:0.145,max:0.405,anti:1.0,skid:0.12,g1:0.6,g2:0.7,g3:1.0,g2s:0.19,g3s:0.284,turbo:1},
+  truck:{src:'Box Truck',mass:28.0,fdb:0.5,fmb:0.7,brake:2.0,turnIn:0.25,turnRatio:0.65,res:2.5,hbs:0.45,thrust:0.185,max:0.175,anti:0.75,skid:0.065,g1:0.545,g2:0.675,g3:1.0,g2s:0.088,g3s:0.114,turbo:0},
+  police:{src:'Cop Car',mass:14.5,fdb:1.0,fmb:0.5,brake:2.0,turnIn:0.433,turnRatio:0.4,res:1.25,hbs:0.4,thrust:0.15,max:0.415,anti:1.0,skid:0.115,g1:0.55,g2:0.68,g3:1.0,g2s:0.18,g3s:0.29,turbo:1},
+  fbi:{src:'Special Agent Car',mass:15.0,fdb:1.0,fmb:0.6,brake:2.0,turnIn:0.155,turnRatio:0.45,res:1.2,hbs:0.35,thrust:0.165,max:0.3,anti:0.8,skid:0.085,g1:0.55,g2:0.7,g3:1.0,g2s:0.13,g3s:0.195,turbo:0},
+  swat:{src:'SWAT Van',mass:22.0,fdb:0.5,fmb:0.6,brake:2.0,turnIn:0.25,turnRatio:0.8,res:1.4,hbs:0.3,thrust:0.175,max:0.225,anti:0.5,skid:0.13,g1:0.65,g2:0.75,g3:1.0,g2s:0.115,g3s:0.166,turbo:0},
+  armytruck:{src:'Box Truck',mass:28.0,fdb:0.5,fmb:0.7,brake:2.0,turnIn:0.25,turnRatio:0.65,res:2.5,hbs:0.45,thrust:0.185,max:0.175,anti:0.75,skid:0.065,g1:0.545,g2:0.675,g3:1.0,g2s:0.088,g3s:0.114,turbo:0},
 };
 for(const k in HANDLING)if(CT[k])CT[k].max=HANDLING[k].max*GT*TICK;
+CT.tank.max=0.1*GT*TICK; // GTA2 Tank max_speed 0.100
 function hand(c){
   const t=c.t;if(t.h)return t.h;
   const H=Object.assign({},HANDLING[c.type]||HANDLING.sedan);
@@ -249,9 +248,12 @@ function driveCar(c,thr,steer,hb,dt){
   const sfac=isP?Math.max(0.6-speed*speed,0.25)/(0.6*0.8):1;
   const pointing=H.turnRatio*steer*sfac,turning=Math.abs(steer)>0.05;
   // ComputeEngineTorque: half thrust + pedal * fifth thrust, times the gear multiplier
-  const dmg=c.hp<t.hp*0.3?0.7:1;let torque=0;
-  if(g.bg)torque=(speed===0&&hb)?0:-(H.half+g.pedal*H.fifth)*H.g1;
-  else if(g.fg)torque=(speed===0&&hb)?0:(H.half+g.pedal*dmg*H.fifth)*(speed>H.g3s?H.g3:speed>H.g2s?H.g2:H.g1);
+  // GetDamageFactorOnSpeed: past half damage, thrust and top speed fall off linearly
+  const dfrac=1-clamp(c.hp/t.hp,0,1),dmg=dfrac>=0.5?Math.max(0.15,(1-dfrac)/0.5):1;
+  // IsTurboActive: turbo cars double the pedal part of their thrust once the pedal is past 3
+  const turboK=H.turbo&&g.pedal>=3?2:1;let torque=0;
+  if(g.bg)torque=(speed===0&&hb)?0:-(H.half+g.pedal*H.fifth*turboK)*H.g1;
+  else if(g.fg)torque=(speed===0&&hb)?0:(H.half+g.pedal*dmg*H.fifth*turboK)*(speed>H.g3s?H.g3:speed>H.g2s?H.g2:H.g1);
   const wet=1-rain*0.25;
   let Fx=0,Fy=0,tq=0,skidF=0,skidR=0;
   const wheel=(off,ang,frx,fry,drive)=>{
@@ -444,6 +446,7 @@ function carPair(a,b){
 }
 function damageCar(c,amt,by){
   if(c.wreck||amt<=0)return;
+  {const H=HANDLING[c.type];if(H)amt*=H.anti;}
   c.hp-=amt;if(by)c.lastBy=by;c.flash=0.06;
   if(c.hp<=0&&c.burn<0)ignite(c,by||c.lastBy);
 }
