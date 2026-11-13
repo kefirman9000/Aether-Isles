@@ -2,7 +2,7 @@
 
 A top-down open-city crime game in the spirit of the original 2D GTA games, for PC and mobile browsers. Steal cars, answer ringing payphones for jobs, cause chaos and try to lose the cops.
 
-**Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/aether-isles/
+**Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/Aether-Isles/
 
 > This repo used to hold *Aether Isles: Swarm of the Warden*. It's been replaced for now; the old game is still in the git history (commit `85a66b8`).
 
