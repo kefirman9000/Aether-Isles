@@ -299,7 +299,7 @@ function hand(c){
 }
 function carGear(c){const H=hand(c),v=hyp(c.vx,c.vy)/(GT*TICK);return v>H.g3s?3:v>H.g2s?2:1;}
 function driveCar(c,thr,steer,hb,dt){
-  if((c.driver==='ai'||c.driver==='cop')&&!c.t.tank)return driveCarAI(c,thr,steer,hb,dt);
+  if((c.driver==='ai'||c.driver==='cop')&&!c.t.tank&&!(c.ai&&c.ai.mode==='chase')&&!(c.gang!=null&&respect[c.gang]<=-3))return driveCarAI(c,thr,steer,hb,dt);
   const t=c.t;c.driven=true;
   if(t.tank){ // tanks pivot on the spot
     const ca=Math.cos(c.a),sa=Math.sin(c.a);let vf=c.vx*ca+c.vy*sa;
@@ -536,7 +536,9 @@ function carPair(a,b){
   let jt=-vt/(1/ma+1/mb+(rta*rta/Ia+rtb*rtb/Ib)*SPINK);const mx=CAR_MU*j;jt=clamp(jt,-mx,mx);
   a.vx-=tX*jt/ma;a.vy-=tY*jt/ma;a.va-=rta*jt/Ia*SPINK;b.vx+=tX*jt/mb;b.vy+=tY*jt/mb;b.va+=rtb*jt/Ib*SPINK;
   const imp=-rv;
-  if(imp>90){const by2=(a.driver==='player'||b.driver==='player')?'player':null;
+  // you only get the blame when you drove into them (not when a cop rams you)
+  const appA=a.vx*nx+a.vy*ny,appB=-(b.vx*nx+b.vy*ny),pl=a.driver==='player'?appA:b.driver==='player'?appB:-1,ot=a.driver==='player'?appB:appA;
+  if(imp>90){const by2=pl>60&&pl>=ot*0.8?'player':null;
     damageCar(a,(imp-90)*0.06*mb/ma,by2);damageCar(b,(imp-90)*0.06*ma/mb,by2);
     crashFx(a,cx,cy,nx,ny,imp,b);
     if(by2&&imp>200){if(a.driver==='ai'&&a.ai)a.ai.cruise=290;if(b.driver==='ai'&&b.ai)b.ai.cruise=290;}}
@@ -544,8 +546,8 @@ function carPair(a,b){
 function damageCar(c,amt,by){
   if(c.wreck||amt<=0)return;
   {const H=HANDLING[c.type];if(H)amt*=H.anti;}
-  c.hp-=amt;if(by)c.lastBy=by;c.flash=0.06;
-  if(c.hp<=0&&c.burn<0)ignite(c,by||c.lastBy);
+  c.hp-=amt;if(by){c.lastBy=by;c.lastByT=game.t;}c.flash=0.06;
+  if(c.hp<=0&&c.burn<0)ignite(c,by||(c.lastBy&&game.t-(c.lastByT||0)<6?c.lastBy:null));
 }
 function ignite(c,by){
   c.burn=2.4+R()*1.2;c.burnBy=by;c.hp=0;
@@ -1402,8 +1404,8 @@ function update(dt){
     if(c.wreck){c.wreckT+=dt;driveCar(c,0,0,true,dt);}
     else if(c.driver==='ai'||c.driver==='cop'){
       if(!c.ai)acquireLane(c);
-      if(c.driver==='cop'&&c.ai.mode==='lane'&&heat>0&&dist2(c.x,c.y,player.x,player.y)<650*650)c.ai.mode='chase';
-      if(c.ai.mode==='chase'&&heat<=0)acquireLane(c);
+      if(c.driver==='cop'&&c.ai.mode==='lane'&&stars()>0&&dist2(c.x,c.y,player.x,player.y)<650*650)c.ai.mode='chase';
+      if(c.ai.mode==='chase'&&stars()===0)acquireLane(c);
       if(c.ai.mode==='chase')aiChase(c,dt);else aiLane(c,dt);
       if(c.t.tank&&c.driver==='cop'){const tg=player.car||player,want=Math.atan2(tg.y-c.y,tg.x-c.x);c.turret=lerpAng(c.turret==null?c.a:c.turret,want,Math.min(1,dt*2.5));
         c.shootT-=dt;const d=hyp(tg.x-c.x,tg.y-c.y);if(game.state==='play'&&c.shootT<=0&&d<480&&Math.abs(angDiff(want,c.turret))<0.15&&los(c.x,c.y,tg.x,tg.y)){c.shootT=rr(2.4,3.4);fireBullet(c.x+Math.cos(c.turret)*42,c.y+Math.sin(c.turret)*42,c.turret,560,'cop',0,'r',0);sfx('boom',0.35);shake=Math.max(shake,4);}}
@@ -1483,6 +1485,7 @@ function update(dt){
   updateFires(dt);
 
   // ---- wanted (GTA2-style) ----
+  if(heat>0&&stars()===0){heat=Math.max(0,heat-30*dt);}
   if(heat>0&&game.state==='play'){
     const s=stars(),tg=player.car||player;
     let seen=false;
