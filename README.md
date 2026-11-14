@@ -33,24 +33,27 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Kill Frenzies:** grab a ☠ pickup for a timed rampage, either wrecking cars with rockets or taking out a gang with an SMG.
 - **Gunplay:** pistol, dual pistols, SMG, shotgun (a fixed 5-pellet fan), flamethrower, Molotovs (hold to charge a throw on phone/keyboard) and rockets. Fire rates follow GTA2. Bullets carry your movement speed, enemies flinch when hit, and you get recoil, shell casings, a crosshair and hit markers. Cops and gangs miss the way GTA2's do: often while moving, sometimes even when standing still.
 - **Driving:** the car you drive runs on a port of GTA2's car physics (from the community decompilation). The gas pedal and brake pressure ramp up, each axle's tires cancel their own sliding, and steering scales with speed, with the rear wheels counter-steering at low speed. A per-tick stabilizer keeps 90% of sideways speed, 97% of forward speed and 88% of spin. Top speed is capped by gear, a lane assist snaps you straight onto the road when you're within 25° and not steering, and scraping a wall turns you parallel to it. Every car uses real handling values from GTA2's nyc.gci: Pipsqueak = Bug, Cruiser = Aniston BD4, Cabbie = Taxi, Viper = Z-Type, Hauler = Box Truck, Squad Car = Cop Car, Fed Cruiser = Special Agent Car, plus the SWAT Van and Tank. GTA2's rules for turbo, damage slowing you down, and each car's armor (anti strength) are in too. Rain cuts grip.
-- **Stunt ramps:** yellow-striped ramps sit in lanes around the city. Hit one fast for a slow-motion jump and a cash bonus.
+- **Landmarks:** an 18×18-block city with the East River cutting Westside Island off from the rest, crossed by two road bridges and the Gridlock Bridge, a Brooklyn-style suspension bridge with stone towers, swooping main cables and a deck that arches high over the water. There's also a Central Park with lakes, a Times Square with tall towers and animated screens, South Beach with sand, palms and a boardwalk, and fenced construction sites.
+- **Stunt ramps:** dirt, wood and sand ramps sit off the road, in construction sites, parking lots, the park and on the beach. Hit one fast for a jump and a cash bonus. Slow motion on jumps is off by default (turn it on in Options).
+- **Standing on things:** on foot you can jump onto car roofs and ramps, walk across them and ride on top of a moving car.
 - **Police helicopter:** at 4+ stars a chopper circles you with a searchlight and can see you over buildings, which makes you harder to lose. At 5+ stars it shoots. Bring it down with gunfire or rockets.
 - **Taxi fares:** drive a taxi and passengers hail you. Stop beside them, then get them to the marker before the timer runs out. Fares in a row pay more.
 - **Seeing behind you:** a rear-view mirror at the top of the screen while you drive (V toggles it), hold C to look back, and red arrows at the screen edge when cops or attackers come up behind you.
 - **Ambulance and vigilante jobs:** in an ambulance, patients need picking up and rushing to the hospital. In a squad car, wreck fleeing suspects. Each completed job raises the level and the pay.
 - **Hidden packages:** 30 green packages are tucked into parks, yards, lots and plazas. Each pays $500, with a $5,000 bonus every 10.
 - **Traffic lights:** every intersection has working lights and stop lines, and traffic stops on red.
-- **Losing the cops:** stay out of sight and your wanted level drops one star at a time.
+- **Losing the cops:** stay out of sight and your wanted level drops one star at a time. While you're wanted, the minimap shows how far each cop, foot cop and the chopper can see: red when they've spotted you, blue once you've slipped away, with an X where they last saw you.
 - **Wanted level (6 stars):** wanted points work like GTA2. A civilian kill is worth a little, a cop kill a lot, and anything a cop sees you do gets you at least 1 star. One star fades if you stay out of sight for about 30 seconds. Anything higher sticks until you hit a spray shop ($500) or grab a cop bribe (-1 star).
 - **Who comes after you:** police at 1–3 stars, SWAT joining at 4, FBI only at 5, and army trucks plus a tank at 6. Roadblocks start at 3 stars. Cops head to where they last saw you, so breaking line of sight matters. You can steal the tank.
 - **Car crusher:** drive a car onto the crusher pad to sell it for scrap. Sports cars and police cars pay the most.
 - **Car radio:** three stations of generated music (punk, synthwave and street beats) that come on when you get in a car.
 - **Day and night:** a full day cycle with headlights, streetlights, police light glow, and rain storms with thunder that make the roads slippery.
 - **Heavier action:** ragdolling bodies, crash debris, tire smoke, screen shake, slow-motion explosions and a CHAOS combo that multiplies cash for chained destruction.
-- **Procedural city:** a 12×12-block grid of streets, so traffic, cops and missions work everywhere.
+- **Procedural city:** an 18×18-block grid of streets, so traffic, cops and missions work everywhere. Each browser gets its own city layout and keeps it, so saves line up (Options → New city layout makes a fresh one).
+- **Title menu and saves:** a GTA-style title screen over a live flyover of the city, with Continue, New Game, Load Game, Options and Controls. The pause menu adds Save Game and Quit to Title. Three save slots plus an autosave every 90 seconds while you're not wanted (you can't save with cops on you). Options: jump slow motion, rear-view mirror, camera distance, autosave and sound.
 - **Updater:** Menu or pause → Check for updates. It only contacts GitHub when you press it.
 
-Your cash is saved in your browser (localStorage).
+Your cash, saves and options are kept in your browser (localStorage).
 
 Gameplay systems are modeled on how GTA2 works (studied from the community GTA2 decompilation). All code here is original.
 

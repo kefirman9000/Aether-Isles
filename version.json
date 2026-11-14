@@ -1,4 +1,4 @@
 {
-  "version": "3.4.0",
-  "notes": "Blocky 3D characters, ramp jumps with real arcs (cars tilt up the ramp, pitch in the air and land with a bounce), and police that tail you at a distance with only the odd bump instead of ramming and shoving you."
+  "version": "3.5.0",
+  "notes": "Bigger city with the East River and the Gridlock Bridge, a Brooklyn-style suspension bridge. Police sight ranges on the minimap. A GTA-style title menu with save slots, autosave and options. Jump slow motion is now off by default. You can stand on cars and ramps."
 }
