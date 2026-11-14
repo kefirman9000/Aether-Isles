@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.13.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.13.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -59,7 +59,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <b>TAB</b><span>City map (tap the minimap on a phone)</span>
 <b>F at a station</b><span>Board the El when the train is in · walk into a SUBWAY entrance to ride</span>
 <b>W A S D</b><span>On foot: run the way you press, relative to the camera (GTA III style; switch to tank controls in Options) · In a car: gas, brake/reverse, steer</span>
-<b>Mouse</b><span>Aim anywhere on screen · Left click to shoot · Hold right button to lock on to the nearest target (drag to switch target) · Right-drag with no target to swing the camera round</span>
+<b>Mouse</b><span>Click the game to capture the mouse (Esc lets go) · Move it to look around and aim with the crosshair · Left click to shoot · Hold right button to lock on (move the mouse to switch target) · In a car the mouse moves a drive-by cursor</span>
 <b>F / E / Enter</b><span>Enter or exit / steal a car</span>
 <b>Space</b><span>Jump on foot · Handbrake in a car (drift!)</span>
 <b>Q / Wheel</b><span>Switch weapon (fists are always there)</span>
@@ -81,7 +81,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.13.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.13.1',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -1447,8 +1447,29 @@ window.addEventListener('keydown',e=>{
 });
 window.addEventListener('keyup',e=>{keys[e.code]=false});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouse.down=false;});
-cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;mouse.used=true;if(mouse.rdown)mouse.turn=(mouse.turn||0)+(e.movementX||0);});
-cv.addEventListener('mousedown',e=>{if(BIGMAP&&e.button===0){if(!bigMapTap(e.clientX,e.clientY))BIGMAP=false;return;}if(e.button===0)mouse.down=true;if(e.button===2)mouse.rdown=true;mouse.used=true;initAudio();});
+// ---- mouse look (GTA III PC style): click to capture the mouse; moving it turns the camera and you aim with a crosshair.
+// On foot the crosshair sits just above the middle of the screen; in a car it's a free cursor for drive-bys.
+const ML={exiting:false,cx:0,cy:0,dy:0};
+const mlLocked=()=>document.pointerLockElement===cv;
+function mlWanted(){return OPT.mouselook!==false&&!touchMode&&game.started&&!game.paused&&!DLG.open&&!BIGMAP&&game.state!=='menu';}
+function mlTick(){if(!mlLocked())return;
+  if(!mlWanted()){ML.exiting=true;try{document.exitPointerLock();}catch(_){}return;}
+  mouse.used=true;
+  if(player.car){mouse.x=ML.cx=clamp(ML.cx||VW/2,8,VW-8);mouse.y=ML.cy=clamp(ML.cy||VH*0.42,8,VH-8);}
+  else{ML.cx=0;ML.cy=0;mouse.x=VW/2;mouse.y=clamp(VH*0.44+ML.dy,VH*0.3,VH*0.62);}}
+document.addEventListener('pointerlockchange',()=>{if(mlLocked()){ML.exiting=false;return;}
+  // the player pressed Esc to let go of the mouse: pause, so the game doesn't carry on without them
+  if(!ML.exiting)setTimeout(()=>{if(!game.paused&&game.started&&game.state!=='menu')togglePause();},60);ML.exiting=false;});
+cv.addEventListener('mousemove',e=>{
+  if(mlLocked()){const mx=e.movementX||0,my=e.movementY||0;
+    if(player.car){ML.cx=(ML.cx||VW/2)+mx;ML.cy=(ML.cy||VH*0.42)+my;}
+    else{mouse.look=(mouse.look||0)+mx;ML.dy=clamp(ML.dy+my*0.6,-VH*0.14,VH*0.18);}
+    if(mouse.rdown)mouse.turn=(mouse.turn||0)+mx;mouse.used=true;return;}
+  mouse.x=e.clientX;mouse.y=e.clientY;mouse.used=true;if(mouse.rdown)mouse.turn=(mouse.turn||0)+(e.movementX||0);});
+cv.addEventListener('mousedown',e=>{if(BIGMAP&&e.button===0){if(!bigMapTap(e.clientX,e.clientY))BIGMAP=false;return;}
+  initAudio();
+  if(!mlLocked()&&mlWanted()&&!touchMode){try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(_){}ML.dy=0;mouse.used=true;return;} // this click only grabs the mouse
+  if(e.button===0)mouse.down=true;if(e.button===2)mouse.rdown=true;mouse.used=true;});
 window.addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false;if(e.button===2)mouse.rdown=false;});
 cv.addEventListener('wheel',e=>{pressed.swap=true;e.preventDefault()},{passive:false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
@@ -3232,14 +3253,14 @@ function footLook(dt){
   if(LOCK.t&&(!lockable(LOCK.t)||hyp(LOCK.t.x-player.x,LOCK.t.y-player.y)>480))LOCK.t=null;
   let orbit=0;
   if(LOCK.t){// drag the mouse or flick the right stick to switch targets
-    LOCK.flick+=mouse.turn||0;if(Math.abs(LOCK.flick)>45){const n=pickLock(cam.base,LOCK.t,Math.sign(LOCK.flick));if(n)setLock(n);LOCK.flick=0;}
+    LOCK.flick+=(mouse.turn||0)+(mouse.look||0)*0.5;if(Math.abs(LOCK.flick)>45){const n=pickLock(cam.base,LOCK.t,Math.sign(LOCK.flick));if(n)setLock(n);LOCK.flick=0;}
     if(pad.on&&Math.abs(pad.rx)>0.7&&Math.abs(LOCK.rx0)<=0.7){const n=pickLock(cam.base,LOCK.t,Math.sign(pad.rx));if(n)setLock(n);}
     const ta=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);cam.base=lerpAng(cam.base,ta,Math.min(1,dt*7));cam.idle=0;}
-  else{LOCK.flick=0;orbit=(mouse.turn||0)*0.006*(OPT.msens||1)+(pad.on?pad.rx*2.9*dt:0);}
-  LOCK.rx0=pad.on?pad.rx:0;mouse.turn=0;
+  else{LOCK.flick=0;orbit=(mlLocked()?(mouse.look||0)*0.0033:(mouse.turn||0)*0.006)*(OPT.msens||1)+(pad.on?pad.rx*2.9*dt:0);}
+  LOCK.rx0=pad.on?pad.rx:0;mouse.turn=0;mouse.look=0;
   if(orbit){cam.base+=orbit;cam.idle=0;}else cam.idle+=dt;
   // after a moment without touching the camera it drifts back behind you while you move (but not when you run at it)
-  if(!LOCK.t&&cam.idle>1.1&&player.moving){const d=Math.abs(angDiff(player.body,cam.base));if(d<1.75)cam.base=lerpAng(cam.base,player.body,Math.min(1,dt*1.6*Math.max(0.15,Math.cos(d))));}
+  if(!LOCK.t&&!mlLocked()&&cam.idle>0.7&&player.moving){const d=Math.abs(angDiff(player.body,cam.base));if(d<2.1)cam.base=lerpAng(cam.base,player.body,Math.min(1,dt*2.4*(1-d/2.4)));}
 }
 function baseScale(){return clamp(Math.sqrt(VW*VH)/900*(VH>VW?0.86:1),0.5,2.2)}
 
@@ -3581,7 +3602,7 @@ function update(dt){
     if(player.car||player.riding){cam.wasFoot=false;LOCK.t=null;}
     if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;want=c.a;
       dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=3.2;}
-    else if(GTA3MOVE()&&cam.base!=null&&!player.riding){want=cam.base;dist=LOCK.t?84:96;hgt=LOCK.t?44:40;rate=14;}
+    else if(GTA3MOVE()&&cam.base!=null&&!player.riding){want=cam.base;dist=LOCK.t?84:92;hgt=LOCK.t?44:40;rate=mlLocked()?30:14;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
     if(kd.KeyC||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
     dist*=OPT.cam;
@@ -4961,7 +4982,7 @@ function drawHUD(){
     if(big.sub)hudText(big.sub,VW/2,by+sz*0.82,Math.round(22*sc),'#fff','center',G3F);
     ctx.globalAlpha=1;}
   // first-time hints
-  if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE drift · click = drive-by · R radio · F get out':(GTA3MOVE()?'WASD move · mouse aim & shoot · hold right mouse to lock on (drag to orbit) · SPACE jump · F steal a car':'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
+  if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE drift · click = drive-by · R radio · F get out':(GTA3MOVE()?(mlLocked()?'WASD move · mouse to look · click to shoot · hold right mouse to lock on · SPACE jump · F steal a car':'Click the game to capture the mouse · WASD move · SPACE jump · F steal a car'):'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
   // crosshair, hit markers, throw charge
   if(LOCK.t&&game.state==='play')drawLockMarker(LOCK.t,sc,false);
   else if(SOFT.t&&!SOFT.t.gone&&game.t-SOFT.at<0.35&&!player.car&&game.state==='play')drawLockMarker(SOFT.t,sc,true);
@@ -5029,7 +5050,7 @@ function startGame(){
 }
 let last=performance.now();
 function frame(now){
-  pollPad();
+  pollPad();mlTick();
   let dt=Math.min(0.033,Math.max(0,(now-last)/1000));last=now;
   if(slowT>0&&!game.paused){slowT-=dt;dt*=0.35;}
   if(game.state!=='menu'&&!game.paused&&!DLG.open)update(dt);
@@ -5055,7 +5076,7 @@ if('ontouchstart' in window||navigator.maxTouchPoints>0){
   document.getElementById('ctl').innerHTML='<b>Left thumb</b><span>Drag to walk. In a car, point where you want to go</span><b>FIRE</b><span>Shoot (auto-aims, drive-by in cars)</span><b>CAR</b><span>Enter, exit or steal a car</span><b>DRIFT</b><span>Handbrake</span><b>GUN · RADIO</b><span>Switch weapon · change station</span><b>II</b><span>Pause (top middle)</span>';
 }
 // ================= TITLE MENU, PAUSE MENU, OPTIONS AND SAVES =================
-const OPT=Object.assign({slowmo:false,mirror:true,cam:1,autosave:true,steer:'stick',btn:1,assist:true,msens:1,rumble:true,gta3:true},(()=>{try{return JSON.parse(localStorage.getItem('gc_opts')||'{}')}catch(_){return{}}})());
+const OPT=Object.assign({slowmo:false,mirror:true,cam:1,autosave:true,steer:'stick',btn:1,assist:true,msens:1,rumble:true,gta3:true,mouselook:true},(()=>{try{return JSON.parse(localStorage.getItem('gc_opts')||'{}')}catch(_){return{}}})());
 function saveOpts(){try{localStorage.setItem('gc_opts',JSON.stringify(OPT))}catch(_){}}
 mirrorOn=OPT.mirror;
 let MENUVIEW=false,menuMode='title',menuSel=0,panelOpen=null,autoT=0;
@@ -5100,7 +5121,8 @@ function openPanel(kind){
     <div class="opt"><span>Season</span><button data-opt="season">${(OPT.season||'auto').toUpperCase()}</button></div>
     <div class="opt"><span>Lane assist (straightens you onto the road)</span><button data-opt="assist">${onoff(OPT.assist)}</button></div>
     <div class="opt"><span>On-foot controls</span><button data-opt="gta3">${OPT.gta3!==false?'GTA III (CAMERA)':'CLASSIC (TANK)'}</button></div>
-    <div class="opt"><span>Mouse turn speed (right-drag)</span><button data-opt="msens">${OPT.msens<1?'SLOW':OPT.msens>1?'FAST':'NORMAL'}</button></div>
+    <div class="opt"><span>Mouse look (click the game to capture the mouse, Esc to let go)</span><button data-opt="mouselook">${onoff(OPT.mouselook!==false)}</button></div>
+    <div class="opt"><span>Mouse sensitivity</span><button data-opt="msens">${OPT.msens<1?'SLOW':OPT.msens>1?'FAST':'NORMAL'}</button></div>
     <div class="opt"><span>Controller vibration</span><button data-opt="rumble">${onoff(OPT.rumble)}</button></div>
     <div class="opt"><span>Touch driving</span><button data-opt="steer">${OPT.steer==='wheel'?'WHEEL + PEDALS':'JOYSTICK'}</button></div>
     <div class="opt"><span>Touch button size</span><button data-opt="btn">${OPT.btn<1?'SMALL':OPT.btn>1?'LARGE':'NORMAL'}</button></div>

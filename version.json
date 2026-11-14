@@ -1,4 +1,4 @@
 {
-  "version": "4.13.0",
-  "notes": "Plays more like GTA III: camera-relative movement with a free camera, lock-on targeting, a new HUD with a round radar, fists, grenades, car bombs, loot drops, and El trains you can stay on."
+  "version": "4.13.1",
+  "notes": "Mouse look on foot: click to capture the mouse, move it to turn the camera and aim with a crosshair. The camera follows better with keys, controllers and touch."
 }

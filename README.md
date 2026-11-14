@@ -12,7 +12,8 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 | PC | Phone | Action |
 |---|---|---|
 | W A S D | Left-thumb joystick | On foot: run the way you push, relative to the camera (GTA III style; tank controls are in Options) · in a car: gas, brake/reverse, steer. In a car, the phone joystick is point-to-drive: push where you want to go |
-| Hold right mouse | | Lock on to the nearest target (drag to switch). With nothing to lock on to, right-drag swings the camera round |
+| Mouse (captured) | | Click the game to capture the mouse (Esc lets go). Move it to look around; aim with the crosshair. In a car it moves a drive-by cursor. Mouse look can be turned off in Options |
+| Hold right mouse | | Lock on to the nearest target (move the mouse to switch) |
 | Mouse + left click | Drag the right side of the screen (or FIRE to auto-aim) | Aim and shoot. Works as a drive-by from inside a car, and fires the cannon in a tank |
 | F / E / Enter | CAR | Get in, get out, or jack a car |
 | Space | DRIFT / JUMP | Jump on foot · handbrake in a car |
@@ -29,6 +30,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **Mouse look (v4.13.1):** click the game to capture the mouse, then move it to turn the camera and aim with a crosshair, like GTA III on PC. Esc lets go of the mouse and pauses. With keys, a controller or touch, the camera now swings back behind you sooner, including when you run sideways.
 - **Plays more like GTA III (v4.13):** on foot you run the way you push, relative to the camera, and the camera swings freely (right-drag or right stick) before drifting back behind you. Hold right mouse (LT) to lock on: four arrowheads close in on the target and turn from green to red as it takes damage, and you can strafe while locked. Switch back to tank controls under Options → On-foot controls.
 - **GTA III-style HUD:** a weapon icon box with ammo, a clock, health and armor as numbers, `$00000000` money and the stars, all in the top right. The radar is round. Area and vehicle names come up big in the bottom right, mission names when a job starts, and WASTED, BUSTED and MISSION PASSED! fill the screen.
 - **Fists, grenades and car bombs:** fists are always there (Q). Ammu-Nation sells grenades, which blow up where they land. Spray shops will fit a remote car bomb: park it, walk off and press B (or Detonate on the phone).
