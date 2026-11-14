@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v3.8.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v3.9.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='3.8.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.9.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -100,7 +100,7 @@ function rrect(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect){ctx.roundRect(x,y,w,
 const T=32,P=14,NB=18,W=NB*P+4,WPX=W*T;
 const ROAD=0,WALK=1,BLD=2,GRASS=3,TREE=4,LOT=5,SPRAY=6,CRUSH=7,WATER=8;
 const map=new Uint8Array(W*W);
-const tileAt=(x,y)=>(x<0||y<0||x>=W||y>=W)?BLD:map[y*W+x];
+const tileAt=(x,y)=>(x<0||y<0||x>=W||y>=W)?(x>=HTX0&&x<HTX1&&y>=HTY0&&y<HTY1?hallTile(x,y):BLD):map[y*W+x];
 const setT=(x,y,t)=>{map[y*W+x]=t};
 const isSolid=t=>t===BLD||t===TREE||t===WATER;
 const solidPx=(x,y)=>isSolid(tileAt(Math.floor(x/T),Math.floor(y/T)));
@@ -171,6 +171,8 @@ function diagSpotNear(x,y){for(let i=0;i<DIAGS.length;i++){const d=DIAGS[i],[t,s
 // is the road from intersection (ix,iy) heading dd still land (or a bridge)?
 // Some street segments are closed and turned into pedestrian plazas and park paths, so the city isn't a perfect grid:
 // blocks merge into superblocks, streets end in T-junctions and bends.
+const HTX0=28,HTX1=54,HTY0=W+13,HTY1=W+18; // the subway hall, off the south edge of the map
+function hallTile(tx,ty){return tx>HTX0&&tx<HTX1-1&&ty>HTY0&&ty<HTY1-1?WALK:BLD;}
 const CUT=new Set();
 const segKey=(ix,iy,dd)=>dd===0?'h'+ix+','+iy:dd===2?'h'+(ix-1)+','+iy:dd===1?'v'+ix+','+iy:'v'+ix+','+(iy-1);
 function linkBase(ix,iy,dd){if(dd===0&&ix>=NB||dd===2&&ix<=0||dd===1&&iy>=NB||dd===3&&iy<=0)return false;if(dd===1||dd===3)return ix!==7;const a=dd===0?ix:ix-1;return(a!==6&&a!==7)||BRIDGES.includes(iy);}
@@ -545,7 +547,10 @@ function driveCar(c,thr,steer,hb,dt){
   let assist=0;
   if(isP&&!turning&&g.pedal>=2&&aligned&&speed>0){
     const tx=Math.floor(c.x/T),ty=Math.floor(c.y/T);
-    if(tileAt(tx,ty)===ROAD){const mx=tx%P,my=ty%P,vert=mx<4,horz=my<4;
+    const dg=tx>=0&&ty>=0&&tx<W&&ty<W?DIAGT[ty*W+tx]:0;
+    if(dg&&tileAt(tx,ty)===ROAD&&!(tx%P<4||ty%P<4)){const d=DIAGS[dg-1],ang=Math.atan2(d.uy,d.ux),axis=Math.abs(angDiff(ang,c.a))<PI/2?ang:ang+PI,e=angDiff(axis,c.a);
+      if(Math.abs(e)<22*PI/180){const cap=(H.long?0.06:0.12)*hyp(vx,vy)*n;assist=clamp(e,-cap,cap);}}
+    else if(tileAt(tx,ty)===ROAD){const mx=tx%P,my=ty%P,vert=mx<4,horz=my<4;
       if(vert!==horz){const axis=vert?(Math.sin(c.a)>=0?PI/2:-PI/2):(Math.cos(c.a)>=0?0:PI),e=angDiff(axis,c.a);
         if(Math.abs(e)<15*PI/180){const cap=(H.long?0.06:0.12)*hyp(vx,vy)*n;assist=clamp(e,-cap,cap);}}}
   }
@@ -874,7 +879,7 @@ function clearHeat(){
   for(const c of cars)if(c.ai&&c.ai.mode==='chase'){acquireLane(c);}
   for(const p of peds)if(p.cop&&p.state==='cop'){p.state='walk';p.gun=false;pedPickNext(p);}
 }
-function hurtPlayer(n){if(game.state!=='play')return;player.hp-=n;player.hurt=0.35;vib(20);if(player.hp<=0){player.hp=0;wasted();}}
+function hurtPlayer(n){if(game.state!=='play')return;if(player.armor>0){const a=Math.min(player.armor,n*0.75);player.armor-=a;n-=a;}player.hp-=n;player.hurt=0.35;vib(20);if(player.hp<=0){player.hp=0;wasted();}}
 function nearPlayer(x,y,r){return dist2(x,y,player.x,player.y)<r*r}
 
 function respawnAt(sp){
@@ -1106,7 +1111,7 @@ function aiLane(c,dt){
       if(ok(d))opts.push(d,d,d);
       if(ok((d+1)&3))opts.push((d+1)&3);
       if(ok((d+3)&3))opts.push((d+3)&3);
-      const nd=opts.length?pick(opts):d;
+      let nd=opts.length?pick(opts):d;if(ai.follow&&opts.length){let bd=1e18;for(const o of opts){const dd=dist2((ix+DX[o])*PT,(iy+DY[o])*PT,ai.follow.x,ai.follow.y);if(dd<bd){bd=dd;nd=o;}}}
       if(nd!==d){ai.turn=nd;ai.sw=nd===1?(ix*P+1)*T:nd===3?(ix*P+3)*T:nd===0?(iy*P+3)*T:(iy*P+1)*T;}
       else ai.turn=-1;
     }
@@ -1662,11 +1667,14 @@ function updatePackages(){const o=player.car||player;for(const k of PACKAGES){if
 
 // ---- standing on things: car roofs and ramps can be landed on and walked over ----
 function carRoof(c){const t=c.t;return(t.tank?24:t.truck?34:t.swat?28:t.ambulance?30:c.type==='sports'?18:21);}
-function footFloor(x,y){let fl=0,on=null;
+const WALKS=[];
+function footFloor(x,y,z){if(z==null)z=1e9;let fl=0,on=null;
+  for(const r of WALKS){const dx=x-r.x,dy=y-r.y;if(Math.abs(dx)>r.hl+r.hw+4||Math.abs(dy)>r.hl+r.hw+4)continue;const ca=Math.cos(r.a),sa=Math.sin(r.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
+    if(Math.abs(f)<r.hl&&Math.abs(l)<r.hw){const h=r.h0+(r.h1-r.h0)*(f+r.hl)/(2*r.hl);if(h>fl&&h<=z+8){fl=h;on=null;}}}
   for(const c of cars){const dx=x-c.x,dy=y-c.y;if(dx*dx+dy*dy>3600)continue;const ca=Math.cos(c.a),sa=Math.sin(c.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
-    if(Math.abs(f)<c.t.L/2-1&&Math.abs(l)<c.t.Wd/2){const h=carRoof(c)+(c.az||0);if(h>fl){fl=h;on=c;}}}
+    if(Math.abs(f)<c.t.L/2-1&&Math.abs(l)<c.t.Wd/2){const h=carRoof(c)+(c.az||0);if(h>fl&&h<=z+8){fl=h;on=c;}}}
   for(const r of RAMPS){const dx=x-r.x,dy=y-r.y;if(dx*dx+dy*dy>2500)continue;const ca=Math.cos(r.a),sa=Math.sin(r.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
-    if(Math.abs(f)<r.hl&&Math.abs(l)<r.hw){const h=r.h*(f+r.hl)/(2*r.hl);if(h>fl){fl=h;on=null;}}}
+    if(Math.abs(f)<r.hl&&Math.abs(l)<r.hw){const h=r.h*(f+r.hl)/(2*r.hl);if(h>fl&&h<=z+8){fl=h;on=null;}}}
   return[fl,on];}
 
 // ================= STORY, SAFEHOUSES, BOATS, UPGRADES, FIRE TRUCK, RACES, HORN, STREET LIFE =================
@@ -1873,6 +1881,7 @@ function storyTick(dt){const m=mission;if(DLG.open)return;const s=m.steps[m.si];
   }}
 function storyPass(){const m=mission;mission=null;ringT=6;
   if(m.opts.race){raceDone(m);return;}
+  if(m.def.pizza){pizzaLevel++;const pay=300+pizzaLevel*200;addMoney(pay);sfx('pass');showBig('PIZZAS DELIVERED','+$'+pay+'  ·  level '+pizzaLevel,'#ffe25a',2.4);return;}
   const d=m.def;addMoney(d.pay);sfx('pass');vib([60,40,60]);
   if(d===FINALE){STORY.fin=1;showBig('GRIDLOCK CITY IS YOURS','+$'+d.pay.toLocaleString()+'  ·  story complete','#ffd600',5);}
   else{STORY.prog[m.g]++;addRespect(m.g,1.5);showBig('MISSION PASSED','+$'+d.pay.toLocaleString(),'#3ee07a',3);
@@ -2037,7 +2046,7 @@ function updateLife(dt){lifeT-=dt;if(lifeT>0)return;lifeT=1.2;
   const day=darkness<0.25&&rain<0.1;
   if(day&&dist2(LM.beach.x,LM.beach.y,player.x,player.y)<1400*1400&&peds.filter(p=>p.beach&&!p.gone).length<14){for(let i=0;i<20;i++){const q=walkNear(player.x,player.y,700),tx=Math.floor(q.x/T),ty=Math.floor(q.y/T);if(PARKT[ty*W+tx]!==6||map[ty*W+tx]!==GRASS||camSees(q.x,q.y))continue;const p=makePed(q.x,q.y,false);p.beach=true;p.sun=R()<0.5;p.col=pick(['#e0402a','#2a7ae0','#f0c020','#ffffff','#e070a0']);pedPickNext(p);break;}}
   if(!day)for(const p of peds)if(p.beach&&!camSees(p.x,p.y))p.gone=true;}
-function lifePed(p,dt){if(p.busker){p.vx=p.vy=0;p.moving=true;p.anim+=dt*6;if(R()<dt*1.5)puff(p.x,p.y,rr(-8,8),rr(-8,8),1.2,3,pick(['#ffd23a','#ff4fa8','#3ad6ff']),'smoke');return true;}
+function lifePed(p,dt){if(personTick(p,dt))return true;if(p.busker){p.vx=p.vy=0;p.moving=true;p.anim+=dt*6;if(R()<dt*1.5)puff(p.x,p.y,rr(-8,8),rr(-8,8),1.2,3,pick(['#ffd23a','#ff4fa8','#3ad6ff']),'smoke');return true;}
   if(p.sun&&p.state==='walk'){p.vx=p.vy=0;p.moving=false;return true;}return false;}
 function crossOK(p,tx,ty,cd){const mx=tx%P,my=ty%P;
   if(!((mx===4||mx===13)&&(my===4||my===13)))return R()<0.12; // mid-block: the odd jaywalker
@@ -2058,11 +2067,11 @@ function drawBigMap(sc){const s=Math.min(VW,VH)*0.92,ox=(VW-s)/2,oy=(VH-s)/2,k=s
   for(const sp of sprayPads)icon(sp.x,sp.y,'#3ee07a','$');
   icon(hospitalSpawn.x,hospitalSpawn.y,'#ffffff','+');
   for(const c of cars)if(c.t.boat&&!c.driver)icon(c.x,c.y,'#6ab8ff','~');
-  icon(SHOWROOM.x,SHOWROOM.y,'#ff6060','A');
+  icon(SHOWROOM.x,SHOWROOM.y,'#ff6060','A');for(const g of GUNSHOPS)icon(g.x,g.y,'#ff4040','W');icon(EXPORT.x,EXPORT.y,'#6ab8ff','E');icon(PIZZA.x,PIZZA.y,'#ffe25a','P');
   const tg=objectiveTarget();if(tg){const[a,b]=P2(tg.x,tg.y);ctx.fillStyle='#ffd600';ctx.beginPath();ctx.arc(a,b,6+Math.sin(game.t*6)*2,0,TAU);ctx.fill();ctx.stroke();}
   {const o=player.car||player,[a,b]=P2(o.x,o.y);ctx.save();ctx.translate(a,b);ctx.rotate(o.a);ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-2,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
   hudText(touchMode?'tap to close':'TAB to close',VW/2,oy+s-14,Math.round(13*sc),'#fff','center',`600 ${Math.round(13*sc)}px system-ui`);
-  hudText('! job  H safehouse  R race  $ spray  ~ boat',VW/2,oy+16,Math.round(12*sc),'#ddd','center',`600 ${Math.round(12*sc)}px system-ui`);}
+  hudText('! job  H safehouse  R race  $ spray  ~ boat  W guns  A cars  E export  P pizza',VW/2,oy+16,Math.round(12*sc),'#ddd','center',`600 ${Math.round(12*sc)}px system-ui`);}
 
 // ---------- mobile: dynamic resolution, background pause, keep the screen awake ----------
 let frameAvg=16,dynT=0,DYN=1;
@@ -2074,10 +2083,10 @@ let wakeLock=null;async function keepAwake(){try{if(navigator.wakeLock&&!wakeLoc
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.started)keepAwake();});
 
 // ---------- per-frame hook ----------
-function extTick(dt){transitTick(dt);extTick2(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
-function extSave(){return{story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS};}
+function extTick(dt){transitTick(dt);extTick2(dt);extTick3(dt);extTick4(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
+function extSave(){return{story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor};}
 function extLoad(e){if(!e)return;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
-  for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});}
+  for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});for(const k in EXPORTED)delete EXPORTED[k];Object.assign(EXPORTED,e.exp||{});pizzaLevel=e.pizza||0;player.armor=e.armor||0;}
 
 // ---------- traffic on the diagonal avenues ----------
 function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir=ai.dir,ux=d.ux*dir,uy=d.uy*dir,lx=-uy,ly=ux;
@@ -2096,7 +2105,7 @@ function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir
 // ---------- stats, completion, a phone for getaway cars, and a car showroom ----------
 const STATS={kills:0,cops:0,stolen:0,jumps:0,bestAir:0,dist:0,raceWins:0,wasted:0,busted:0};const GOLDS={};let lastJumpAir=0;
 function completion(){const sm=CHAPTERS.reduce((a,c)=>a+c.length,0)+1,sd=STORY.prog.reduce((a,b)=>a+b,0)+STORY.fin;
-  const parts=[[sd/sm,40],[PACKAGES.filter(k=>k.got).length/PACKAGES.length,20],[Object.keys(GOLDS).length/RACES.length,15],[SAFEHOUSES.filter(s=>s.owned).length/SAFEHOUSES.length,10],[Math.min(1,jobLevel/10),5],[Math.min(1,fireLevel/10),5],[Math.min(1,STATS.jumps/20),5]];
+  const parts=[[sd/sm,40],[PACKAGES.filter(k=>k.got).length/PACKAGES.length,15],[Object.keys(GOLDS).length/RACES.length,15],[SAFEHOUSES.filter(s=>s.owned).length/SAFEHOUSES.length,5],[Math.min(1,jobLevel/10),5],[Math.min(1,fireLevel/10),5],[Math.min(1,STATS.jumps/20),5],[Object.keys(EXPORTED).length/EXPORTS.length,5],[Math.min(1,pizzaLevel/5),5]];
   return Math.round(parts.reduce((a,[v,w])=>a+clamp(v,0,1)*w,0));}
 function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS · ${completion()}% COMPLETE</h2><div class="ctl">
 <b>Story</b><span>${STORY.prog.reduce((a,b)=>a+b,0)+STORY.fin} / ${CHAPTERS.reduce((a,c)=>a+c.length,0)+1} missions</span>
@@ -2104,6 +2113,7 @@ function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS
 <b>Race golds</b><span>${Object.keys(GOLDS).length} / ${RACES.length} · ${STATS.raceWins} wins</span>
 <b>Safehouses</b><span>${SAFEHOUSES.filter(s=>s.owned).length} / ${SAFEHOUSES.length}</span>
 <b>Job levels</b><span>Duty ${jobLevel} · Fire ${fireLevel}</span>
+<b>Export list</b><span>${Object.keys(EXPORTED).length} / ${EXPORTS.length}</span><b>Pizza level</b><span>${pizzaLevel}</span>
 <b>Stunt jumps</b><span>${STATS.jumps} · best ${STATS.bestAir.toFixed(1)} s</span>
 <b>Cars stolen</b><span>${STATS.stolen}</span><b>People taken out</b><span>${STATS.kills} (${STATS.cops} cops)</span>
 <b>Distance driven</b><span>${km} km</span><b>Wasted / busted</b><span>${STATS.wasted} / ${STATS.busted}</span></div>`;}
@@ -2125,10 +2135,78 @@ function updateShowroom(dt){showCool-=dt;if(showCool>0||player.car||DLG.open||ga
 function extTick2(dt){updateShowroom(dt);if(player.car){STATS.dist+=hyp(player.car.vx,player.car.vy)*dt;}
   if(delivery){delivery.t-=dt;if(delivery.t<=0||player.car===delivery.c||cars.indexOf(delivery.c)<0)delivery=null;}}
 
+// ---------- Ammu-Nation, body armor, export docks, pizza runs ----------
+player.armor=0;
+const GUNSHOPS=[[3,9],[14,12]].map(([bx,by])=>{const l=nearestLot((bx*P+9)*T,(by*P+9)*T)||lotBlocks[0];const s={x:l.x+50,y:l.y-50};SIGNS.push({x:s.x,y:s.y,text:'AMMU-NATION',bg:'#2a2a2a',fg:'#ff4040',h:42,on:()=>true});return s;});
+const GUNSTOCK=[['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Body armor',500,-1,100]];
+let gunCool=0;
+function updateGunShops(dt){gunCool-=dt;if(gunCool>0||player.car||DLG.open||game.state!=='play')return;
+  for(const g of GUNSHOPS){if(dist2(g.x,g.y,player.x,player.y)>34*34)continue;gunCool=4;
+    say([['Ammu-Nation','Protect yourself. Pick something.']],null,GUNSTOCK.map(([n,p,w,a])=>[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');
+      if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}]).concat([['LEAVE',()=>{},'no']]));return;}}
+// a crane by the river buys particular cars, once each
+const EXPORTS=[['compact',600],['sedan',700],['taxi',900],['sports',2000],['truck',1200],['ambulance',1800],['police',2500],['firetruck',2200],['swat',3500],['tank',10000]];
+const EXPORTED={};
+const EXPORT=(()=>{const l=nearestLot((9*P+9)*T,(16*P+9)*T)||lotBlocks[0];const s={x:l.x,y:l.y};SIGNS.push({x:s.x,y:s.y-60,text:'EXPORT DOCKS',bg:'#1d4a6a',fg:'#ffffff',h:44,on:()=>true});props.push({x:s.x+60,y:s.y-30,k:'crane',a:0.6});return s;})();
+let expCool=0;
+function updateExport(dt){expCool-=dt;const c=player.car;if(expCool>0||!c||c.t.boat||game.state!=='play'||dist2(EXPORT.x,EXPORT.y,c.x,c.y)>80*80||hyp(c.vx,c.vy)>50)return;expCool=4;
+  const e=EXPORTS.find(q=>q[0]===c.type);const left=EXPORTS.filter(q=>!EXPORTED[q[0]]).map(q=>CT[q[0]].name).join(', ');
+  if(!e||EXPORTED[c.type]){note(EXPORTED[c.type]?'Already shipped one of those. Still wanted: '+(left||'nothing!'):'Not on the list. Wanted: '+left);return;}
+  if(stars()>0){note('Lose the cops before the docks will take it');return;}
+  EXPORTED[c.type]=1;const pay=Math.round(e[1]*(0.5+0.5*clamp(c.hp/c.t.hp,0,1)));exitCar(true);cars.splice(cars.indexOf(c),1);addMoney(pay);sfx('pass');
+  const n=Object.keys(EXPORTED).length;showBig('EXPORTED',CT[e[0]].name+'  +$'+pay.toLocaleString()+'  ·  '+n+'/'+EXPORTS.length,'#6ab8ff',2.6);if(n===EXPORTS.length){addMoney(20000);note('Export list complete! +$20,000');}}
+// pizza runs: three deliveries against the clock, from any car
+const PIZZA=(()=>{const l=nearestLot((11*P+9)*T,(8*P+9)*T)||lotBlocks[0];const s={x:l.x-50,y:l.y+50};SIGNS.push({x:s.x,y:s.y,text:'PIZZA',bg:'#d8382a',fg:'#ffe25a',h:36,on:()=>true});return s;})();
+let pizzaCool=0,pizzaLevel=0;
+function resSpot(nearX,nearY){const c=walkTiles.filter(([tx,ty])=>{const k=BLOCKK[Math.floor(ty/P)*NB+Math.floor(tx/P)];const d=hyp((tx+.5)*T-nearX,(ty+.5)*T-nearY);return k==='res'&&d>700&&d<1800;});const q=c.length?pick(c):pick(walkTiles);return{x:(q[0]+.5)*T,y:(q[1]+.5)*T};}
+function updatePizza(dt){pizzaCool-=dt;const c=player.car;if(pizzaCool>0||!c||mission||DLG.open||game.state!=='play'||dist2(PIZZA.x,PIZZA.y,c.x,c.y)>70*70||hyp(c.vx,c.vy)>60)return;pizzaCool=6;
+  say([['Pizza Paolo','Three hot pies, three angry customers. Level '+(pizzaLevel+1)+'.']],null,[['DELIVER',()=>{let px=PIZZA.x,py=PIZZA.y;const steps=[0,1,2].map(i=>({k:'drive',car:'any',r:70,timer:Math.max(35,60-pizzaLevel*3),desc:'Deliver pizza '+(i+1)+' of 3',to:()=>{const s=resSpot(player.x,player.y);return s;}}));
+    runMission({title:'Pizza Run',steps,pizza:true},{sub:'Level '+(pizzaLevel+1)});}],['NOT NOW',()=>{},'no']]);}
+function extTick3(dt){updateGunShops(dt);updateExport(dt);updatePizza(dt);}
+
+// ---------- a livelier street: people chat, phone, use umbrellas, take their cars; things happen around you ----------
+let streetT=20,peopleT=0;const EVENTS=[];
+function updatePeople(dt){peopleT-=dt;if(peopleT>0)return;peopleT=0.5;
+  for(const p of peds){if(p.gone||p.cop||p.gang!=null||p.target||p.busker||p.beach||p.state!=='walk')continue;
+    if(p.umb==null)p.umb=R()<0.6;
+    if(p.chat>0||p.onPhone>0)continue;
+    const r=R();
+    if(r<0.012){p.onPhone=rr(4,9);}                                  // stop and take a call
+    else if(r<0.03){for(const q of peds){if(q===p||q.gone||q.cop||q.gang!=null||q.state!=='walk'||q.chat>0||dist2(p.x,p.y,q.x,q.y)>40*40)continue;const t2=rr(4,9);p.chat=q.chat=t2;p.chatW=q;q.chatW=p;break;}}
+    else if(r<0.04){// walk up to a parked car, get in and drive off
+      for(const c of cars){if(c.driver||c.wreck||c.burn>=0||c.vip||c.t.boat||c===player.car||c.t.police||c.t.tank||dist2(c.x,c.y,p.x,p.y)>70*70)continue;
+        const tx=Math.floor(c.x/T),ty=Math.floor(c.y/T);if(map[ty*W+tx]!==ROAD&&map[ty*W+tx]!==LOT)continue;p.goCar=c;p.tx=c.x;p.ty=c.y;break;}}}}
+function personTick(p,dt){if(p.chat>0){p.chat-=dt;p.vx=p.vy=0;p.moving=false;const q=p.chatW;if(q&&!q.gone)p.a=Math.atan2(q.y-p.y,q.x-p.x);if(R()<dt*0.6)p.anim+=1;return true;}
+  if(p.onPhone>0){p.onPhone-=dt;p.vx=p.vy=0;p.moving=false;return true;}
+  if(p.goCar){const c=p.goCar;if(c.driver||c.wreck||cars.indexOf(c)<0){p.goCar=null;return false;}
+    if(dist2(c.x,c.y,p.x,p.y)<(c.t.Wd/2+12)**2){p.gone=true;c.driver='ai';c.traffic=true;acquireLane(c);c.ai.cruise=rr(130,190);sfx('door',0.3);return true;}
+    const a=Math.atan2(c.y-p.y,c.x-p.x);p.vx=Math.cos(a)*50;p.vy=Math.sin(a)*50;p.a=a;p.moving=true;p.anim+=dt*9;p.x+=p.vx*dt;p.y+=p.vy*dt;return true;}
+  return false;}
+// street events near you when you're not wanted: a police pursuit, a mugging, a gang scuffle, a breakdown
+function streetEvents(dt){streetT-=dt;for(let i=EVENTS.length-1;i>=0;i--){const e=EVENTS[i];e.t-=dt;if(e.tick)e.tick(e,dt);if(e.t<=0){if(e.end)e.end(e);EVENTS.splice(i,1);}}
+  if(streetT>0||stars()>0||mission||game.state!=='play'||EVENTS.length)return;streetT=rr(30,55);
+  const k=pick(['pursuit','pursuit','mugging','scuffle','breakdown']);
+  if(k==='pursuit'){const crim=spawnTraffic('sports',false);if(!crim)return;crim.driver='ai';crim.ai.cruise=330;crim.crim=true;crim.vip=true;crim.col='#d0d0d0';
+    const cops=[];for(let i=0;i<2;i++){let s=null;for(let j=0;j<20&&!s;j++)s=laneSpotNear(crim.x-Math.cos(crim.a)*(160+i*120)+rr(-60,60),crim.y-Math.sin(crim.a)*(160+i*120)+rr(-60,60));
+      if(!s)continue;const c=makeCar('police',s.x,s.y,s.dir*PI/2);c.driver='cop';c.traffic=true;c.ai=newAI('lane',s.dir,s.k,340);c.ai.follow=crim;c.ai.pursuit=true;c.vip=true;cops.push(c);}
+    note('Police pursuit nearby');EVENTS.push({k,t:50,crim,cops,tick(e){for(const c of e.cops){if(!c.ai)continue;c.ai.follow=e.crim;if(!e.caught&&dist2(c.x,c.y,e.crim.x,e.crim.y)<70*70){e.caught=true;if(e.crim.ai)e.crim.ai.cruise=0;e.t=Math.min(e.t,9);note('The police caught the suspect');}}
+      if(e.crim.wreck||e.crim.burn>=0){e.t=Math.min(e.t,5);}},
+      end(e){e.crim.vip=false;e.crim.crim=false;if(e.crim.ai)e.crim.ai.cruise=180;for(const c of e.cops){c.vip=false;if(c.ai){c.ai.follow=null;c.ai.pursuit=false;c.ai.cruise=180;}}}});}
+  else if(k==='mugging'){let v=null;for(const p of peds)if(!p.gone&&!p.cop&&p.gang==null&&p.state==='walk'&&!p.target&&dist2(p.x,p.y,player.x,player.y)<500*500&&dist2(p.x,p.y,player.x,player.y)>150*150){v=p;break;}if(!v)return;
+    const th=makePed(v.x+20,v.y,false);th.col='#222';th.thief=true;th.target=true;th.state='flee';th.panic=30;th.fx=v.x;th.fy=v.y;v.state='flee';v.panic=3;v.fx=th.x;v.fy=th.y;
+    note('Stop, thief! Someone was just mugged');EVENTS.push({k,t:30,th,tick(e){if(e.th.gone&&!e.paid){e.paid=true;addMoney(150);note('You stopped the mugger: +$150');e.t=0;}},end(e){e.th.target=false;}});}
+  else if(k==='scuffle'){const z=zoneOf(player.x,player.y);const g1=z>=0?z:0,g2=rivalOf(g1);const a=R()*TAU,d=rr(220,380),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;if(!walkable(tileAt(Math.floor(x/T),Math.floor(y/T))))return;
+    const A=[],B=[];for(let i=0;i<2;i++){const p=makePed(x+rr(-20,20),y+rr(-20,20),false);makeGang(p,g1);A.push(p);const q=makePed(x+rr(-20,20)+30,y+rr(-20,20),false);makeGang(q,g2);B.push(q);}
+    for(const p of A.concat(B)){p.chat=12;p.chatW=(A.includes(p)?B:A)[0];}
+    note(GANGS[g1].name+' and '+GANGS[g2].name+' are squaring off');EVENTS.push({k,t:12,A,B,tick(e,dt){if(R()<dt*0.5){const side=R()<0.5?e.A:e.B,p=side.find(q=>!q.gone);if(p){p.flash=0.15;p.stagger=0.3;}}},end(e){const lose=R()<0.5?e.A:e.B;for(const p of lose)if(!p.gone&&R()<0.5)killPed(p,null,0,0);for(const p of e.A.concat(e.B))if(!p.gone){p.chat=0;p.state='flee';p.panic=4;p.fx=p.x+rr(-30,30);p.fy=p.y+rr(-30,30);}}});}
+  else{let c=null;for(const o of cars)if(o.driver==='ai'&&o.traffic&&!o.vip&&dist2(o.x,o.y,player.x,player.y)<600*600&&dist2(o.x,o.y,player.x,player.y)>200*200){c=o;break;}if(!c)return;
+    c.hp=Math.min(c.hp,c.t.hp*0.25);c.ai.cruise=0;EVENTS.push({k,t:25,c,tick(e,dt){if(R()<dt*6)puff(e.c.x,e.c.y,rr(-10,10),rr(-10,10),1,rr(6,10),'#cfcfcf','smoke');if(!e.out&&e.t<21){e.out=true;const p=ejectDriver(e.c,false);if(p){p.state='walk';p.onPhone=18;}}}});}}
+function extTick4(dt){updatePeople(dt);streetEvents(dt);}
+
 // ================= ELEVATED TRAIN (the El) AND THE SUBWAY =================
 // The El runs a loop above the streets of the east side on steel pillars. Board it at a station and ride to the next one.
 const EL_CORNERS=[[9,5],[16,5],[16,14],[9,14]].map(([ix,iy])=>ixPt(ix,iy));
-const EL_H=70;
+const EL_H=70,EL_H0=70;
 const EL=(()=>{const segs=[];let L=0;for(let i=0;i<EL_CORNERS.length;i++){const a=EL_CORNERS[i],b=EL_CORNERS[(i+1)%EL_CORNERS.length],l=hyp(b.x-a.x,b.y-a.y);segs.push({a,b,l,s0:L,ang:Math.atan2(b.y-a.y,b.x-a.x)});L+=l;}return{segs,L};})();
 function elAt(s){s=((s%EL.L)+EL.L)%EL.L;for(const g of EL.segs)if(s<g.s0+g.l||g===EL.segs[EL.segs.length-1]){const t=(s-g.s0)/g.l;return{x:g.a.x+(g.b.x-g.a.x)*t,y:g.a.y+(g.b.y-g.a.y)*t,a:g.ang};}}
 // track deck, pillars in the median, and a station halfway along each side
@@ -2136,9 +2214,12 @@ for(const g of EL.segs){for(let d=20;d<g.l;d+=40){const p=elAt(g.s0+d);props.pus
   for(let d=80;d<g.l-40;d+=200){const p=elAt(g.s0+d);props.push({x:p.x,y:p.y,k:'elpillar',a:g.ang});}}
 for(const c of EL_CORNERS)props.push({x:c.x,y:c.y,k:'elpillar',a:0},{x:c.x,y:c.y,k:'elcorner',a:0});
 const EL_STATIONS=EL.segs.map((g,i)=>{const s=g.s0+g.l/2,p=elAt(s),nx=-Math.sin(g.ang),ny=Math.cos(g.ang);
-  const st={s,name:['Uptown Av','Eastside','Downtown Sq','Midtown'][i],x:p.x,y:p.y,ex:p.x+nx*84,ey:p.y+ny*84,a:g.ang};
-  props.push({x:p.x+nx*40,y:p.y+ny*40,k:'elplat',a:g.ang},{x:st.ex,y:st.ey,k:'elstair',a:g.ang});
-  SIGNS.push({x:st.ex,y:st.ey,text:'EL · '+st.name.toUpperCase(),bg:'#2b2f8a',fg:'#ffffff',h:40,on:()=>true});return st;});
+  const ux=Math.cos(g.ang),uy=Math.sin(g.ang),pc={x:p.x+nx*60,y:p.y+ny*60},sc={x:p.x+ux*124+nx*80,y:p.y+uy*124+ny*80};
+  const st={s,name:['Uptown Av','Eastside','Downtown Sq','Midtown'][i],x:p.x,y:p.y,a:g.ang,pc,ex:pc.x,ey:pc.y,bx:sc.x+ux*60,by:sc.y+uy*60};
+  props.push({x:pc.x,y:pc.y,k:'elplat',a:g.ang,rad:70,ht:EL_H+24},{x:sc.x,y:sc.y,k:'elstair',a:g.ang+PI,rad:64,ht:EL_H});
+  for(const q of[[-56,30],[56,30]])props.push({x:pc.x+ux*q[0]+nx*q[1],y:pc.y+uy*q[0]+ny*q[1],k:'elpillar',a:g.ang});
+  WALKS.push({x:pc.x,y:pc.y,a:g.ang,hl:62,hw:32,h0:EL_H,h1:EL_H},{x:sc.x,y:sc.y,a:g.ang+PI,hl:60,hw:12,h0:0,h1:EL_H});
+  SIGNS.push({x:st.bx,y:st.by,text:'EL · '+st.name.toUpperCase(),bg:'#2b2f8a',fg:'#ffffff',h:40,on:()=>true});return st;});
 const train={s:EL_STATIONS[0].s-600,v:0,wait:0,at:-1,cars:3,len:88};
 function trainCar(i){return elAt(train.s-i*(train.len+6));}
 function updateTrain(dt){const off=train.len+6;
@@ -2148,27 +2229,51 @@ function updateTrain(dt){const off=train.len+6;
   const step=Math.min(train.v*dt,nd);train.s+=step;
   if(nd-step<0.6){train.wait=5;train.at=ni;train.v=0;if(dist2(EL_STATIONS[ni].x,EL_STATIONS[ni].y,player.x,player.y)<900*900)sfx('ring',0.4);}}
 // boarding and riding
-function trainBoard(){if(player.car||player.riding)return false;
-  for(let i=0;i<EL_STATIONS.length;i++){const st=EL_STATIONS[i];if(dist2(st.ex,st.ey,player.x,player.y)>46*46)continue;
+function trainBoard(){if(player.car||player.riding)return false;if(SUB)return subBoard();
+  for(let i=0;i<EL_STATIONS.length;i++){const st=EL_STATIONS[i];if(dist2(st.ex,st.ey,player.x,player.y)>75*75||player.jz<EL_H-14)continue;
     if(train.at===i&&train.wait>0.3){player.riding={from:i};sfx('door');note('Riding the El. Next stop: '+EL_STATIONS[(i+1)%EL_STATIONS.length].name);return true;}
     const eta=Math.round((((st.s-train.s)%EL.L+EL.L)%EL.L)/300)+5;note('Train due in about '+eta+' s');return true;}
   return false;}
 function rideTick(dt){const r=player.riding,p=trainCar(1);player.x=p.x;player.y=p.y;player.a=player.body=p.a;player.vx=player.vy=0;player.moving=false;
-  if(train.at>=0&&train.at!==r.from&&train.wait>0){const st=EL_STATIONS[train.at];player.riding=null;player.x=st.ex;player.y=st.ey;player.jz=0;player.jv=0;sfx('door');showBig(st.name.toUpperCase(),'Elevated line','#9fb6ff',1.8);}}
+  if(train.at>=0&&train.at!==r.from&&train.wait>0){const st=EL_STATIONS[train.at];player.riding=null;player.x=st.ex;player.y=st.ey;player.jz=EL_H;player.jv=0;sfx('door');showBig(st.name.toUpperCase(),'Elevated line','#9fb6ff',1.8);}}
 // ---- the subway: entrances around town, a $5 ride to any other station ----
 const SUBWAY=[{n:'Westside',p:ixPt(2,4)},{n:'Old Town',p:ixPt(4,13)},{n:'Times Square',p:ixPt(TSQ.ix,TSQ.iy+1)},{n:'Central Park',p:ixPt(CPARK.x0,CPARK.y1+1)},{n:'South Beach',p:ixPt(12,NB-1)},{n:'Police HQ',p:null}].map(s=>{
   if(!s.p)s.p=policeSpawn?{x:policeSpawn.x+3*T,y:policeSpawn.y}:ixPt(15,13);const q={x:s.p.x+2.5*T,y:s.p.y+2.5*T};const w=walkable(tileAt(Math.floor(q.x/T),Math.floor(q.y/T)))?q:walkNear(q.x,q.y,60);s.x=w.x;s.y=w.y;
   props.push({x:s.x,y:s.y,k:'subway',a:0});SIGNS.push({x:s.x,y:s.y,text:'SUBWAY',bg:'#1d7a3a',fg:'#ffffff',h:30,on:()=>true});return s;});
-let subCool=0;
-function updateSubway(dt){subCool-=dt;if(subCool>0||player.car||player.riding||DLG.open||mission||game.state!=='play')return;
-  for(const s of SUBWAY){if(dist2(s.x,s.y,player.x,player.y)>30*30)continue;subCool=4;
+// the station hall is built off the south edge of the map; every stop looks like this one
+const HX0=HTX0*T,HX1=HTX1*T,HY0=HTY0*T,HY1=HTY1*T,HPL=10;
+const inHall=(x,y)=>x>HX0-40&&x<HX1+40&&y>HY0-40&&y<HY1+40;
+const SUBHALL=[];
+{const cy=(HY0+HY1)/2;
+ SUBHALL.push({x:(HX0+HX1)/2,y:HY0+T,k:'hwall',a:0,hl:(HX1-HX0)/2,hw:T/2,rad:500,ht:70},{x:(HX0+HX1)/2,y:HY1-T,k:'hwall',a:0,hl:(HX1-HX0)/2,hw:T/2,rad:500,ht:70},
+   {x:HX0+T,y:cy,k:'hwall',a:0,hl:T/2,hw:(HY1-HY0)/2,rad:100,ht:70},{x:HX1-T,y:cy,k:'hwall',a:0,hl:T/2,hw:(HY1-HY0)/2,rad:100,ht:70});
+ SUBHALL.push({x:(HX0+HX1)/2-30,y:HY0+T*2,k:'hplat',a:0,hl:(HX1-HX0)/2-90,hw:T-1,rad:420,ht:20});
+ for(const ry of[HY0+T*3.3,HY0+T*3.7])SUBHALL.push({x:(HX0+HX1)/2,y:ry,k:'hrail',a:0,hl:(HX1-HX0)/2-T,rad:420,ht:4});
+ for(let x=HX0+80;x<HX1-60;x+=110)SUBHALL.push({x,y:HY0+T*1.6,k:'hlight',a:0,rad:20,ht:66},{x,y:HY0+T*1.3,k:'hsign',a:0,rad:20,ht:40});
+ SUBHALL.push({x:HX1-T*3.2,y:HY0+T*2,k:'hstair',a:0,rad:60,ht:60});
+ WALKS.push({x:(HX0+HX1)/2-30,y:HY0+T*2,a:0,hl:(HX1-HX0)/2-90,hw:T-1,h0:HPL,h1:HPL});}
+const utrain={x:HX0-600,v:0,wait:0,cars:3,len:88};
+let SUB=null,subCool=0;
+function utrainCar(i){return{x:utrain.x-i*(utrain.len+6),y:HY0+T*3.5,a:0,z:0};}
+function updateUtrain(dt){const stop=(HX0+HX1)/2+utrain.len;
+  if(utrain.wait>0){utrain.wait-=dt;if(utrain.wait<=0)sfx('door',0.3);return;}
+  if(utrain.x<stop-1&&utrain.x>HX0-700){const d=stop-utrain.x,want=Math.min(420,Math.sqrt(2*260*d)+15);utrain.v=lerp(utrain.v,want,Math.min(1,dt*2));utrain.x+=Math.min(d,utrain.v*dt);if(stop-utrain.x<1){utrain.wait=8;utrain.v=0;if(SUB)sfx('ring',0.4);}}
+  else{utrain.v=Math.min(420,utrain.v+180*dt);utrain.x+=utrain.v*dt;if(utrain.x>HX1+900){utrain.x=HX0-700;utrain.v=380;}}}
+function updateSubway(dt){subCool-=dt;if(subCool>0||player.car||player.riding||DLG.open||game.state!=='play')return;
+  if(SUB){// exit stairs at the east end of the hall
+    if(player.x>HX1-T*4.6&&player.y<HY0+T*2.8&&player.x<HX1-T*1.6){const o=SUBWAY[SUB.from];SUB=null;fadeIn=1;player.x=o.x;player.y=o.y+30;player.jz=0;subCool=3;showBig(o.n.toUpperCase(),'Subway exit','#7dff8a',1.6);return;}
+    return;}
+  if(mission&&!(mission.opts&&mission.opts.subOK))return;
+  for(let i=0;i<SUBWAY.length;i++){const s=SUBWAY[i];if(dist2(s.x,s.y,player.x,player.y)>30*30)continue;subCool=3;
     if(stars()>=3){note('Cops are watching the stations. Lose some stars first.');return;}
-    const opts=SUBWAY.filter(o=>o!==s).slice(0,4).map(o=>[o.n.toUpperCase(),()=>subwayGo(o)]);
-    say([['Subway','Take the train from '+s.n+' for $5? Pick a stop.']],null,opts.concat([['STAY',()=>{},'no']]));return;}}
-function subwayGo(o){if(money<5){note('You need $5');return;}addMoney(-5);fadeIn=1;player.x=o.x;player.y=o.y+30;player.jz=0;player.jv=0;
-  if(stars()>0){seenT=99;lastSeenX=player.x+rr(-2000,2000);lastSeenY=player.y+rr(-2000,2000);}
-  sfx('door');showBig(o.n.toUpperCase(),'Subway','#7dff8a',1.8);subCool=4;}
-function transitTick(dt){updateTrain(dt);updateSubway(dt);}
+    if(money<5){note('The subway costs $5');return;}addMoney(-5);enterHall(i,false);
+    if(stars()>0){seenT=99;lastSeenX=s.x;lastSeenY=s.y;}return;}}
+function enterHall(i,arrived){SUB={from:i};fadeIn=1;player.x=HX1-T*5.4;player.y=HY0+T*2;player.jz=HPL;player.jv=0;player.a=player.body=PI;
+  showBig(SUBWAY[i].n.toUpperCase()+' STATION',arrived?'Take the stairs up to the street':'Wait for the train on the platform','#7dff8a',2.2);}
+function subBoard(){if(!SUB||utrain.wait<0.4||player.y<HY0+T*2.2||Math.abs(player.x-(HX0+HX1)/2)>200)return false;
+  const opts=SUBWAY.map((o,i)=>[o,i]).filter(([o,i])=>i!==SUB.from).slice(0,5).map(([o,i])=>[o.n.toUpperCase(),()=>{fadeIn=1;sfx('door');note('Riding to '+o.n+'...');utrain.wait=0.01;setTimeout(()=>{enterHall(i,true);utrain.x=(HX0+HX1)/2+utrain.len;utrain.wait=0.01;},900);}]);
+  say([['Subway','Where to?']],null,opts.concat([['STAY',()=>{},'no']]));return true;}
+function transitTick(dt){updateTrain(dt);updateUtrain(dt);updateSubway(dt);}
 
 // ================= CAMERA =================
 const cam={x:0,y:0,zoom:1.4,yaw:-PI/2,h:40,dist:90};
@@ -2193,7 +2298,7 @@ function update(dt){
       const m=Math.abs(fwd),sp=fwd<0?115:168,mx=Math.cos(player.body)*fwd,my=Math.sin(player.body)*fwd;
       player.vx=lerp(player.vx,mx*sp,Math.min(1,dt*14));player.vy=lerp(player.vy,my*sp,Math.min(1,dt*14));
       player.x+=player.vx*dt;player.y+=player.vy*dt;
-      {const[fl,onCar]=footFloor(player.x,player.y);
+      {const[fl,onCar]=footFloor(player.x,player.y,player.jz);
         if(onCar&&player.jz>=fl-1.5&&player.jv<=0){player.x+=onCar.vx*dt;player.y+=onCar.vy*dt;}
         const grounded=player.jz<=fl+0.6&&player.jv<=0;
         if((keys.Space||tbtn.brake.on)&&grounded&&!player.jumpHeld){player.jv=180;player.jz=Math.max(player.jz,fl)+0.01;sfx('door',0.4);}
@@ -2488,7 +2593,7 @@ function update(dt){
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
     for(let s2=10;s2<=dist;s2+=6)if(solidPx(player.x-ca*s2,player.y-sa*s2)){dd=Math.max(24,s2-10);break;}
     cam.dist=lerp(cam.dist,dd,Math.min(1,dt*(dd<cam.dist?16:2.5)));cam.h=lerp(cam.h,hgt,Math.min(1,dt*3));
-    cam.x=player.x-ca*cam.dist;cam.y=player.y-sa*cam.dist;{const gz=GH(player.x,player.y)+(player.riding?EL_H+6:player.car?(player.car.az||0)*0.85:(player.jz||0)*0.4);cam.gz=cam.gz==null?gz:lerp(cam.gz,gz,Math.min(1,dt*(player.car&&player.car.air>0?9:5)));}}
+    cam.x=player.x-ca*cam.dist;cam.y=player.y-sa*cam.dist;{const gz=GH(player.x,player.y)+(player.riding?EL_H+6:player.car?(player.car.az||0)*0.85:(player.jz||0)>18?player.jz-6:(player.jz||0)*0.4);cam.gz=cam.gz==null?gz:lerp(cam.gz,gz,Math.min(1,dt*(player.car&&player.car.air>0?9:5)));}}
   updateAudio();
 }
 let starFlash=0,sprayCool=0,curZone=-2,zoneBanner=null,radioBanner=null;
@@ -2576,6 +2681,8 @@ for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){
   }
   HMAP[k]=h;
 }
+// the subway hall is flat concrete
+for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-HM+i*HS,y=-HM+j*HS;if(x<HX0-48||x>HX1+48||y<HY0-48||y>HY1+48)continue;HMAP[j*HN+i]=0;}
 // the river surface sits at one level; bridge decks rise from shore to shore (the big one arches high)
 const RIVL=-12;
 for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-HM+i*HS,y=-HM+j*HS;if(x<RIVX0*T+12||x>RIVX1*T-12||y<0||y>WPX)continue;HMAP[j*HN+i]=RIVL;}
@@ -2979,7 +3086,7 @@ function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return
     const cx2=c.x-ca*hl*0.12,cy2=c.y-sa*hl*0.12;
     obox(cx2,cy2,a,hl*(low?0.4:0.48),hw*0.84,bz,cz,c.wreck?[20,20,20]:GLASS,roof,fg);
     if(!c.wreck){
-      if(t.police){const on=(c.ai&&c.ai.mode==='chase')||(c.driver==='player'&&heat>0),ph=Math.floor(game.t*8)%2;
+      if(t.police){const on=(c.ai&&(c.ai.mode==='chase'||c.ai.pursuit))||(c.driver==='player'&&heat>0),ph=Math.floor(game.t*8)%2;
         obox(cx2+(-sa)*hw*0.4,cy2+ca*hw*0.4,a,3,hw*0.38,cz,cz+2.5,on&&ph?[255,40,40]:[120,20,20],null,fg);
         obox(cx2-(-sa)*hw*0.4,cy2-ca*hw*0.4,a,3,hw*0.38,cz,cz+2.5,on&&!ph?[40,110,255]:[20,40,120],null,fg);
         if(on&&proj(cx2,cy2,cz+3)){glow(PX-hw*0.4*PK,PY,4*PK,'#ff2020',ph?0.9:0.25);glow(PX+hw*0.4*PK,PY,4*PK,'#2a6bff',ph?0.25:0.9);}}
@@ -3035,9 +3142,17 @@ function drawProp3(o,fg){
       for(const s of[-6,6])obox(o.x-Math.sin(a)*s,o.y+Math.cos(a)*s,a,20.5,0.8,EL_H,EL_H+1.6,[150,150,156],null,fg);return;
     case 'elcorner':obox(o.x,o.y,0,16,16,EL_H-6,EL_H,[86,74,64],[70,62,56],fg);return;
     case 'elpillar':obox(o.x,o.y,a,3,3,0,EL_H-8,[70,82,74],null,fg);obox(o.x,o.y,a,4,18,EL_H-12,EL_H-8,[64,74,66],null,fg);return;
-    case 'elplat':obox(o.x,o.y,a,62,12,EL_H-4,EL_H,[150,146,138],[170,166,156],fg);obox(o.x-Math.sin(a)*11,o.y+Math.cos(a)*11,a,62,1,EL_H,EL_H+10,[90,96,104],null,fg);
-      obox(o.x,o.y,a,30,8,EL_H+18,EL_H+21,[60,66,92],null,fg);for(const s of[-26,26])obox(o.x+Math.cos(a)*s,o.y+Math.sin(a)*s,a,1.5,1.5,EL_H,EL_H+18,[70,76,84],null,fg);return;
-    case 'elstair':for(let i=0;i<6;i++){const k=i/6;obox(o.x-Math.sin(a)*(-8+k*30),o.y+Math.cos(a)*(-8+k*30),a,7,4,0,(i+1)*(EL_H/6),[96,92,86],[120,116,108],fg);}return;
+    case 'elplat':{const ca=Math.cos(a),sa=Math.sin(a);obox(o.x,o.y,a,62,32,EL_H-5,EL_H,[150,146,138],[170,166,156],fg);obox(o.x-sa*31,o.y+ca*31,a,62,1,EL_H,EL_H+10,[90,96,104],null,fg);
+      obox(o.x-sa*4,o.y+ca*4,a,40,18,EL_H+26,EL_H+29,[60,66,92],[70,76,104],fg);for(const s2 of[-34,34])obox(o.x+ca*s2-sa*4,o.y+sa*s2+ca*4,a,1.5,1.5,EL_H,EL_H+26,[70,76,84],null,fg);
+      obox(o.x+sa*20,o.y-ca*20,a,62,1,EL_H,EL_H+0.4,[230,200,40],null,fg);return;}
+    case 'elstair':{const ca=Math.cos(a),sa=Math.sin(a);for(let i=0;i<8;i++){const f=-60+(i+.5)*15;obox(o.x+ca*f,o.y+sa*f,a,7.5,12,0,(i+1)*EL_H/8,[110,104,96],[134,128,118],fg);}
+      for(const s2 of[-1,1])obox(o.x-sa*s2*12,o.y+ca*s2*12,a,60,0.8,EL_H*0.5,EL_H*0.5+12,[70,76,84],null,fg);return;}
+    case 'hwall':obox(o.x,o.y,0,o.hl,o.hw,0,66,[176,184,176],[120,120,120],fg);obox(o.x,o.y,0,o.hl+0.2,o.hw+0.2,20,24,[40,120,70],null,fg);return;
+    case 'hplat':obox(o.x,o.y,0,o.hl,o.hw,0,HPL,[150,150,146],[178,176,170],fg);obox(o.x,o.y+o.hw-2,0,o.hl,2,HPL,HPL+0.3,[230,200,40],null,fg);return;
+    case 'hrail':obox(o.x,o.y,0,o.hl,0.9,0,1.4,[150,150,156],null,fg);return;
+    case 'hlight':obox(o.x,o.y,0,18,2,62,64,[255,250,220],null,fg,0,0,true);return;
+    case 'hsign':sign3(o.x,o.y,40,SUB?SUBWAY[SUB.from].n.toUpperCase():'SUBWAY','#1d7a3a','#ffffff',8,fg);return;
+    case 'hstair':for(let i=0;i<8;i++)obox(o.x+i*8-28,o.y,0,4,T*0.9,HPL,HPL+(i+1)*7,[110,104,96],[134,128,118],fg);sign3(o.x+30,o.y,72,'EXIT ↑','#1d7a3a','#ffffff',9,fg);return;
     case 'subway':{const ca=Math.cos(a),sa=Math.sin(a);obox(o.x,o.y,a,10,7,0,1,[30,32,34],[24,26,28],fg);for(const s of[-1,1])obox(o.x-sa*s*7,o.y+ca*s*7,a,10,0.6,0,7,[40,110,60],null,fg);
       for(const s of[-1,1]){obox(o.x+ca*10+(-sa*s*7),o.y+sa*10+(ca*s*7),0,0.8,0.8,0,15,[40,110,60],null,fg);obox(o.x+ca*10+(-sa*s*7),o.y+sa*10+(ca*s*7),0,1.8,1.8,15,18.5,[120,230,140],null,fg,0,0,true);}return;}
     case 'pier':{const d=ZOFF;ZOFF=0;obox(o.x,o.y,0,9,58,RIVL,d-2,[150,144,134],null,fg);ZOFF=d;return;}
@@ -3209,7 +3324,7 @@ function render(){
   let top=mixA([70,128,206],[92,64,128],warm),bot=mixA([196,212,230],[255,150,96],warm);
   top=mixA(top,[8,10,28],night);bot=mixA(bot,[36,40,78],night);
   if(rain>0.02){top=mixA(top,mixA([92,98,110],[16,18,26],night),rain*0.75);bot=mixA(bot,mixA([150,156,164],[40,44,56],night),rain*0.75);}
-  FOGC=bot;SKYT=top;
+  FOGC=bot;SKYT=top;if(inHall(cam.x,cam.y)){FOGC=[18,18,22];SKYT=[12,12,14];top=[12,12,14];bot=[18,18,22];}
   AMB=mixA([1,1,1],[0.24,0.28,0.46],night);if(warm>0)AMB=[AMB[0],AMB[1]*(1-warm*0.1),AMB[2]*(1-warm*0.2)];
   if(lightning>0)AMB=AMB.map(v=>v+lightning*0.7);
   LIGHTK=clamp((darkness-0.12)/0.45,0,1);
@@ -3253,6 +3368,7 @@ function worldPass(top,bot,lightLvl,warm){
   // ---- flat things on the ground (drawn before anything stands on them) ----
   const R0=FOG1+60;
   const vis=(x,y,rad)=>{const dx=x-CX,dy=y-CY,f=dx*CC+dy*CS;if(f<-rad||f>R0)return false;const r=-dx*CS+dy*CC;return Math.abs(r)<=(f+rad)*HALF+rad*2;};
+  if(inHall(CX,CY)){ZOFF=0;quad(HX0,HY0,66,HX1,HY0,66,HX1,HY1,66,HX0,HY1,66,'rgb(26,28,30)');}
   {const sl=[];for(const s of DECKS){if(!vis(s.x,s.y,70))continue;sl.push([(s.x-CX)*CC+(s.y-CY)*CS,s]);}for(const q of PIERS){if(!vis(q.x,q.y,70))continue;sl.push([(q.x-CX)*CC+(q.y-CY)*CS+60,{pier:1,x:q.x,y:q.y}]);}sl.sort((a,b)=>b[0]-a[0]);
    for(const[f,s]of sl){if(s.pier){const d=GH(s.x,s.y);ZOFF=0;obox(s.x,s.y,0,9,58,RIVL,d-8,[150,144,134],null,fogAt(f-60));continue;}const fg=fogAt(f),xa=s.x-16.5,xb=s.x+16.5,ya=s.y-64,yb=s.y+64,da=GH(xa,s.y),db=GH(xb,s.y),th=s.big?14:7;ZOFF=0;
      // only the road surface and the outer edge facing the camera: the ends sit below the road and never show
@@ -3271,7 +3387,7 @@ function worldPass(top,bot,lightLvl,warm){
   if(ringing>=0&&!mission){const ph=phones[ringing];if(vis(ph.x,ph.y,40)){ZOFF=GH(ph.x,ph.y);const f=(game.t*1.2)%1;ring3(ph.x,ph.y,10+f*30,1,`rgba(255,214,0,${1-f})`,1.5);}}
   // ---- buildings, sorted far to near ----
   const vb=[];
-  forCells(cl=>{for(const b of cl.b){
+  if(!inHall(CX,CY))forCells(cl=>{for(const b of cl.b){
     const x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;
     let fmin=1e9,fmax=-1e9;
     for(let i=0;i<4;i++){const f=((i&1?x1:x0)-CX)*CC+((i&2?y1:y0)-CY)*CS;if(f<fmin)fmin=f;if(f>fmax)fmax=f;}
@@ -3285,7 +3401,8 @@ function worldPass(top,bot,lightLvl,warm){
   vb.sort(bldOrder);
   // ---- everything that stands up: slotted between buildings so walls hide what's behind them ----
   ITEMS.length=0;
-  const add=(kind,o,x,y,rad,f,hgt)=>{const dx=x-CX,dy=y-CY;if(f==null)f=dx*CC+dy*CS;if(f<-rad||f>R0)return;if(f<34&&(kind===2||kind===3||kind===5||kind===13||kind===15))return;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+rad)*HALF+rad*2)return;
+  const HALLV=inHall(CX,CY);
+  const add=(kind,o,x,y,rad,f,hgt)=>{if(HALLV&&!inHall(x,y))return;const dx=x-CX,dy=y-CY;if(f==null)f=dx*CC+dy*CS;if(f<-rad||f>R0)return;if(f<34&&(kind===2||kind===3||kind===5||kind===13||kind===15))return;const r=-dx*CS+dy*CC;if(Math.abs(r)>(f+rad)*HALF+rad*2)return;
     const fc=Math.max(f,NEAR),k=FOC/fc,gz=GH(x,y),sx=HW+r*k,sw=rad*k,yb=HOR+(CZ-gz)*k,yt=HOR+(CZ-gz-(hgt||22))*k,ym=(yb+yt)/2;
     let slot=0;
     for(let i=vb.length-1;i>=0;i--){const b=vb[i];
@@ -3298,6 +3415,7 @@ function worldPass(top,bot,lightLvl,warm){
   if(MIRROR||MENUVIEW){}else if(player.car)add(14,player.car,player.car.x,player.car.y,Math.max(player.car.t.L,player.car.t.Wd)/2+4,null,30);
   else if(!player.riding)add(14,player,player.x,player.y,6,null,26+(player.jz||0));
   for(let i=0;i<train.cars;i++){const p=trainCar(i);add(22,{x:p.x,y:p.y,a:p.a,i},p.x,p.y,50,null,EL_H+30);}
+  if(inHall(CX,CY)){for(const o of SUBHALL)add(13,o,o.x,o.y,o.rad,null,o.ht);for(let i=0;i<utrain.cars;i++){const p=utrainCar(i);add(22,{x:p.x,y:p.y,a:0,i,z:0},p.x,p.y,50,null,30);}}
   for(const p of peds){if(p.gone)continue;add(1,p,p.x,p.y,6);}
   forCells(cl=>{for(const[k,o]of cl.s){switch(k){
     case 2:add(2,o,o.x,o.y,o.r+4,null,15+o.r*2+(o.sp==='palm'?30:0));break;case 3:add(3,o,o.x,o.y,5,null,63);break;
@@ -3362,7 +3480,7 @@ function drawItem(it){let cl=false;{const o=it.o,ox=it.kind===9?o.b.x:o.x,oy=it.
 function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o.x,oy=it.kind===9?o.b.y:o.y;ZOFF=GH(ox,oy);}
   switch(it.kind){
     case 0:drawCar3(o,fg);if(!MIRROR&&proj(o.x,o.y,0)){const k=PK,w=Math.max(o.t.L,o.t.Wd)*k*0.75;o._b=[PX-w,PY-24*k,PX+w,PY+4*k];o._f=PF;o._fr=frameNo;}break;
-    case 1:drawPed3(o,false,fg);break;
+    case 1:drawPed3(o,false,fg);if(rain>0.3&&o.umb&&!o.cop&&o.gang==null&&o.state!=='flee'){ZOFF=GH(o.x,o.y);obox(o.x,o.y,0,0.5,0.5,14,30,[40,40,40],null,fg);obox(o.x,o.y,0.6,9,9,30,32,rgbOf(o.col),rgbOf(o.col),fg);}if(o.onPhone>0){ZOFF=GH(o.x,o.y);obox(o.x+Math.cos(o.a+1.2)*4,o.y+Math.sin(o.a+1.2)*4,o.a,1,0.6,21,24,[20,20,20],null,fg);}break;
     case 2:drawTree3(o,fg);break;
     case 3:drawLamp3(o,fg);break;
     case 4:drawPickup3(o,fg);break;
@@ -3374,7 +3492,7 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
     case 10:sign3(o.x,o.y,46,'SPRAY $500','#11704a','#f5f1e2',10,fg);break;
     case 11:sign3(o.x,o.y,46,'CAR CRUSHER','#ffc21a','#0d0e16',10,fg);break;
     case 13:drawProp3(o,fg);break;
-    case 22:{const a=o.a,lit2=LIGHTK>0.2,ca=Math.cos(a),sa=Math.sin(a);obox(o.x,o.y,a,44,12,EL_H+3,EL_H+26,[178,182,190],[146,150,156],fg);
+    case 22:{const a=o.a,lit2=LIGHTK>0.2||o.z===0,ca=Math.cos(a),sa=Math.sin(a),EL_H=o.z!=null?o.z:EL_H0;obox(o.x,o.y,a,44,12,EL_H+3,EL_H+26,[178,182,190],[146,150,156],fg);
       obox(o.x,o.y,a,42,12.4,EL_H+13,EL_H+20,lit2?[255,228,160]:[58,68,88],null,fg,0,0,lit2);obox(o.x,o.y,a,44.3,12.5,EL_H+7,EL_H+9,[170,30,36],null,fg);
       obox(o.x,o.y,a,40,8,EL_H+26,EL_H+28,[120,124,130],null,fg);if(o.i===0)obox(o.x+ca*44,o.y+sa*44,a,1,6,EL_H+14,EL_H+18,lit2?[255,250,220]:[200,200,190],null,fg,0,0,lit2);break;}
     case 20:sign3(o.x,o.y,o.h,o.text,o.bg,o.fg,9,fg);break;
@@ -3429,7 +3547,7 @@ function drawHUD(){
   // health & weapon
   const hy=100*sc+(moneyPop?14*sc:0),bw=130*sc;
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw,hy,bw,10*sc);
-  ctx.fillStyle=player.hp>35?'#ff4d5e':(Math.floor(game.t*6)%2?'#ff4d5e':'#7a0010');ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.hp/100,10*sc-4);
+  ctx.fillStyle=player.hp>35?'#ff4d5e':(Math.floor(game.t*6)%2?'#ff4d5e':'#7a0010');ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.hp/100,10*sc-4);if(player.armor>0){ctx.fillStyle='#4da3ff';ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.armor/100,3*sc);}
   if(player.car){const c=player.car;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw,hy+14*sc,bw,7*sc);ctx.fillStyle='#ffb02e';ctx.fillRect(mx-bw+2,hy+14*sc+2,(bw-4)*clamp(c.hp/c.t.hp,0,1),7*sc-4);
     hudText(c.t.name.toUpperCase()+'  '+Math.round(hyp(c.vx,c.vy)*0.22)+' MPH  G'+carGear(c),mx,hy+36*sc,Math.round(13*sc),'#ddd','right');
     const w=WEAPONS[player.w];if(w.kind==='b'||w.kind==='f')hudText(w.name.toUpperCase()+(player.ammo[player.w]===Infinity?'':'  '+player.ammo[player.w]),mx,hy+54*sc,Math.round(12*sc),'#aaa','right');}
