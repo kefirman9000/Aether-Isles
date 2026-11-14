@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.5.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.5.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.5.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.5.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1314,7 +1314,7 @@ function updateBullets(dt){
           if(b.kind==='m'){b.life=0;break outer;}
           if(!(c.up&&c.up.bp))damageCar(c,b.cdmg,b.own==='player'?'player':null);
           if(b.own==='player')hitMarks.push({x:b.x,y:b.y,t:0.12,kill:false});
-          if(b.own==='player'&&c.t.police&&c.driver)crime(0,1);
+          if(b.own==='player'&&c.t.police&&c.driver)crime(0,1);if(b.own==='player')for(const q of peds)if(!q.gone&&!q.cop&&dist2(q.x,q.y,b.x,b.y)<160*160&&R()<0.1)shout(q,'gun');
           if(b.kind==='f'){b.life=0;break outer;}
           for(let k=0;k<3;k++)puff(b.x,b.y,rr(-90,90),rr(-90,90),0.25,2,'#ffe08a','spark');
           if(nearPlayer(b.x,b.y,500))sfx('hit');
@@ -1505,7 +1505,7 @@ function tryEnterCar(){
     if(witness||wasCop)crime(0,1);
   }
   if(best.t.police)crime(best.t.army?1000:0,1);
-  if(!best.bought)STATS.stolen++;best.bought=true;
+  if(!best.bought){STATS.stolen++;carAlarm(best);}best.bought=true;
   player.car=best;best.driver='player';best.ai=null;best.traffic=false;best.lastBy='player';
   sfx('door');note(best.t.name+(hadDriver?' (jacked)':''));
   setStation(best.t.police?RADIO.length-1:Math.floor(R()*(RADIO.length-1)));
@@ -2207,7 +2207,7 @@ function streetEvents(dt){streetT-=dt;for(let i=EVENTS.length-1;i>=0;i--){const 
       end(e){e.crim.vip=false;e.crim.crim=false;if(e.crim.ai)e.crim.ai.cruise=180;for(const c of e.cops){c.vip=false;if(c.ai){c.ai.follow=null;c.ai.pursuit=false;c.ai.cruise=180;}}}});}
   else if(k==='mugging'){let v=null;for(const p of peds)if(!p.gone&&!p.cop&&p.gang==null&&p.state==='walk'&&!p.target&&dist2(p.x,p.y,player.x,player.y)<500*500&&dist2(p.x,p.y,player.x,player.y)>150*150){v=p;break;}if(!v)return;
     const th=makePed(v.x+20,v.y,false);th.col='#222';th.thief=true;th.target=true;th.state='flee';th.panic=30;th.fx=v.x;th.fy=v.y;v.state='flee';v.panic=3;v.fx=th.x;v.fy=th.y;
-    note('Stop, thief! Someone was just mugged');EVENTS.push({k,t:30,th,tick(e){if(e.th.gone&&!e.paid){e.paid=true;addMoney(150);note('You stopped the mugger: +$150');e.t=0;}},end(e){e.th.target=false;}});}
+    note('Stop, thief! Someone was just mugged');shout(v,'mug');EVENTS.push({k,t:30,th,tick(e){if(e.th.gone&&!e.paid){e.paid=true;addMoney(150);note('You stopped the mugger: +$150');e.t=0;}},end(e){e.th.target=false;}});}
   else if(k==='scuffle'){const z=zoneOf(player.x,player.y);const g1=z>=0?z:0,g2=rivalOf(g1);const a=R()*TAU,d=rr(220,380),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;if(!walkable(tileAt(Math.floor(x/T),Math.floor(y/T))))return;
     const A=[],B=[];for(let i=0;i<2;i++){const p=makePed(x+rr(-20,20),y+rr(-20,20),false);makeGang(p,g1);A.push(p);const q=makePed(x+rr(-20,20)+30,y+rr(-20,20),false);makeGang(q,g2);B.push(q);}
     for(const p of A.concat(B)){p.chat=12;p.chatW=(A.includes(p)?B:A)[0];}
@@ -2375,7 +2375,7 @@ function updateFireworks(dt){const night=darkness>0.45;
     if(f.life<=0){if(f.shell){for(let k=0;k<26;k++){const a=R()*TAU,e=rr(-1,1),s=rr(80,140);FW.push({x:f.x,y:f.y,z:f.z,vx:Math.cos(a)*s*Math.sqrt(1-e*e),vy:Math.sin(a)*s*Math.sqrt(1-e*e),vz:e*s,life:rr(1,1.6),col:f.col});}if(dist2(f.x,f.y,player.x,player.y)<2000*2000)sfx('boom',0.25);}FW.splice(i,1);}}
   if(FW.length>600)FW.splice(0,FW.length-600);}
 
-function extTick5(dt){extTick6(dt);extTick7(dt);extTick8(dt);updateRooms(dt);updateWeather(dt);updateResponders(dt);updateFireworks(dt);}
+function extTick5(dt){extTick6(dt);extTick7(dt);extTick8(dt);extTick9(dt);updateRooms(dt);updateWeather(dt);updateResponders(dt);updateFireworks(dt);}
 
 function raceAI(c,dt){const m=mission;if(!m||!m.opts.race||!c.race){c.driver=null;c.traffic=true;c.vip=false;return;}
   const r=m.opts.race,R2=c.race;if(m.cd>0||R2.done){driveCar(c,0,0,true,dt);return;}
@@ -2544,6 +2544,22 @@ let callT=30,MMZ=1;
 function updateCalls(dt){callT-=dt;if(callT<=0){callT=150;if(!mission&&stars()===0)for(const b of BOSSES)if(storyAvail(b.g)){radioMsg('PHONE: '+b.name+' has a job for you. Look for the ! on the map.');break;}}
   const sp=player.car?hyp(player.car.vx,player.car.vy):0;MMZ=lerp(MMZ,1+clamp((sp-150)/650,0,0.75),0.03);}
 function extTick8(dt){updateRetry();updateCalls(dt);}
+
+// ---------- people talk back: speech bubbles ----------
+const SHOUTS={bump:['Hey!','Watch it!','Ow!','Look where you\'re going!','Jerk!'],honk:['Alright, alright!','Relax!','I\'m walking here!','Easy!'],car:['Are you crazy?!','Learn to drive!','Maniac!'],mug:['Help! Thief!','Somebody stop him!'],gun:['He\'s got a gun!','Run!','Don\'t shoot!']};
+function shout(p,kind){if(!p||p.gone||p.cop||p.say&&p.say.t>0)return;if(dist2(p.x,p.y,player.x,player.y)>500*500)return;p.say={t:1.8,text:pick(SHOUTS[kind])};}
+let shoutT=0;
+function updateShouts(dt){shoutT-=dt;for(const p of peds)if(p.say&&p.say.t>0)p.say.t-=dt;
+  if(shoutT>0)return;shoutT=0.3;
+  // someone you walk into, someone who just jumped out of your way, people near gunfire
+  if(!player.car)for(const p of peds){if(p.gone||p.cop)continue;if(dist2(p.x,p.y,player.x,player.y)<16*16&&R()<0.5)shout(p,'bump');}
+  else{const c=player.car;if(hyp(c.vx,c.vy)>200)for(const p of peds)if(p.state==='flee'&&p.panic>1.5&&dist2(p.x,p.y,c.x,c.y)<120*120&&R()<0.15)shout(p,'car');}
+  if(hornT>0.3&&player.car)for(const p of peds)if(dist2(p.x,p.y,player.car.x,player.car.y)<150*150&&R()<0.2)shout(p,'honk');}
+// ---------- car alarms on parked cars ----------
+let alarm=null;
+function carAlarm(c){if(c.driver||c.t.boat||c.t.heli||R()>0.3)return;alarm={c,t:6};note('Car alarm!');for(const k of cars)if(k.driver==='cop'&&dist2(k.x,k.y,c.x,c.y)<500*500){crime(0,1);break;}}
+function updateAlarm(dt){if(!alarm)return;alarm.t-=dt;if(Math.floor(alarm.t*4)!==Math.floor((alarm.t+dt)*4))sfx('ring',0.25);if(alarm.t<=0||player.car!==alarm.c)alarm=null;}
+function extTick9(dt){updateShouts(dt);updateAlarm(dt);}
 
 window.__roomsReady=true;
 
@@ -3803,7 +3819,7 @@ function drawItem(it){let cl=false;{const o=it.o,ox=it.kind===9?o.b.x:o.x,oy=it.
 function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o.x,oy=it.kind===9?o.b.y:o.y;ZOFF=GH(ox,oy);}
   switch(it.kind){
     case 0:if(o.t.boat){const ti=((o.y|0)>>5)*W+((o.x|0)>>5);if(BRT[ti]&&CZ>GH(o.x,o.y))break;}drawCar3(o,fg);if(!MIRROR&&proj(o.x,o.y,0)){const k=PK,w=Math.max(o.t.L,o.t.Wd)*k*0.75;o._b=[PX-w,PY-24*k,PX+w,PY+4*k];o._f=PF;o._fr=frameNo;}break;
-    case 1:drawPed3(o,false,fg);if(rain>0.3&&o.umb&&!o.cop&&o.gang==null&&o.state!=='flee'){ZOFF=GH(o.x,o.y);obox(o.x,o.y,0,0.5,0.5,14,30,[40,40,40],null,fg);obox(o.x,o.y,0.6,9,9,30,32,rgbOf(o.col),rgbOf(o.col),fg);}if(o.onPhone>0){ZOFF=GH(o.x,o.y);obox(o.x+Math.cos(o.a+1.2)*4,o.y+Math.sin(o.a+1.2)*4,o.a,1,0.6,21,24,[20,20,20],null,fg);}break;
+    case 1:drawPed3(o,false,fg);if(o.say&&o.say.t>0)qSign(o.x,o.y,36,o.say.text,'#ffffff','#111111');if(rain>0.3&&o.umb&&!o.cop&&o.gang==null&&o.state!=='flee'){ZOFF=GH(o.x,o.y);obox(o.x,o.y,0,0.5,0.5,14,30,[40,40,40],null,fg);obox(o.x,o.y,0.6,9,9,30,32,rgbOf(o.col),rgbOf(o.col),fg);}if(o.onPhone>0){ZOFF=GH(o.x,o.y);obox(o.x+Math.cos(o.a+1.2)*4,o.y+Math.sin(o.a+1.2)*4,o.a,1,0.6,21,24,[20,20,20],null,fg);}break;
     case 2:drawTree3(o,fg);break;
     case 3:drawLamp3(o,fg);break;
     case 4:drawPickup3(o,fg);break;

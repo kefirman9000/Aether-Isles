@@ -60,6 +60,8 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Retry:** fail a story mission or race and you're offered a retry as soon as you're back on your feet.
 - **Baseball bat:** buy one at Ammu-Nation ($100) for close-up fights (Q to switch to it).
 - **More traffic:** city buses, stretch limos and Mr. Whippy ice cream vans join the traffic, and drivers slow down and let sirens through.
+- **People talk back:** speech bubbles when you bump into people, honk at them, nearly run them over or fire a gun nearby.
+- **Car alarms:** some parked cars go off when you take them, and a cop nearby will notice.
 - **Boss calls:** when a boss has new work, they phone you over the radio feed.
 - **Minimap zoom:** the minimap zooms out as you speed up so you can see further ahead.
 - **Helicopter:** two Sparrows sit on helipads. SPACE (or UP) climbs, SHIFT (or DOWN) descends, W/S and A/D fly. Tall buildings block you, so climb over them. The camera tilts down the higher you fly.
