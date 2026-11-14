@@ -11,24 +11,29 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 ## Controls
 | PC | Phone | Action |
 |---|---|---|
-| W / S | Left-thumb joystick | Walk forward and back · gas and brake/reverse. In a car, the phone joystick is point-to-drive: push where you want to go |
-| A / D | Left-thumb joystick | Turn on foot · steer in a car |
-| Right-drag | | Turn on foot |
+| W A S D | Left-thumb joystick | On foot: run the way you push, relative to the camera (GTA III style; tank controls are in Options) · in a car: gas, brake/reverse, steer. In a car, the phone joystick is point-to-drive: push where you want to go |
+| Hold right mouse | | Lock on to the nearest target (drag to switch). With nothing to lock on to, right-drag swings the camera round |
 | Mouse + left click | Drag the right side of the screen (or FIRE to auto-aim) | Aim and shoot. Works as a drive-by from inside a car, and fires the cannon in a tank |
 | F / E / Enter | CAR | Get in, get out, or jack a car |
 | Space | DRIFT / JUMP | Jump on foot · handbrake in a car |
 | C | | Hold to look behind |
 | V | | Rear-view mirror on/off |
-| Q / mouse wheel | GUN | Switch weapon |
+| Q / mouse wheel | GUN | Switch weapon (fists are always there) |
+| B | | Set off a car bomb |
 | R | RADIO | Change radio station |
 | P / Esc | II (top middle) | Pause |
 | M | | Mute |
 | SHIFT (on foot) | Push the stick all the way | Sprint |
 | 1-9 / arrows + Enter | Tap | Pick a dialog answer |
 
-**Controller:** left stick move/steer · RT gas · LT brake · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
+**Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **Plays more like GTA III (v4.13):** on foot you run the way you push, relative to the camera, and the camera swings freely (right-drag or right stick) before drifting back behind you. Hold right mouse (LT) to lock on: four arrowheads close in on the target and turn from green to red as it takes damage, and you can strafe while locked. Switch back to tank controls under Options → On-foot controls.
+- **GTA III-style HUD:** a weapon icon box with ammo, a clock, health and armor as numbers, `$00000000` money and the stars, all in the top right. The radar is round. Area and vehicle names come up big in the bottom right, mission names when a job starts, and WASTED, BUSTED and MISSION PASSED! fill the screen.
+- **Fists, grenades and car bombs:** fists are always there (Q). Ammu-Nation sells grenades, which blow up where they land. Spray shops will fit a remote car bomb: park it, walk off and press B (or Detonate on the phone).
+- **Loot drops:** people you take down drop cash, and cops and gang members sometimes drop shotgun or SMG ammo.
+- **Ride the El round the loop:** you stay on the train past each stop, which is announced, until you press F at a station.
 - **Roof ladders (v4.12):** fire escapes are gone. Lots of buildings now have a caged steel service ladder from the sidewalk to the roof. Walk into it and push forward to climb, pull back to go down, press SPACE to let go. From a roof, walk off the edge at the top of a ladder to climb down. Planks bridge some alleys so rooftops link up.
 - **The countryside:** drive out past the city edge onto the farmland in the east (dirt roads, jumps, hay bales, a windmill and farmhouses), up into the hills to the north and west, and down to the beaches. The world ends at the snowy peaks and the open sea.
 - **Gang wars:** stand in a rival gang's block and call **Start a gang war** on the phone. Hold out against three waves (your crew fights with you) and the block is yours, plus $2,000.
