@@ -1,4 +1,4 @@
 {
-  "version": "4.9.0",
-  "notes": "Fire escapes work both ways now (stairs beside the landings, railings), 16 rooftop stashes to find, and a camera that doesn't get stuck in walls up high."
+  "version": "4.9.1",
+  "notes": "Cars no longer bog down going uphill: driven cars only feel part of the slope, so they pull up hills nearly as well as on the flat."
 }

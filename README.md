@@ -29,6 +29,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **Hills (v4.9.1):** driven cars only feel part of a hill's pull, so they climb nearly as well as on the flat (and still run a bit faster downhill). Parked and coasting cars still roll freely.
 - **Fire escapes, both ways (v4.9):** the stairs run in a lane beside the landings like the real thing: step out onto the stairs to climb or descend, step back in to the landing. Railings stop you walking off the edge (jump to hop over them), and you stay on the steps going down instead of floating off.
 - **Rooftop stashes:** 16 duffel bags of cash sit on roofs around town that you can only reach by climbing. Collect them all for a bonus. They're tracked in Stats and saved with your game (garbage and taco job levels are now saved too).
 - **Camera up high:** on roofs and fire escapes the camera only pulls in for walls that are actually taller than it, so you get a proper view instead of the back of your head.

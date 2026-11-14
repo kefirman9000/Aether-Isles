@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.9.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.9.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -78,7 +78,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.9.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.9.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -2948,7 +2948,10 @@ function update(dt){
     }
     // integrate
     carRamps(c);carAir(c,dt);
-    if(!(c.air>0)&&!c.t.tank&&!c.t.boat&&!c.t.heli&&(c.driver||Math.abs(c.vx)+Math.abs(c.vy)>30)){const gx=GH(c.x+10,c.y)-GH(c.x-10,c.y),gy=GH(c.x,c.y+10)-GH(c.x,c.y-10);c.vx-=gx/20*560*dt;c.vy-=gy/20*560*dt;}
+    if(!(c.air>0)&&!c.t.tank&&!c.t.boat&&!c.t.heli&&(c.driver||Math.abs(c.vx)+Math.abs(c.vy)>30)){const gx=GH(c.x+10,c.y)-GH(c.x-10,c.y),gy=GH(c.x,c.y+10)-GH(c.x,c.y-10);
+      // hills: the GTA2-tuned engines are built for flat ground, so a driven car only feels part of the slope (it
+      // pulls up hills instead of bogging down, and still runs a little faster downhill); empty cars roll freely
+      const up=(gx*Math.cos(c.a)+gy*Math.sin(c.a))>0,k=c.driver?(up?0.3:0.6):1;c.vx-=gx/20*560*k*dt;c.vy-=gy/20*560*k*dt;}
     c.x+=c.vx*dt;c.y+=c.vy*dt;if(!c.driven){c.a+=c.va*dt;c.va*=Math.exp(-5*dt);}c.driven=false;
     carTiles(c);
     carCircles(c);
