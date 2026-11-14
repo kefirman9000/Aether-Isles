@@ -30,6 +30,11 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **Mission intro scenes (v4.15):** walking up to a boss for a story job fades to a letterboxed shot of the two of you while they brief you, then fades back to play with the mission's name on screen, like GTA III's cutscenes.
+- **The Docks:** the river bank below Old Town is now a container port: warehouses, stacks of shipping containers you can climb, yellow gantry cranes with booms reaching out over the riverside drive, and a cargo ship tied up alongside.
+- **Every neighbourhood has a name and a feel:** Old Town (cobbled streets), North Point, Harbor View, Uptown, Midtown, Millionaire's Row, the Lotus Quarter and Lotus Bay (red lanterns strung across the streets, glowing at night), Downtown, Eastside, Southside and the Docks. The name comes up as you drive in.
+- **A third avenue:** a new diagonal boulevard cuts across the south-east of the city, with its own traffic, so there are more ways across town than the grid.
+- **Old saves:** the new layout moves the hidden packages, roof stashes and gang tags, so that progress starts over in old saves. Money, story, safehouses and stats carry over.
 - **People fight back (v4.14):** some people you punch swing back, and about one driver in three you jack comes after you with their fists. Sit still in their car and they'll drag you out and drive off in it, like in GTA III.
 - **Packages pay off at home:** every 10 hidden packages puts a weapon pickup outside each safehouse you own (SMG, then grenades, shotgun and rockets), and finding all of them adds body armor. They come back a minute after you take them.
 - **Mouse look (v4.13.1):** click the game to capture the mouse, then move it to turn the camera and aim with a crosshair, like GTA III on PC. Esc lets go of the mouse and pauses. With keys, a controller or touch, the camera now swings back behind you sooner, including when you run sideways.

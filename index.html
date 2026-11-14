@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.14.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.15.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -81,7 +81,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.14.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.15.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -96,6 +96,8 @@ let R=Math.random;
 let CITY_SEED=0;try{CITY_SEED=+(localStorage.getItem('gc_city_seed')||0)}catch(_){}
 if(!CITY_SEED){CITY_SEED=((Math.random()*2**31)|0)||7;try{localStorage.setItem('gc_city_seed',String(CITY_SEED))}catch(_){}}
 R=(a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296})(CITY_SEED);
+// v4.15 reshaped the city (the docks, a third avenue), so collectibles saved against an older layout no longer line up
+const SAVE_SEED=CITY_SEED+'/L2';
 const rr=(a,b)=>a+R()*(b-a);
 const pick=a=>a[Math.floor(R()*a.length)];
 const angDiff=(a,b)=>{let d=(a-b)%TAU;if(d>PI)d-=TAU;if(d<-PI)d+=TAU;return d};
@@ -150,7 +152,7 @@ const bridgeRow=ty=>ty%P<4&&BRIDGES.includes(Math.floor(ty/P));
 const BRT=new Uint8Array(W*W),DECKS=[],PIERS=[];
 // ---- diagonal avenues (a Broadway through Times Square, and one across Westside Island) ----
 const DIAGT=new Uint8Array(W*W);
-const DIAGS=[[114,30,218,238],[2,240,86,72]].map(([ax,ay,bx,by])=>{ax*=T;ay*=T;bx*=T;by*=T;const L=hyp(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L;return{ax,ay,bx,by,L,ux,uy,nx:-uy,ny:ux};});
+const DIAGS=[[114,30,218,238],[2,240,86,72],[120,236,250,150]].map(([ax,ay,bx,by])=>{ax*=T;ay*=T;bx*=T;by*=T;const L=hyp(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L;return{ax,ay,bx,by,L,ux,uy,nx:-uy,ny:ux};});
 const DHW=56,DSW=84;
 function diagRel(d,x,y){const px=x-d.ax,py=y-d.ay;return[px*d.ux+py*d.uy,px*d.nx+py*d.ny];} // [along, signed side]
 function diagDist(d,x,y){const[t,sd]=diagRel(d,x,y);if(t<0)return hyp(x-d.ax,y-d.ay);if(t>d.L)return hyp(x-d.bx,y-d.by);return Math.abs(sd);}
@@ -243,7 +245,13 @@ function districtAt(x,y){const tx=Math.floor(x/T),ty=Math.floor(y/T),bx=Math.flo
   if(Math.abs(tx-(TSQ.ix*P+2))<16&&Math.abs(ty-(TSQ.iy*P+2))<16)return 'TIMES SQUARE';
   if(by===NB-1&&my>=4)return 'SOUTH BEACH';
   if(BLOCKK[by*NB+bx]==='construct'&&mx>=4&&my>=4)return 'CONSTRUCTION SITE';
-  return null;}
+  if(BLOCKK[by*NB+bx]==='docks'||(bx===8&&(DOCKB.has('8,'+by))))return 'THE DOCKS';
+  if(tx<0||ty<0||tx>=W||ty>=W)return null;
+  const z=zoneOf(x,y);
+  if(z===0)return by<3?'NORTH POINT':bx<=2?'HARBOR VIEW':'OLD TOWN';
+  if(z===1)return bx>=15&&by<4?'MILLIONAIRE\'S ROW':by>=6?'MIDTOWN':'UPTOWN';
+  if(z===2)return by>=15?'LOTUS BAY':'LOTUS QUARTER';
+  return bx>=15?'EASTSIDE':by>=15?'SOUTHSIDE':'DOWNTOWN';}
 const BLOCKK=[];let STADIUM=null;
 const props=[];
 const PAL={
@@ -348,6 +356,33 @@ function constructBlock(x0,y0){
   for(let i=0;i<4;i++)props.push({x:(x0+rr(1,7))*T,y:(y0+rr(1,7))*T,k:'cone'});
   const ax=R()<0.5;addRamp((x0+(ax?2.6:4))*T,(y0+(ax?4:2.6))*T,ax?0:PI/2,'dirt');addRamp((x0+(ax?5.4:4))*T,(y0+(ax?4:5.4))*T,ax?PI:-PI/2,'dirt');
 }
+// ---- the docks: the east bank of the river below Old Town turns into a container port (GTA III's Portland Harbor
+// was the inspiration): warehouses, stacked shipping containers you can climb, gantry cranes reaching over the
+// riverside drive, and a cargo ship tied up alongside. Laid out from a hash, not R(), so it's the same in every city.
+const DOCKB=new Set(['8,5','8,6','8,7','8,10','8,11','8,12']),CRANES=[];
+const CONTC=['#b8352b','#2f5f9e','#d08a1e','#2e7d4a','#8a8f96','#7a3b8a','#c4b23a','#1f6f7a','#a85a2a','#d8d4c8'];
+function docksBlock(x0,y0,bx,by){const h0=hash(bx*31+7,by*17+3);
+  for(let y=-1;y<9;y++)for(let x=-1;x<9;x++){const tx=x0+x,ty=y0+y;if(x<0||y<0||x>7||y>7){if(map[ty*W+tx]===WALK)PARKT[ty*W+tx]=0;continue;}setT(tx,ty,LOT);PARKT[ty*W+tx]=9;}
+  const flip=(h0&1)===1; // warehouse at the north or south end
+  const wy=flip?y0+5:y0;
+  for(let y=0;y<3;y++)for(let x=4;x<8;x++)setT(x0+x,wy+y,BLD);
+  addBuilding(x0+4,wy,4,3,1.3,['#6b6f72','#7a6a52','#5a6a6a','#866a4a'][(h0>>>3)&3],'ware',{st:'ware',ws:34,wf:.18,wh:.25,dock:true});
+  // container stacks: 4x1 rows and a 1x4 column, 1 to 3 high, with a lane round them for forklifts (and you)
+  const cy=flip?y0:y0+4,stacks=[[1,cy,4,1],[1,cy+2,4,1],[6,flip?y0:y0+4,1,4]];
+  stacks.forEach(([cx,cy2,w,h],i)=>{const hh=hash(h0,i+1),n=1+hh%3;const cols=[];for(let k=0;k<n;k++)cols.push(CONTC[(hh>>>(4+k*4))%CONTC.length]);
+    const X=cx<4?x0+cx:x0+cx;for(let y=0;y<h;y++)for(let x=0;x<w;x++)setT(X+x,cy2+y,BLD);
+    addBuilding(X,cy2,w,h,0.66*n,cols[0],'cont',{st:'cont',cols,lv:n});});
+  // a gantry crane on the riverside edge of the block: two legs, a beam on top and a boom out over the river
+  const ly0=y0+1,ly1=y0+6;for(const ly of[ly0,ly1]){setT(x0,ly,BLD);addBuilding(x0,ly,1,1,4.2,'#e0b020','crane',{st:'cont',leg:true,cols:['#e0b020']});}
+  const cx=(x0+.5)*T,ya=(ly0+.5)*T,yb=(ly1+.5)*T,top=4.2*40,ym=(ya+yb)/2,bxe=(RIVX1-5)*T;CRANES.push({x:cx,y:ym});
+  props.push({x:cx,y:ym,k:'gbeam',ya,yb,top,rad:(yb-ya)/2+12,ht:top+14});
+  for(let x=cx;x>bxe;x-=64){const x1=Math.max(bxe,x-64);props.push({x:(x+x1)/2,y:ym,k:'gboom',x0:x1,x1:x,top,rad:36,ht:top});}
+  props.push({x:bxe+70+(h0>>>5)%90,y:ym,k:'ghook',top,rad:30,ht:top});}
+// a cargo ship moored against the docks (its tiles are solid, so boats and bullets don't pass through it)
+const SHIP={x:(RIVX1-2.5)*T,y:(9.5*P*T+5.5*P*T)/2,hl:15*T,hw:44};
+function shipDock(){const tx0=RIVX1-4,tx1=RIVX1-1,ty0=Math.floor((SHIP.y-SHIP.hl)/T),ty1=Math.floor((SHIP.y+SHIP.hl)/T);
+  for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<tx1;tx++)if(!bridgeRow(ty))map[ty*W+tx]=BLD;
+  props.push({x:SHIP.x,y:SHIP.y,k:'ship',rad:SHIP.hl+40,ht:150});}
 function genMap(){
   for(let y=0;y<W;y++)for(let x=0;x<W;x++){
     const mx=x%P,my=y%P;let t;
@@ -358,6 +393,7 @@ function genMap(){
   for(let by=0;by<NB;by++)for(let bx=0;bx<NB;bx++){
     const x0=bx*P+5,y0=by*P+5,z=zoneOf((bx*P+8)*T,(by*P+8)*T),edgeB=bx===0||by===0||bx===NB-1||by===NB-1;
     if(bx===RIVER_BX||bx===RIVER_BX+1){BLOCKK[by*NB+bx]='river';continue;}
+    if(DOCKB.has(bx+','+by)){BLOCKK[by*NB+bx]='docks';docksBlock(x0,y0,bx,by);continue;}
     let kind=SPECIAL[bx+','+by];
     if(!kind&&bx===11&&by===16)kind='stadium';
     if(!kind&&by===NB-1)kind='beach';
@@ -400,6 +436,7 @@ function genMap(){
     }else subdivide(x0,y0,8,8,0,z);
   }
   for(let y=0;y<W;y++)for(let x=RIVX0;x<RIVX1;x++)if(!bridgeRow(y)){map[y*W+x]=WATER;RIV[y*W+x]=1;}
+  shipDock();
   fillCuts();
   for(const iy of BRIDGES){for(let y=iy*P;y<iy*P+4;y++)for(let x=RIVX0;x<RIVX1;x++)BRT[y*W+x]=1;for(let x=RIVX0*T+16;x<RIVX1*T;x+=32)DECKS.push({x,y:(iy*P+2)*T,big:iy===BIGB,dash:((x>>5)&1)===0});}
   diagAvenues();alleys();
@@ -440,6 +477,12 @@ function tlStopDist(c){
   const st=tlState(ix,iy,ew);if(st===0||st===3)return null;if(st===1&&dist<26)return null;return Math.max(0,dist);
 }
 genMap();
+// ---- Lotus Quarter: strings of red paper lanterns across the streets (hash-placed, no effect on the city's random stream) ----
+(function lanterns(){for(let by=9;by<NB;by++)for(let bx=0;bx<=5;bx++){const h=hash(bx*53+1,by*29+5);
+  // across the street on the block's west side (a north-south street) and its north side (an east-west street)
+  const sx=(bx*P+2)*T,sy=(by*P+9)*T,ex=(bx*P+9)*T,ey=(by*P+2)*T;
+  if((h&3)!==0&&map[Math.floor(sy/T)*W+bx*P+2]===ROAD&&!DIAGT[Math.floor(sy/T)*W+bx*P+2])props.push({x:sx,y:sy,k:'lanterns',a:0,L:3.4*T,rad:120,ht:96});
+  if((h&12)!==0&&by<NB&&map[(by*P+2)*W+bx*P+9]===ROAD&&!DIAGT[(by*P+2)*W+bx*P+9])props.push({x:ex,y:ey,k:'lanterns',a:PI/2,L:3.4*T,rad:120,ht:96});}})();
 // ---- lived-in streets: driveways with the family car, mailboxes, utility poles and wires in the suburbs,
 // food trucks and hot dog carts where people gather. This pass has its own random stream so the rest of the
 // city (and the hidden packages in old saves) comes out exactly as before.
@@ -2311,8 +2354,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.star
 
 // ---------- per-frame hook ----------
 function extTick(dt){extTick5(dt);transitTick(dt);extTick2(dt);extTick3(dt);extTick4(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
-function extSave(){return{gym:GYM,gold:GOLDGOT,tags:{seed:CITY_SEED,d:TAGS.map(t=>t.done?1:0)},runs:RUNBEST,secret:secretFound,crewup:CREWUP,roof:{seed:CITY_SEED,got:STASH.map(k=>k.got?1:0)},trash:trashLevel,taco:tacoLevel,story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
-function extLoad(e){if(!e)return;GYM=e.gym||0;for(const k in GOLDGOT)delete GOLDGOT[k];Object.assign(GOLDGOT,e.gold||{});applyGold();for(const t of TAGS)t.done=false;if(e.tags&&e.tags.seed===CITY_SEED)(e.tags.d||[]).forEach((d,i)=>{if(TAGS[i])TAGS[i].done=!!d;});for(const k in RUNBEST)delete RUNBEST[k];Object.assign(RUNBEST,e.runs||{});secretFound=!!e.secret;Object.assign(CREWUP,{guns:0,armor:0,slot:0,guard:0},e.crewup||{});for(const k of STASH)k.got=false;if(e.roof&&e.roof.seed===CITY_SEED)(e.roof.got||[]).forEach((g,i)=>{if(STASH[i])STASH[i].got=!!g;});trashLevel=e.trash||0;tacoLevel=e.taco||0;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
+function extSave(){return{gym:GYM,gold:GOLDGOT,tags:{seed:SAVE_SEED,d:TAGS.map(t=>t.done?1:0)},runs:RUNBEST,secret:secretFound,crewup:CREWUP,roof:{seed:SAVE_SEED,got:STASH.map(k=>k.got?1:0)},trash:trashLevel,taco:tacoLevel,story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
+function extLoad(e){if(!e)return;GYM=e.gym||0;for(const k in GOLDGOT)delete GOLDGOT[k];Object.assign(GOLDGOT,e.gold||{});applyGold();for(const t of TAGS)t.done=false;if(e.tags&&e.tags.seed===SAVE_SEED)(e.tags.d||[]).forEach((d,i)=>{if(TAGS[i])TAGS[i].done=!!d;});for(const k in RUNBEST)delete RUNBEST[k];Object.assign(RUNBEST,e.runs||{});secretFound=!!e.secret;Object.assign(CREWUP,{guns:0,armor:0,slot:0,guard:0},e.crewup||{});for(const k of STASH)k.got=false;if(e.roof&&e.roof.seed===SAVE_SEED)(e.roof.got||[]).forEach((g,i)=>{if(STASH[i])STASH[i].got=!!g;});trashLevel=e.trash||0;tacoLevel=e.taco||0;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
   for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});for(const k in EXPORTED)delete EXPORTED[k];Object.assign(EXPORTED,e.exp||{});pizzaLevel=e.pizza||0;player.armor=e.armor||0;for(const k in TURF)delete TURF[k];Object.assign(TURF,e.turf||{});stuntLevel=e.stunt||0;}
 
 // ---------- traffic on the diagonal avenues ----------
@@ -3983,6 +4026,7 @@ function renderGround(heads){
             if(h%11===0){const ex=u-((h>>4&15)+8),ey=v-((h>>8&15)+8);if(ex*ex*0.5+ey*ey*1.4<38){r-=13;g-=13;b-=12;}}
             if(h%13===0&&u>4&&u<28&&v>6&&v<22){r+=7;g+=7;b+=6;}
             if(h%29===0){const ex=u-16,ey=v-16,dd=ex*ex+ey*ey;if(dd<20&&dd>8){r=66;g=66;b=68;}}
+            if(ZT[ti]===1&&r<62&&BLOCKK[Math.floor(ty/P)*NB+Math.floor(tx/P)]!=='docks'){const cu=(u+((v>>2)&1)*4)&7;if((v&3)===0||cu===0){r-=8;g-=9;b-=9;}else{r+=9;g+=6;b+=2;}}
             if(ZT[ti]===1){r+=3;g+=1;}else if(ZT[ti]===0){r-=3;g-=3;b-=2;}
             if(rn>0.3&&((nz+u)&15)===0){r+=18*rn;g+=20*rn;b+=26*rn;}
             break;}
@@ -4002,7 +4046,8 @@ function renderGround(heads){
             if(t===4){r*=0.78;g*=0.8;b*=0.78;}
             if(pk){const n2=(((xi>>1)*7919)^((yi>>1)*104729))>>>0;if(n2%151===0){const fc=(n2>>9)%4;if(fc===0){r=236;g=236;b=228;}else if(fc===1){r=240;g=210;b=60;}else if(fc===2){r=230;g=120;b=170;}else{r=150;g=120;b=220;}}}
             break;}
-          case 5:if(PARKT[ti]===4){r=128+nz*3;g=102+nz*3;b=72+nz*2;if((u+((h>>3)&7))%13<2){r-=18;g-=16;b-=12;}if(((u*5+v*3+h)&47)===0){r=150;g=150;b=150;}}
+          case 5:if(PARKT[ti]===9){r=150+nz*2;g=148+nz*2;b=140+nz*2;if((u+v*3+h)%97===0){r-=22;g-=22;b-=20;}if(MXT[tx]===9&&u>=14&&u<17&&(v&15)<10||MXT[ty]===9&&v>=14&&v<17&&(u&15)<10){r=214;g=176;b=40;}}
+            else if(PARKT[ti]===4){r=128+nz*3;g=102+nz*3;b=72+nz*2;if((u+((h>>3)&7))%13<2){r-=18;g-=16;b-=12;}if(((u*5+v*3+h)&47)===0){r=150;g=150;b=150;}}
             else if(PARKT[ti]===3){if((u&15)===0||(v&15)===0){r=138;g=132;b=122;}else{r=168+nz;g=160+nz;b=148+nz;}}
             else if((tx&1)===0&&u<2&&(MXT[ty]===6||MXT[ty]===11)){r=138;g=138;b=130;}else{r=55+nz;g=56+nz;b=59+nz;}break;
           case 8:{r=38+nz*2;g=86+nz*2;b=116+nz*2;if(((u*3+v*5+gt)%29)===0){r+=55;g+=65;b+=60;}
@@ -4081,10 +4126,33 @@ function drawSky(top,bot,lightLvl,warm0){
   if(LIGHTK>0.05){L3.fillStyle='#ffd27a';for(let base=-off;base<LW;base+=FARW)for(const w of SKYW){const x=base+w[0];if(x<0||x>LW)continue;const k=skyW(x);if(k<0.3)continue;L3.globalAlpha=LIGHTK*0.75*k;L3.fillRect(R2(x),HOR-w[1],1,2);}L3.globalAlpha=1;}
 }
 
+// ---------- the docks: containers, crane legs and the ship ----------
+function drawCont(b,fg){const cx=b.x+b.w/2,cy=b.y+b.h/2;
+  if(b.leg){const top=b.hg*BH,c=rgbOf(b.cols[0]),dk=mixA(c,[0,0,0],0.35);obox(cx,cy,0,13,13,0,6,[110,110,112],[130,130,132],fg);
+    obox(cx,cy,0,7,7,6,top,c,dk,fg);for(let z=30;z<top-10;z+=34)obox(cx,cy,0,8,8,z,z+3,dk,dk,fg);return;}
+  const lh=0.66*BH,long=b.w>b.h;
+  for(let k=0;k<b.lv;k++){const c=rgbOf(b.cols[k]),inset=k%2?2:0.6;
+    obox(cx,cy,0,b.w/2-inset,b.h/2-inset,k*lh,(k+1)*lh-0.8,c,mixA(c,[255,255,255],0.14),fg);
+    // a darker band near the top of each box reads as the corrugated lip (only on faces the camera can see: rule 3)
+    NOTOP=true;obox(cx,cy,0,b.w/2-inset+0.2,b.h/2-inset+0.2,(k+1)*lh-4,(k+1)*lh-2.5,mixA(c,[0,0,0],0.3),null,fg);NOTOP=false;}}
+function drawShip(o,fg){const a=PI/2,hl=SHIP.hl,hw=SHIP.hw;ZOFF=0;
+  const parts=[];const P2=(x,y,ahl,ahw,z0,z1,side,top)=>parts.push({x,y,hl:ahl,hw:ahw,z0,z1,side,top});
+  // containers stacked on deck, two high, in rows along the hull
+  for(let i=0;i<7;i++){const y=o.y-hl+70+i*58;for(const sd of[-1,1]){const h=hash(i*3+sd+5,77),n=1+(h&1),c=rgbOf(CONTC[h%CONTC.length]),c2=rgbOf(CONTC[(h>>>5)%CONTC.length]);
+    P2(o.x+sd*20,y,18,26,34,34+0.66*BH,c,mixA(c,[255,255,255],0.12));if(n>1)P2(o.x+sd*20,y,18,26,34+0.66*BH,34+1.32*BH,c2,mixA(c2,[255,255,255],0.12));}}
+  // the bridge house at the stern, with its funnel
+  P2(o.x,o.y+hl-64,40,34,34,118,[232,232,226],[214,214,208]);P2(o.x,o.y+hl-80,12,12,118,150,[176,40,32],[30,30,30]);
+  // hull first (it's under everything), then deck items far to near
+  obox(o.x,o.y,a,hl,hw,-6,34,[44,40,46],[120,118,112],fg);NOTOP=true;obox(o.x,o.y,a,hl+0.3,hw+0.3,-6,4,[150,40,34],null,fg);obox(o.x,o.y,a,hl+0.3,hw+0.3,30,33,[220,220,214],null,fg);NOTOP=false;
+  obox(o.x,o.y-hl-12,a,12,hw*0.62,-6,34,[44,40,46],[120,118,112],fg); // the bow
+  parts.sort((p,q)=>hyp(q.x-CX,q.y-CY)-hyp(p.x-CX,p.y-CY));
+  for(const q of parts)obox(q.x,q.y,0,q.hw,q.hl,q.z0,q.z1,q.side,q.top,fg);
+  if(proj(o.x,o.y+hl-64,120))glow(PX,PY,4*PK,LIGHTK>0.2?'#ffe8a0':'#ffffff',0.25+0.6*LIGHTK);}
 // ---------- buildings ----------
 function drawBuilding(b,fg){
   ZOFF=b.base;const det=b.dn<650&&fg<0.75;
   if(b.st==='house'){drawHouse(b,fg,det);return;}
+  if(b.st==='cont'){drawCont(b,fg);return;}
   const x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h,top=b.hg*BH,above=CZ>top;
   if(!above)roofStuff(b,top,fg,det);
   walls(b,x0,y0,x1,y1,0,top,fg,det,true);
@@ -4475,6 +4543,17 @@ function drawProp3(o,fg){
     case 'tag':{const t=o.tag,ca=Math.cos(a),sa=Math.sin(a),cols=t.done?[[150,80,220],[240,240,240],[150,80,220]]:[rgbOf(GANGS[t.g].col),[30,30,30],rgbOf(GANGS[t.g].col)];
       NOTOP=true;for(let k=0;k<3;k++){const f=(k-1)*5.5,z0=7+(k%2)*3,z1=z0+(k===1?10:7);obox(o.x+ca*f,o.y+sa*f,a,k===1?2.2:2.8,0.2,z0,z1,cols[k],null,fg);}
       obox(o.x,o.y,a,9,0.15,6,7.2,cols[0],null,fg);NOTOP=false;return;}
+    case 'gbeam':{const c=[224,176,32],dk=[170,130,20],ym=o.y;obox(o.x,ym,PI/2,(o.yb-o.ya)/2+10,8,o.top-12,o.top,c,dk,fg);
+      obox(o.x-4,ym,0,10,12,o.top-30,o.top-12,[232,232,226],[200,200,196],fg);if(LIGHTK>0.1&&proj(o.x,o.y,o.top+2))glow(PX,PY,5*PK,'#ff3030',0.4+0.4*Math.sin(game.t*3));return;}
+    case 'gboom':{const c=[224,176,32],L=(o.x1-o.x0)/2;obox(o.x,o.y,0,L,4,o.top-8,o.top-2,c,[180,140,24],fg);obox(o.x,o.y,0,L,0.8,o.top-2,o.top+2,[160,124,20],null,fg);return;}
+    case 'ghook':{const sw=Math.sin(game.t*0.7+o.x)*3,hz=70+Math.sin(game.t*0.25+o.x*0.01)*24;obox(o.x,o.y,0,10,7,o.top-12,o.top-6,[70,70,74],[90,90,94],fg);
+      obox(o.x+sw*0.3,o.y,0,0.7,0.7,hz+10,o.top-12,[40,40,40],null,fg);obox(o.x+sw,o.y,0,16,10,hz,hz+8,[90,92,96],[110,112,116],fg);return;}
+    case 'ship':drawShip(o,fg);return;
+    case 'lanterns':{const ca=Math.cos(o.a),sa=Math.sin(o.a),L=o.L;
+      for(const sd of[-1,1])obox(o.x+ca*L*sd,o.y+sa*L*sd,0,1.4,1.4,0,82,[60,40,36],null,fg); // poles at the curbs
+      for(let i=0;i<8;i++){const t=(i/7)*2-1,sag=(1-t*t)*10,x=o.x+ca*L*t,y=o.y+sa*L*t,z=80-sag;obox(x,y,o.a,L/7+0.2,0.4,z-0.4,z+0.4,[30,30,30],null,fg);
+        if(i>0&&i<7){const lz=z-8;obox(x,y,0,2.6,2.6,lz,lz+6,[200,36,30],[230,60,40],fg,null,null,LIGHTK>0.1);if(LIGHTK>0.1&&proj(x,y,lz+3))glow(PX,PY,4*PK,'#ff5a30',0.35+0.5*LIGHTK);}}
+      return;}
     case 'hay':obox(o.x,o.y,a,7,5,0,9,[206,176,92],[222,194,108],fg);obox(o.x,o.y,a,7.2,1,1,8,[176,148,70],null,fg);return;
     case 'windmill':{obox(o.x,o.y,0,5,5,0,90,[200,196,186],[150,60,50],fg);obox(o.x,o.y,0,7,7,86,92,[150,60,50],null,fg);
       if(proj(o.x,o.y,96)){const cx=PX,cy=PY,r=34*PK,rot=game.t*1.2;L3.strokeStyle=lit([230,226,214],1,fg);L3.lineWidth=Math.max(1,PK*2);L3.beginPath();for(let k=0;k<4;k++){const an=rot+k*PI/2;L3.moveTo(cx,cy);L3.lineTo(cx+Math.cos(an)*r,cy+Math.sin(an)*r);}L3.stroke();}return;}
@@ -5130,12 +5209,12 @@ function saveOpts(){try{localStorage.setItem('gc_opts',JSON.stringify(OPT))}catc
 mirrorOn=OPT.mirror;
 let MENUVIEW=false,menuMode='title',menuSel=0,panelOpen=null,autoT=0;
 const SLOTS=['auto','1','2','3'],slotName=s=>s==='auto'?'Autosave':'Slot '+s;
-function gatherSave(){return{v:1,ts:Date.now(),seed:CITY_SEED,money,ammo:player.ammo.map(a=>a===Infinity?-1:a),w:player.w,hp:player.hp,respect:[...respect],pkg:PACKAGES.map(k=>k.got?1:0),clock,play:game.playT||0,jobLevel,ext:extSave()};}
+function gatherSave(){return{v:1,ts:Date.now(),seed:SAVE_SEED,money,ammo:player.ammo.map(a=>a===Infinity?-1:a),w:player.w,hp:player.hp,respect:[...respect],pkg:PACKAGES.map(k=>k.got?1:0),clock,play:game.playT||0,jobLevel,ext:extSave()};}
 function writeSave(slot){try{localStorage.setItem('gc_save_'+slot,JSON.stringify(gatherSave()));return true}catch(_){return false}}
 function readSave(slot){try{const s=JSON.parse(localStorage.getItem('gc_save_'+slot)||'null');return s&&s.v===1?s:null}catch(_){return null}}
 function latestSave(){let best=null;for(const sl of SLOTS){const s=readSave(sl);if(s&&(!best||s.ts>best.s.ts))best={slot:sl,s};}return best;}
 function applySave(s){money=s.money||0;saveMoney();player.ammo=(s.ammo||[]).map(a=>a<0?Infinity:a);if(!player.ammo.length)player.ammo=[Infinity,0,0,0,0,0,0];player.w=s.w||0;player.hp=s.hp||100;
-  for(let i=0;i<3;i++)respect[i]=(s.respect||[])[i]||0;if(s.seed===CITY_SEED)(s.pkg||[]).forEach((g,i)=>{if(PACKAGES[i])PACKAGES[i].got=!!g;});pkgGot=PACKAGES.filter(k=>k.got).length;
+  for(let i=0;i<3;i++)respect[i]=(s.respect||[])[i]||0;if(s.seed===SAVE_SEED)(s.pkg||[]).forEach((g,i)=>{if(PACKAGES[i])PACKAGES[i].got=!!g;});pkgGot=PACKAGES.filter(k=>k.got).length;
   clock=s.clock!=null?s.clock:clock;game.playT=s.play||0;jobLevel=s.jobLevel||0;extLoad(s.ext);}
 const fmtPlay=t=>{t=Math.floor(t/60);return Math.floor(t/60)+'h '+String(t%60).padStart(2,'0')+'m'};
 const slotSummary=s=>s?`$${(s.money||0).toLocaleString()} · ${(s.pkg||[]).filter(Boolean).length}/${PACKAGES.length} packages · ${fmtPlay(s.play||0)} played<br><small>${new Date(s.ts).toLocaleString()}</small>`:'<i>Empty</i>';
