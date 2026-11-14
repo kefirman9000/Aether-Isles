@@ -88,7 +88,7 @@ function openPanel(kind){
   else if(kind==='save'){h='<h2>SAVE GAME</h2>';if(stars()>0||game.state!=='play')h+='<p class="warn">You can\'t save while the cops are after you.</p>';
     for(const sl of ['1','2','3']){const s=readSave(sl);h+=`<div class="slot"><div><b>${slotName(sl)}</b><br>${slotSummary(s)}</div><button data-save="${sl}" ${stars()>0||game.state!=='play'?'disabled':''}>${s?'OVERWRITE':'SAVE'}</button></div>`;}}
   else if(kind==='options'){const onoff=v=>v?'ON':'OFF';h=`<h2>OPTIONS</h2>
-    <div class="opt"><span>PS2 look (colour grade, trails, rain on the lens, paint sheen)</span><button data-opt="ps2">${onoff(OPT.ps2!==false)}</button></div>
+    <div class="opt"><span>PS2 look (colour grade, trails, rain on the lens)</span><button data-opt="ps2">${onoff(OPT.ps2!==false)}</button></div>
     <div class="opt"><span>Keyboard</span><button data-opt="keys">REMAP KEYS</button></div>
     <div class="opt"><span>Controller buttons</span><button data-opt="padmap">REMAP BUTTONS</button></div>
     <div class="opt"><span>Slow motion on jumps</span><button data-opt="slowmo">${onoff(OPT.slowmo)}</button></div>

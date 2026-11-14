@@ -282,7 +282,7 @@ function obox(x,y,a,hl,hw,z0,z1,side,top,fg,front,back,em){
   if((CX-(x-fx))*-ca+(CY-(y-fy))*-sa>0)quad(BRx,BRy,z0,BLx,BLy,z0,BLx,BLy,z1,BRx,BRy,z1,lit(back||side,sunK(-ca,-sa),fg,em));
   if((CX-(x+rx))*-sa+(CY-(y+ry))*ca>0)quad(FRx,FRy,z0,BRx,BRy,z0,BRx,BRy,z1,FRx,FRy,z1,lit(side,sunK(-sa,ca),fg,em));
   if((CX-(x-rx))*sa+(CY-(y-ry))*-ca>0)quad(BLx,BLy,z0,FLx,FLy,z0,FLx,FLy,z1,BLx,BLy,z1,lit(side,sunK(sa,-ca),fg,em));
-  if(!NOTOP&&CZ>z1){quad(FLx,FLy,z1,FRx,FRy,z1,BRx,BRy,z1,BLx,BLy,z1,lit(top||side,1.06,fg,em));if(SHEEN)sheenTop(x,y,ca,sa,hl,hw,z1);}
+  if(!NOTOP&&CZ>z1)quad(FLx,FLy,z1,FRx,FRy,z1,BRx,BRy,z1,BLx,BLy,z1,lit(top||side,1.06,fg,em));
   return fv;
 }
 let NOTOP=false;
@@ -595,8 +595,7 @@ function drawCar3(c,fg){
   ZOFF+=c.az||0;
   if(!c.wreck&&!c.t.heli&&!c.t.boat&&c.hp<c.t.hp*0.5)ZOFF-=1.6*(1-c.hp/(c.t.hp*0.5)); // a wrecked suspension sits low
   const t=c.t,hl=t.L/2,hw=t.Wd/2,a=c.a;PIT=Math.abs(c.pitch||0)>0.004?c.pitch:0;PVX=c.x;PVY=c.y;PCA=Math.cos(a);PSA=Math.sin(a);
-  SHEEN=PIT?null:sheenFor(c);
-  try{drawCarBody(c,fg,t,hl,hw,a);}finally{PIT=0;SHEEN=null;}
+  try{drawCarBody(c,fg,t,hl,hw,a);}finally{PIT=0;}
 }
 function drawBoat3(c,fg,t,hl,hw,a){const ca=Math.cos(a),sa=Math.sin(a),col=rgbOf(c.col),cop=t.police;
   obox(c.x-ca*4,c.y-sa*4,a,hl-6,hw,0,5,[230,230,226],[200,200,196],fg);

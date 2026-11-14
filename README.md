@@ -32,7 +32,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
-- **The PS2 look (v4.20):** a warm colour grade by day and a cold one at night, light trails at speed, a soft vignette, raindrops on the lens, a sheen that slides over car paint as you drive, and a thin rim of light on people at night. One switch in Options turns it all off.
+- **The PS2 look (v4.20):** a warm colour grade by day and a cold one at night, light trails at speed, a soft vignette, raindrops on the lens, and a thin rim of light on people at night. One switch in Options turns it all off.
 - **Your own controls:** Options → Remap keys lets you bind every keyboard action (click it, press a key; keys in use swap). Remap buttons does the same for a controller, on either layout.
 - **Debug menu:** the ` key opens it: set the time and weather, add or clear stars, heal, cash, ammo, spawn any vehicle, teleport to your map waypoint, show FPS, and fly a free camera (WASD, Q/E, R/F, T/G) with the HUD hidden for screenshots. Using it counts against your criminal rating like a cheat.
 - **RC Wreckers:** step into the red RC WRECKERS marker on the west bank for two minutes of toy cars. Drive one under traffic and fire to blow it up; $300 a wreck, and no wanted level while you play.

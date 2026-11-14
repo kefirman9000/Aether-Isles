@@ -1,7 +1,7 @@
 // Gridlock City service worker: lets the installed app start and play with no connection.
 // Same-origin files are network-first (so a new version shows up as soon as you're online) with the cache as
 // the fallback; Google Fonts are cache-first. Bump CACHE on every release (see CLAUDE.md, "Releasing").
-const CACHE = 'gridlock-v4.20.0';
+const CACHE = 'gridlock-v4.20.1';
 const ASSETS = [
   './',
   './index.html',

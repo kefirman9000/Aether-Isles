@@ -4,7 +4,7 @@
 // (see "City generation" in CLAUDE.md).
 const hr=(i,salt)=>(hash(i*7919+17,salt)%100000)/100000;
 
-// ---------- the PS2 look: light trails, a colour grade, a soft vignette, raindrops on the lens, a sheen sliding over car paint ----------
+// ---------- the PS2 look: light trails, a colour grade, a soft vignette, raindrops on the lens ----------
 const trailC=document.createElement('canvas'),trailX=trailC.getContext('2d');let vigG=null,vigK='',trailCam=null;
 function ps2Look(sx,sy){
   const c=player.car,sp=c?hyp(c.vx,c.vy):0,a=clamp(0.07+sp/3200,0.07,0.24),tc=trailCam;
@@ -22,15 +22,6 @@ function updateScreenRain(dt){for(const d of SDROPS){d.t-=dt;d.y+=d.vy*dt;}for(l
 function drawScreenRain(sc){if(!SDROPS.length)return;for(const d of SDROPS){const x=d.x*VW,y=d.y*VH,r=d.r*sc*1.4;ctx.globalAlpha=Math.min(1,d.t)*0.55;
   if(d.vy){ctx.fillStyle='rgba(200,214,232,.22)';ctx.fillRect(x-r*0.3,y-r*4,r*0.6,r*4);}
   ctx.fillStyle='rgba(190,205,225,.30)';ctx.beginPath();ctx.arc(x,y,r,0,TAU);ctx.fill();ctx.strokeStyle='rgba(255,255,255,.55)';ctx.lineWidth=1;ctx.beginPath();ctx.arc(x,y,r*0.65,PI*1.1,PI*1.6);ctx.stroke();}ctx.globalAlpha=1;}
-// paint sheen: while a car's boxes are drawn, obox() lays a thin bright band across each big top face. The band sits at
-// one spot along the car and slides as the car moves, the way the sky slides over a bonnet. (Flat-on-top, drawn right
-// after the face it lies on, so it follows rendering rule 5.)
-var SHEEN=null;
-function sheenFor(c){if(OPT.ps2===false||c.wreck||c.t.boat||c.t.heli||c.t.bike||c.t.tank||c.t.rc||MIRROR)return null;const dx=c.x-CX,dy=c.y-CY;if(dx*dx+dy*dy>420*420)return null;
-  const hl=c.t.L/2,u=((c.x*0.011+c.y*0.014)%1+1)%1;return{x:c.x,y:c.y,f:(u*2-1)*hl*1.25,col:LIGHTK>0.5?'rgba(255,214,160,.20)':'rgba(255,255,255,.26)'};}
-function sheenTop(x,y,ca,sa,hl,hw,z1){const S=SHEEN;if(hw<4||hl<5)return;const s=S.f-((x-S.x)*ca+(y-S.y)*sa);if(Math.abs(s)>hl-2)return;
-  const mx=x+ca*s,my=y+sa*s,fx=ca*1.4,fy=sa*1.4,rx=-sa*hw*0.92,ry=ca*hw*0.92,z=z1+0.05;
-  quad(mx+fx-rx,my+fy-ry,z,mx+fx+rx,my+fy+ry,z,mx-fx+rx,my-fy+ry,z,mx-fx-rx,my-fy-ry,z,S.col);}
 // rim light: at night a thin warm edge down one side of a person, so they read against a dark street
 function pedRim(p,jz){if(OPT.ps2===false||LIGHTK<0.3||MIRROR)return;if(!proj(p.x,p.y,9))return;if(PK<0.8)return;const y0=PY,x=PX+3.9*PK,k=PK;if(!proj(p.x,p.y,23))return;
   L3.fillStyle=`rgba(255,220,170,${(0.42*LIGHTK).toFixed(2)})`;L3.fillRect(R2(x),R2(PY),1,Math.max(1,R2(y0-PY)));}

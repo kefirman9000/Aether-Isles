@@ -9,7 +9,7 @@ touched at load time either. After moving code, load the page and check the cons
 
 `js/08b-extras.js` holds the v4.20 additions (PS2 look, key/pad remapping, debug menu and free camera, RC Wreckers, off-road runs,
 the Dodo plane, unique stunt jumps, criminal rating). It hooks into the other files through a few one-line calls (`extrasTick`, `extrasHUD`,
-`extrasMap`, `planeDrive`, `rcDrive`, `usjLaunch`/`usjLand`, `ps2Look`, `sheenTop`, `pedRim`); its progress lives in `STATS`, so it saves with the stats.
+`extrasMap`, `planeDrive`, `rcDrive`, `usjLaunch`/`usjLand`, `ps2Look`, `pedRim`); its progress lives in `STATS`, so it saves with the stats.
 Key presses pass through its capture listener first, which rewrites `e.code` to the bound action: read `e.code`/`kd.*` as usual and remapping keeps working.
 
 ## Before touching anything that gets drawn
