@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.4.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.4.2</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.4.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.4.2',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -3045,7 +3045,7 @@ function renderGround(heads){
   const pix=(wx,wy,f,water,hh)=>{
     let r,g,b;
     if(wx>=0&&wy>=0&&wx<WPX&&wy<WPX){
-      const xi=wx|0,yi=wy|0,tx=xi>>5,ty=yi>>5,ti=ty*W+tx,t=BRT[ti]?8:map[ti],u=xi&31,v=yi&31,h=TILEH[ti];
+      const xi=wx|0,yi=wy|0,tx=xi>>5,ty=yi>>5,ti=ty*W+tx,t=map[ti],u=xi&31,v=yi&31,h=TILEH[ti];
       const nz=((((xi>>1)*73856093)^((yi>>1)*19349663))>>>9)&7;
       const dp=DIAGT[ti]?diagPix(DIAGT[ti]-1,xi,yi,nz,tx,ty):null;
       if(dp){r=dp[0];g=dp[1];b=dp[2];}else switch(t){
@@ -3118,12 +3118,18 @@ function renderGround(heads){
   const f0=Math.max(6,(CZ-GH(CX,CY)-30)*FOC/(LH-HOR)*0.7);
   for(let x=0;x<lw;x++){
     const rq=(x+0.5-HW)/FOC,dx=CC-CS*rq,dy=CS+CC*rq;
-    let yb=LH,f=f0,ob=0;
+    let yb=LH,f=f0,ob=0,hT=0,hB=0,pDeck=false;
     while(f<FOG1&&yb>0){
       while(ob<OCCN&&f>=OCCE[ob]){OCC[ob*lw+x]=yb;ob++;}
-      const wx=CX+dx*f,wy=CY+dy*f;let h=GH(wx,wy);let water=h<0&&(wx<0||wy<0||wx>=WPX||wy>=WPX);if(water)h=0;else if(wx>=0&&wy>=0&&wx<WPX&&wy<WPX){const ti=((wy|0)>>5)*W+((wx|0)>>5);if(RIV[ti])h=RIVL;else if(BRT[ti]){h=RIVL;water=true;}}
+      const wx=CX+dx*f,wy=CY+dy*f;let h=GH(wx,wy);let water=h<0&&(wx<0||wy<0||wx>=WPX||wy>=WPX),deck=false;if(water)h=0;else if(wx>=0&&wy>=0&&wx<WPX&&wy<WPX){const ti=((wy|0)>>5)*W+((wx|0)>>5);if(RIV[ti])h=RIVL;else if(BRT[ti])deck=true;}
       const sy=HOR+(CZ-h)*FOC/f;let yi=Math.ceil(sy-0.5);if(yi<0)yi=0;
-      if(yi<yb){const col=pix(wx,wy,f,water,h);for(let y=yi;y<yb;y++)buf[y*lw+x]=col;yb=yi;}
+      // a bridge deck is a slab with open air under it: whatever lies beyond fills the gap underneath
+      if(hB>hT&&!deck&&yi<hB){const y0=Math.max(yi,hT),col=pix(wx,wy,f,water,h);for(let y=y0;y<hB;y++)buf[y*lw+x]=col;hB=y0;}
+      if(yi<yb){const col=pix(wx,wy,f,water,h);
+        if(deck&&!pDeck){const yd=Math.ceil(HOR+(CZ-h+9)*FOC/f-0.5),ybot=Math.min(yd,yb),fg=fogAt(f),dk=0xff000000|((44+(FOGC[2]-44)*fg|0)<<16)|((42+(FOGC[1]-42)*fg|0)<<8)|(42+(FOGC[0]-42)*fg|0);
+          for(let y=yi;y<ybot;y++)buf[y*lw+x]=y<yi+1?col:dk;if(ybot<yb&&!(hB>hT)){hT=ybot;hB=yb;}}
+        else for(let y=yi;y<yb;y++)buf[y*lw+x]=col;yb=yi;}
+      pDeck=deck;
       const rel=CZ-h;let st=rel>8?f*f/(rel*FOC)*0.9:f*0.02;if(st<0.5)st=0.5;else if(st>f*0.04)st=f*0.04;f+=st;
     }
     for(;ob<OCCN;ob++)OCC[ob*lw+x]=yb;
@@ -3673,7 +3679,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
   for(const c of cars){if(c===player.car)continue;add(0,c,c.x,c.y,Math.max(c.t.L,c.t.Wd)/2+4,null,c.t.truck||c.t.swat?34:24,c.az||0);}
   if(MIRROR||MENUVIEW){}else if(player.car)add(14,player.car,player.car.x,player.car.y,Math.max(player.car.t.L,player.car.t.Wd)/2+4,null,30,player.car.az||0);
   else if(!player.riding)add(14,player,player.x,player.y,6,null,26,player.jz||0);
-  for(const d of DECKS){const f=(d.x-CX)*CC+(d.y-CY)*CS;add(24,d,d.x,d.y,70,f+60,12);}for(const q of PIERS){const f=(q.x-CX)*CC+(q.y-CY)*CS;add(24,{pier:1,x:q.x,y:q.y},q.x,q.y,60,f+120,10);}
+  for(const d of DECKS)add(24,d,d.x,d.y,70,null,14);
   for(let i=0;i<train.cars;i++){const p=trainCar(i);add(22,{x:p.x,y:p.y,a:p.a,i},p.x,p.y,50,null,EL_H+30);}
   {const rm=roomAt(CX,CY);if(rm)for(const o of rm.props)add(13,o,o.x,o.y,o.rad,null,o.ht);}
   for(let i=0;i<FW.length;i+=FW.length>300?2:1){const f=FW[i];add(23,f,f.x,f.y,6,null,f.z);}
@@ -3759,19 +3765,13 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
       obox(o.x,o.y,a,42,12.4,EL_H+13,EL_H+20,lit2?[255,228,160]:[58,68,88],null,fg,0,0,lit2);obox(o.x,o.y,a,44.3,12.5,EL_H+7,EL_H+9,[170,30,36],null,fg);
       obox(o.x,o.y,a,40,8,EL_H+26,EL_H+28,[120,124,130],null,fg);if(o.i===0)obox(o.x+ca*44,o.y+sa*44,a,1,6,EL_H+14,EL_H+18,lit2?[255,250,220]:[200,200,190],null,fg,0,0,lit2);break;}
     case 23:{ZOFF=0;if(proj(o.x,o.y,RIVL+o.z)){const a=clamp(o.life/1.2,0,1);glow(PX,PY,(o.shell?3:5)*Math.max(0.6,PK*4),o.col,a);}break;}
-    case 24:{const s=o,f=it.f;if(s.pier){const d=GH(s.x,s.y);ZOFF=0;obox(s.x,s.y,0,9,58,RIVL,d-8,[150,144,134],null,fogAt(f-60));break;}const fg=fogAt(f),xa=s.x-16.5,xb=s.x+16.5,ya=s.y-64,yb=s.y+64,da=GH(xa,s.y),db=GH(xb,s.y),th=s.big?14:7;ZOFF=0;
-     // only the road surface and the outer edge facing the camera: the ends sit below the road and never show
-     quad(xa,ya,da,xb,ya,db,xb,yb,db,xa,yb,da,lit([60,60,64],1.06,fg));
-     if(CY<ya)quad(xa,ya,da-th,xb,ya,db-th,xb,ya,db,xa,ya,da,lit([82,78,74],sunK(0,-1),fg));
-     if(CY>yb)quad(xa,yb,da-th,xb,yb,db-th,xb,yb,db,xa,yb,da,lit([82,78,74],sunK(0,1),fg));
-     quad(xa,s.y-1.1,da+0.2,xb,s.y-1.1,db+0.2,xb,s.y+1.1,db+0.2,xa,s.y+1.1,da+0.2,lit([214,176,40],1,fg));
-     // parapets and railings run continuously along both edges, following the deck's slope
-     {const pc=s.big?[112,106,98]:[172,168,160],rc=[206,206,212],ph=s.big?4:6;
-      for(const ey of[ya+1.2,yb-1.2]){const out=ey<s.y?-1:1;
-        quad(xa,ey,da,xb,ey,db,xb,ey,db+ph,xa,ey,da+ph,lit(pc,sunK(0,out),fg));quad(xa,ey-0.8*out,da+ph,xb,ey-0.8*out,db+ph,xb,ey+0.8*out,db+ph,xa,ey+0.8*out,da+ph,lit(pc,1.06,fg));
-        quad(xa,ey,da+ph+4,xb,ey,db+ph+4,xb,ey,db+ph+5.4,xa,ey,da+ph+5.4,lit(rc,1,fg));
-        if(s.dash)obox(xa+1,ey,0,0.7,0.7,da+ph,da+ph+5.4,rc,null,fg);}}
-     if(s.dash)for(const o of[-32,32])quad(s.x-7,s.y+o-0.9,(da+db)/2+0.2,s.x+7,s.y+o-0.9,(da+db)/2+0.2,s.x+7,s.y+o+0.9,(da+db)/2+0.2,s.x-7,s.y+o+0.9,(da+db)/2+0.2,lit([226,226,220],1,fg));break;}
+    case 24:{const s=o,fg=fogAt(it.f),xa=s.x-16.5,xb=s.x+16.5,ya=s.y-64,yb=s.y+64,da=GH(xa,s.y),db=GH(xb,s.y);ZOFF=0;
+     const pc=s.big?[112,106,98]:[172,168,160],rc=[206,206,212],ph=s.big?4:6;
+     for(const ey of[ya+1.2,yb-1.2]){const out=ey<s.y?-1:1;
+       quad(xa,ey,da,xb,ey,db,xb,ey,db+ph,xa,ey,da+ph,lit(pc,sunK(0,out),fg));quad(xa,ey-0.8*out,da+ph,xb,ey-0.8*out,db+ph,xb,ey+0.8*out,db+ph,xa,ey+0.8*out,da+ph,lit(pc,1.06,fg));
+       quad(xa,ey,da+ph+4,xb,ey,db+ph+4,xb,ey,db+ph+5.4,xa,ey,da+ph+5.4,lit(rc,1,fg));
+       if(s.dash)obox(xa+1,ey,0,0.7,0.7,da+ph,da+ph+5.4,rc,null,fg);}
+     break;}
     case 20:qSign(o.x,o.y,o.h,o.text,o.bg,o.fg);break;
     case 21:{const k=o.hp/100;for(let i=0;i<3;i++){const fx=o.x+Math.sin(game.t*3+i*2)*8,fy=o.y+Math.cos(game.t*2.3+i)*8;obox(fx,fy,game.t+i,5*k+2,5*k+2,0,14*k+6+Math.sin(game.t*9+i)*3,[255,120+i*40,20],[255,220,80],0,0,0,true);}break;}
     case 15:drawTL(o,fg);break;
