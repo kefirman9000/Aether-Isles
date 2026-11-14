@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.0.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.0.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.0.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.0.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -2881,7 +2881,7 @@ function oboxP(x,y,a,hl,hw,z0,z1,side,top,fg,front,back,em){
     let nx=uy*vz-uz*vy,ny=uz*vx-ux*vz,nz=ux*vy-uy*vx;const fcx=(A[0]+C[0])/2,fcy=(A[1]+C[1])/2,fcz=(A[2]+C[2])/2;
     if(nx*(fcx-cx)+ny*(fcy-cy)+nz*(fcz-cz)<0){nx=-nx;ny=-ny;nz=-nz;}
     if(nx*(CX-fcx)+ny*(CY-fcy)+nz*(ez-fcz)<=0)continue;
-    const nl=Math.hypot(nx,ny,nz)||1,isTop=nz/nl>0.6;if(nz/nl<-0.6)continue;
+    const nl=Math.hypot(nx,ny,nz)||1,isTop=nz/nl>0.6;if(nz/nl<-0.6||(isTop&&NOTOP))continue;
     const isFront=f===4?false:(f===3||f===2)?false:null;
     let col=side,k=sunK(nx/nl,ny/nl);
     if(isTop){col=top||side;k=1.06;}else if(f===5){col=front||side;fv=true;}else if(f===4)col=back||side;
@@ -2897,9 +2897,10 @@ function obox(x,y,a,hl,hw,z0,z1,side,top,fg,front,back,em){
   if((CX-(x-fx))*-ca+(CY-(y-fy))*-sa>0)quad(BRx,BRy,z0,BLx,BLy,z0,BLx,BLy,z1,BRx,BRy,z1,lit(back||side,sunK(-ca,-sa),fg,em));
   if((CX-(x+rx))*-sa+(CY-(y+ry))*ca>0)quad(FRx,FRy,z0,BRx,BRy,z0,BRx,BRy,z1,FRx,FRy,z1,lit(side,sunK(-sa,ca),fg,em));
   if((CX-(x-rx))*sa+(CY-(y-ry))*-ca>0)quad(BLx,BLy,z0,FLx,FLy,z0,FLx,FLy,z1,BLx,BLy,z1,lit(side,sunK(sa,-ca),fg,em));
-  if(CZ>z1)quad(FLx,FLy,z1,FRx,FRy,z1,BRx,BRy,z1,BLx,BLy,z1,lit(top||side,1.06,fg,em));
+  if(!NOTOP&&CZ>z1)quad(FLx,FLy,z1,FRx,FRy,z1,BRx,BRy,z1,BLx,BLy,z1,lit(top||side,1.06,fg,em));
   return fv;
 }
+let NOTOP=false;
 function glow(x,y,s0,col,a){const s=clamp(s0,1,12);L3.globalCompositeOperation='lighter';L3.fillStyle=col;L3.globalAlpha=a*.3;L3.fillRect(R2(x-s*1.6),R2(y-s*.9),R2(s*3.2),Math.max(1,R2(s*1.8)));L3.globalAlpha=a;L3.fillRect(R2(x-s/2),R2(y-s/3),Math.max(1,R2(s)),Math.max(1,R2(s*.66)));L3.globalAlpha=1;L3.globalCompositeOperation='source-over';}
 // billboard rectangle in local units (u across, z up) around the last projected point
 let BX=0,BY=0,BK=1;
@@ -3172,15 +3173,17 @@ function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return
   }
   obox(c.x,c.y,a,hl*0.86,hw*0.98,0,5,BLACK,null,fg); // wheels
   let fv;
+  // two-box vehicles: draw whichever box is farther from the camera first, so the near one covers it
+  const front=(CX-c.x)*ca+(CY-c.y)*sa>0;
   if(t.truck){
-    fv=obox(c.x+ca*hl*0.66,c.y+sa*hl*0.66,a,hl*0.34,hw,4,26,col,null,fg);
-    obox(c.x+ca*hl*0.66+ca*hl*0.28,c.y+sa*hl*0.66+sa*hl*0.28,a,hl*0.07,hw*0.86,14,24,GLASS,null,fg);
-    obox(c.x-ca*hl*0.34,c.y-sa*hl*0.34,a,hl*0.66,hw,4,34,c.wreck?col:mixA(col,[255,255,255],.14),null,fg);
+    const cab=()=>{fv=obox(c.x+ca*hl*0.66,c.y+sa*hl*0.66,a,hl*0.34,hw,4,26,col,null,fg);obox(c.x+ca*hl*0.66+ca*hl*0.28,c.y+sa*hl*0.66+sa*hl*0.28,a,hl*0.07,hw*0.86,14,24,GLASS,null,fg);};
+    const box=()=>obox(c.x-ca*hl*0.34,c.y-sa*hl*0.34,a,hl*0.66,hw,4,34,c.wreck?col:mixA(col,[255,255,255],.14),null,fg);
+    if(front){box();cab();}else{cab();box();}
   }else if(t.ambulance){
-    fv=obox(c.x+ca*hl*0.7,c.y+sa*hl*0.7,a,hl*0.3,hw,4,20,col,null,fg);
-    obox(c.x+ca*hl*0.92,c.y+sa*hl*0.92,a,hl*0.08,hw*0.86,12,19,GLASS,null,fg);
-    obox(c.x-ca*hl*0.3,c.y-sa*hl*0.3,a,hl*0.7,hw,4,30,col,null,fg);
-    if(!c.wreck){obox(c.x-ca*hl*0.3,c.y-sa*hl*0.3,a,hl*0.71,hw*1.01,13,16,[200,30,30],null,fg);const on=(job&&job.kind==='amb'&&c===player.car)||c.ai&&c.ai.cruise>260,ph=Math.floor(game.t*8)%2;
+    const cab=()=>{fv=obox(c.x+ca*hl*0.7,c.y+sa*hl*0.7,a,hl*0.3,hw,4,20,col,null,fg);obox(c.x+ca*hl*0.92,c.y+sa*hl*0.92,a,hl*0.08,hw*0.86,12,19,GLASS,null,fg);};
+    const box=()=>{obox(c.x-ca*hl*0.3,c.y-sa*hl*0.3,a,hl*0.7,hw,4,30,col,null,fg);if(!c.wreck){NOTOP=true;obox(c.x-ca*hl*0.3,c.y-sa*hl*0.3,a,hl*0.71,hw*1.01,13,16,[200,30,30],null,fg);NOTOP=false;}};
+    if(front){box();cab();}else{cab();box();}
+    if(!c.wreck){const on=(job&&job.kind==='amb'&&c===player.car)||c.ai&&c.ai.cruise>260,ph=Math.floor(game.t*8)%2;
       obox(c.x+ca*hl*0.55,c.y+sa*hl*0.55,a,2.5,hw*0.8,20,22.5,on&&ph?[255,40,40]:[150,30,30],null,fg);if(on&&proj(c.x+ca*hl*0.55,c.y+sa*hl*0.55,23))glow(PX,PY,4*PK,'#ff2020',ph?0.9:0.3);}
   }else if(t.swat){
     fv=obox(c.x,c.y,a,hl,hw,4,28,col,null,fg);

@@ -1,4 +1,4 @@
 {
-  "version": "4.0.0",
-  "notes": "Interiors (Ammu-Nation, safehouse, a night club), ambulances and fire trucks that respond on their own, snow, fog, floods, blackouts and fireworks, a cop search area on the minimap, racers that follow the streets, and an El train chase mission."
+  "version": "4.0.1",
+  "notes": "Ambulances, trucks and fire trucks no longer look see-through."
 }
