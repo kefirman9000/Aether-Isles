@@ -1574,16 +1574,18 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 // touch
 const joy={id:null,ox:0,oy:0,x:0,y:0,active:false},aimJoy={id:null,ox:0,oy:0,x:0,y:0,active:false};
-const tbtn={phone:{id:null,on:false},horn:{id:null,on:false},nos:{id:null,on:false},gas:{id:null,on:false},rev:{id:null,on:false},look:{id:null,on:false},fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
+const tbtn={cam:{id:null,on:false},scope:{id:null,on:false},lookl:{id:null,on:false},lookr:{id:null,on:false},phone:{id:null,on:false},horn:{id:null,on:false},nos:{id:null,on:false},gas:{id:null,on:false},rev:{id:null,on:false},look:{id:null,on:false},fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
 function touchScale(){return clamp(Math.min(VW,VH)/420,0.72,1.2)*(OPT.btn||1)}
 function btnLayout(){const s=touchScale(),pad=16*s,bx=VW-pad,by=VH-pad-8;
   const L={fire:{x:bx-46*s,y:by-46*s,r:46*s,label:'FIRE'},
     brake:{x:bx-148*s,y:by-34*s,r:33*s,label:'DRIFT'},
     car:{x:bx-46*s,y:by-150*s,r:33*s,label:'CAR'},
     gun:{x:bx-128*s,y:by-122*s,r:25*s,label:'GUN'},
-    pause:{x:VW/2,y:24*s,r:17*s,label:'II'},phone:{x:VW/2+46*s,y:24*s,r:17*s,label:'CALL'},
+    pause:{x:VW/2,y:24*s,r:17*s,label:'II'},phone:{x:VW/2+46*s,y:24*s,r:17*s,label:'CALL'},cam:{x:VW/2-46*s,y:24*s,r:17*s,label:'VIEW'},
     look:{x:bx-128*s,y:by-192*s,r:22*s,label:'LOOK'}};
   if(player.car)L.radio={x:bx-46*s,y:by-226*s,r:23*s,label:'RADIO'};
+  if(player.car&&!player.car.t.heli){L.lookl={x:bx-212*s,y:by-232*s,r:19*s,label:'◀'};L.lookr={x:bx-168*s,y:by-262*s,r:19*s,label:'▶'};}
+  if(!player.car&&WEAPONS[player.w].scope)L.scope={x:bx-212*s,y:by-150*s,r:24*s,label:SCOPE.touch?'EXIT':'SCOPE'};
   if(player.car){L.horn={x:bx-226*s,y:by-30*s,r:25*s,label:'HORN'};if((player.car.up&&player.car.up.nitro)||player.car.t.heli)L.nos={x:bx-210*s,y:by-104*s,r:22*s,label:'NOS'};
     if(OPT.steer==='wheel'){L.gas={x:bx-46*s,y:by-46*s,r:46*s,label:'GAS'};L.rev={x:bx-140*s,y:by-28*s,r:28*s,label:'BRAKE'};L.brake={x:bx-46*s,y:by-146*s,r:28*s,label:'DRIFT'};
       L.fire={x:bx-140*s,y:by-112*s,r:30*s,label:'FIRE'};L.car={x:bx-46*s,y:by-226*s,r:26*s,label:'CAR'};L.radio={x:bx-120*s,y:by-282*s,r:20*s,label:'RADIO'};L.gun={x:bx-128*s,y:by-192*s,r:20*s,label:'GUN'};L.look={x:bx-212*s,y:by-170*s,r:20*s,label:'LOOK'};}}
@@ -1599,6 +1601,7 @@ function onTouch(e){
     if(e.type==='touchstart'){
       let hitBtn=null;for(const k in L){const b=L[k];if(hyp(x-b.x,y-b.y)<b.r*1.3){hitBtn=k;break;}}
       if(hitBtn){tbtn[hitBtn].id=t.identifier;tbtn[hitBtn].on=true;
+        if(hitBtn==='cam')cycleCam();if(hitBtn==='scope')SCOPE.touch=!SCOPE.touch;
         if(hitBtn==='car')pressed.enter=true;if(hitBtn==='gun')pressed.swap=true;
         if(hitBtn==='radio'&&player.car)setStation(radio.st+1);if(hitBtn==='pause')togglePause();if(hitBtn==='phone')phoneMenu();}
       else if(x<VW*0.5&&y>VH*0.3&&joy.id===null){
@@ -1793,7 +1796,7 @@ function playerFire(){
   const hostile=p=>p.state==='cop'||p.angry>0||p.brawl>0||(p.gang!=null&&respect[p.gang]<=-2);
   if(inCar){
     const c=player.car;
-    if(!!kd.KeyQ!==!!kd.KeyE&&!c.t.tank)a=c.a+(kd.KeyQ?-PI/2:PI/2); // GTA III drive-by: look left or right and fire
+    const LQ=!!(kd.KeyQ||tbtn.lookl.on),LE=!!(kd.KeyE||tbtn.lookr.on);if(LQ!==LE&&!c.t.tank)a=c.a+(LQ?-PI/2:PI/2); // GTA III drive-by: look left or right and fire
     else if(aimJoy.active)a=joyAng(aimJoy);
     else if(pad.aim)a=pad.aimA;
     else if(mouse.used&&!touchMode){a=Math.atan2(wy-c.y,wx-c.x);aimT=[wx,wy,wz];}
@@ -2843,8 +2846,14 @@ const TALK=['MARTY VANCE: You\'re on Chatter 96.1. Caller, go ahead.','CALLER: M
 const ADS=['AD: Gridlock Savings Bank. Now with 40% fewer robberies!','AD: Blue Plate Diner. Pie so good you\'ll forget the health inspection.','AD: Iron Works Gym. Lift heavy. Get heavier.',
   'AD: Lucky Pawn. We buy anything. We ask nothing.','AD: Pizza Paolo\'s. Hot in thirty minutes or we stop answering the phone.','AD: Gridlock Motors. Cash only. No questions. Great financing.','AD: Pipsqueak. The car that parks in your pocket.'];
 let radioTextT=8,talkI=0;
-function updateRadioText(dt){if(!player.car||game.state!=='play')return;const st=RADIO[radio.st];if(!st||st.kind==='off')return;radioTextT-=dt;if(radioTextT>0)return;
-  if(st.kind==='talk'){radioBanner={text:st.name,sub:TALK[talkI++%TALK.length],t:5.5};radioTextT=6;}
+// the talk station speaks, using the browser's own text-to-speech: the host and the callers get different voices
+function talkSay(line){try{const ss=window.speechSynthesis;if(!ss||muted)return;ss.cancel();const i=line.indexOf(': '),who=line.slice(0,i),txt=line.slice(i+2);
+  const u=new SpeechSynthesisUtterance(txt);const host=/MARTY/.test(who);u.pitch=host?0.8:1.35;u.rate=host?1.08:1.15;u.volume=0.8;
+  const vs=ss.getVoices().filter(v=>/^en/i.test(v.lang));if(vs.length)u.voice=vs[(host?0:3)%vs.length];ss.speak(u);}catch(_){}}
+function talkStop(){try{if(window.speechSynthesis)window.speechSynthesis.cancel();}catch(_){}}
+let talkWas=false;function updateRadioText(dt){const st=RADIO[radio.st],talking=!!(player.car&&game.state==='play'&&!game.paused&&!muted&&st&&st.kind==='talk');if(talkWas&&!talking)talkStop();if(talking&&!talkWas)radioTextT=0.3;talkWas=talking;
+  if(!player.car||game.state!=='play')return;if(!st||st.kind==='off')return;radioTextT-=dt;if(radioTextT>0)return;
+  if(st.kind==='talk'){const line=TALK[talkI++%TALK.length];radioBanner={text:st.name,sub:line,t:5.5};radioTextT=6;talkSay(line);}
   else{radioBanner={text:st.name,sub:pick(ADS),t:5};radioTextT=rr(40,70);}}
 function radioMsg(t){RADIOLOG.push({t,life:6});if(RADIOLOG.length>3)RADIOLOG.shift();}
 function areaName(){const o=player.car||player,d=districtAt(o.x,o.y);if(d)return d.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());const z=zoneOf(o.x,o.y);return z>=0?GANGS[z].name+' turf':'downtown';}
@@ -2975,8 +2984,12 @@ function towToggle(c){if(c.towing){const o=c.towing;o.towedBy=null;c.towing=null
   if(!best){note('Back up closer to a car to hook it');return;}
   const [o,sd]=best;if(o.driver==='ai'){ejectDriver(o,true);}o.ai=null;o.traffic=false;o.towedBy=c;o.towEnd=sd;c.towing=o;sfx('door',0.8);note('Hooked the '+o.t.name+'. Tap the horn again to drop it');}
 function updateTow(dt){for(const c of cars){const o=c.towing;if(!o)continue;if(cars.indexOf(o)<0||o.wreck&&o.burn<0&&false||(o.driver&&o.driver!=='ai')){c.towing=null;o.towedBy=null;continue;}
-  const [hx,hy]=towHitch(c);const want=Math.atan2(hy-o.y,hx-o.x)+(o.towEnd>0?0:PI);o.a=lerpAng(o.a,want,Math.min(1,dt*6));
-  const oa=Math.cos(o.a)*o.towEnd,ob=Math.sin(o.a)*o.towEnd;o.x=hx-oa*(o.t.L/2+2);o.y=hy-ob*(o.t.L/2+2);o.vx=c.vx;o.vy=c.vy;o.va=0;
+  const [hx,hy]=towHitch(c);const want=Math.atan2(hy-o.y,hx-o.x)+(o.towEnd>0?0:PI);const pa=o.a,px=o.x,py=o.y;o.a=lerpAng(o.a,want,Math.min(1,dt*6));
+  const oa=Math.cos(o.a)*o.towEnd,ob=Math.sin(o.a)*o.towEnd;o.x=hx-oa*(o.t.L/2+2);o.y=hy-ob*(o.t.L/2+2);
+  {const ca=Math.cos(o.a),sa=Math.sin(o.a),hl=o.t.L/2-2,hw=o.t.Wd/2-2;let hit=false;for(const[f,l]of[[1,1],[1,-1],[-1,1],[-1,-1],[0,1],[0,-1]])if(solidPx(o.x+ca*hl*f-sa*hw*l,o.y+sa*hl*f+ca*hw*l)){hit=true;break;}
+   if(hit){o.x=px;o.y=py;o.a=pa;o.towStuck=(o.towStuck||0)+dt;c.vx*=0.9;c.vy*=0.9;if(o.towStuck>0.7){c.towing=null;o.towedBy=null;o.towStuck=0;sfx('crash',0.5);note('The tow line snapped');continue;}}else o.towStuck=0;}
+  o.vx=c.vx;o.vy=c.vy;o.va=0;
+  for(const q of cars){if(q===o||q===c||q.wreck)continue;const dx=q.x-o.x,dy=q.y-o.y,d=hyp(dx,dy);if(d>(o.t.L+q.t.L)/2)continue;if(pointInCar(o,q.x,q.y,q.t.Wd/2)){const k=(d||1);q.vx+=dx/k*120;q.vy+=dy/k*120;damageCar(q,1,'player');}}
   // drag it onto the car crusher to sell it for scrap
   if(c===player.car&&hyp(c.vx,c.vy)<70)for(const cp of crusherPads)if(dist2(cp.x,cp.y,o.x,o.y)<55*55){const pay=Math.round((({compact:250,sedan:350,taxi:350,truck:600,sports:900,police:1200,swat:1500})[o.type]||300)*clamp(0.4+0.6*o.hp/o.t.hp,0.4,1));
     c.towing=null;cars.splice(cars.indexOf(o),1);for(let k=0;k<18;k++)puff(cp.x+rr(-30,30),cp.y+rr(-30,30),rr(-220,220),rr(-220,220),rr(.5,1),rr(3,6),o.col,'debris');sfx('crash');addMoney(pay);showBig('CRUSHED','+$'+pay,'#e8e05a',2);break;}}}
@@ -3448,7 +3461,7 @@ const camMode=()=>{if(OPT.camMode==null)OPT.camMode=OPT.cam<1?0:OPT.cam>1?2:1;re
 function cycleCam(){OPT.camMode=(camMode()+1)%CAMV.length;saveOpts();note('Camera: '+CAMV[OPT.camMode].n.toLowerCase());}
 // ---- scoped first-person aim (sniper rifle, assault rifle): the camera moves to your eyes and the view zooms in ----
 const SCOPE={on:false,z:1,zw:0};
-function scopeWanted(){const w=WEAPONS[player.w];return !!(w&&w.scope&&!player.car&&!player.riding&&game.state==='play'&&!SCENE.on&&((mouse.rdown&&!touchMode)||(pad.on&&(OPT.pad==='classic'?pad.lock:pad.brake>0.5))));}
+function scopeWanted(){const w=WEAPONS[player.w];if(!w||!w.scope||player.car)SCOPE.touch=false;return !!(w&&w.scope&&!player.car&&!player.riding&&game.state==='play'&&!SCENE.on&&((touchMode&&SCOPE.touch)||(mouse.rdown&&!touchMode)||(pad.on&&(OPT.pad==='classic'?pad.lock:pad.brake>0.5))));}
 const cam={x:0,y:0,zoom:1.4,yaw:-PI/2,h:40,dist:90,base:null,idle:9,px:0,py:0,wasFoot:false};
 // ---- GTA III-style on foot: free-orbit camera, camera-relative movement and lock-on targeting ----
 const GTA3MOVE=()=>OPT.gta3!==false;
@@ -3480,6 +3493,7 @@ function footLook(dt){
     LOCK.flick+=(mouse.turn||0)+(mouse.look||0)*0.5;if(Math.abs(LOCK.flick)>45){const n=pickLock(cam.base,LOCK.t,Math.sign(LOCK.flick));if(n)setLock(n);LOCK.flick=0;}
     if(pad.on&&Math.abs(pad.rx)>0.7&&Math.abs(LOCK.rx0)<=0.7){const n=pickLock(cam.base,LOCK.t,Math.sign(pad.rx));if(n)setLock(n);}
     const ta=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);cam.base=lerpAng(cam.base,ta,Math.min(1,dt*7));cam.idle=0;}
+  else if(SCOPE.on&&touchMode&&aimJoy.active){orbit=aimJoy.x*1.6*dt/SCOPE.z;cam.pitch=clamp((cam.pitch||0)+aimJoy.y*1.1*dt/SCOPE.z,-0.95,0.95);}
   else{LOCK.flick=0;orbit=(mlLocked()?(mouse.look||0)*0.0033:(mouse.turn||0)*0.006)*(OPT.msens||1)/(SCOPE.on?SCOPE.z:1)+(pad.on?pad.rx*2.9*dt/(SCOPE.on?SCOPE.z:1):0);if(SCOPE.on&&!mlLocked())orbit+=(mouse.turn||0)*0.003;}
   LOCK.rx0=pad.on?pad.rx:0;mouse.turn=0;mouse.look=0;
   if(orbit){cam.base+=orbit;cam.idle=0;}else cam.idle+=dt;
@@ -3546,7 +3560,7 @@ function update(dt){
       else player.a=lerpAng(player.a,player.body,Math.min(1,dt*14));
       if(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.3)player.a=joyAng(aimJoy);else if(pad.aim&&!GTA3MOVE())player.a=pad.aimA;
       if(LOCK.t)player.a=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);
-      const held=mouse.down||kd.KeyK||kd.ControlLeft||kd.ControlRight||tbtn.fire.on||(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.6);
+      const held=mouse.down||kd.KeyK||kd.ControlLeft||kd.ControlRight||tbtn.fire.on||(!SCOPE.on&&aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.6);
       const w=WEAPONS[player.w],charging=w.kind==='m'&&!(mouse.used&&!touchMode&&!aimJoy.active);
       if(charging){if(held)throwCharge=Math.min(1,throwCharge+dt/0.9);else if(fireWasHeld){playerFire();throwCharge=0;}}
       else if(held)playerFire();
@@ -3844,7 +3858,7 @@ function update(dt){
       want=c.a+(cam.corb||0);
       dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=orb?30:3.2;
       // GTA III: Q / E (L2 / R2) look left and right; both together look behind
-      const lq=kd.KeyQ,le=kd.KeyE;if(lq&&le){want+=PI;rate=18;}else if(lq){want-=PI/2;rate=14;dist*=0.8;}else if(le){want+=PI/2;rate=14;dist*=0.8;}}
+      const lq=kd.KeyQ||tbtn.lookl.on,le=kd.KeyE||tbtn.lookr.on;if(lq&&le){want+=PI;rate=18;}else if(lq){want-=PI/2;rate=14;dist*=0.8;}else if(le){want+=PI/2;rate=14;dist*=0.8;}}
     else if(GTA3MOVE()&&cam.base!=null&&!player.riding){want=cam.base;dist=LOCK.t?84:92;hgt=LOCK.t?44:40;rate=mlLocked()?30:14;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
     if(kd.KeyC||mouse.mdown||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
@@ -5304,7 +5318,12 @@ function drawHUD(){
       ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();
       ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx-r*0.12,cy);ctx.moveTo(cx+r*0.12,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy+r*0.12);ctx.lineTo(cx,cy+r);ctx.stroke();
       ctx.fillStyle=hitMarks.length?'#ff3030':'#ff2a2a';ctx.fillRect(cx-1.5,cy-1.5,3,3);ctx.restore();hudText(SCOPE.z.toFixed(1)+'x',cx+r*0.7,cy+r*0.75,Math.round(14*sc),'#cfd8c0','center');}
-    else{ctx.strokeStyle=hitMarks.length?'#ff4040':'rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,9,0,TAU);ctx.moveTo(cx-18,cy);ctx.lineTo(cx-11,cy);ctx.moveTo(cx+11,cy);ctx.lineTo(cx+18,cy);ctx.moveTo(cx,cy+11);ctx.lineTo(cx,cy+18);ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(cx-1,cy-1,2,2);}}
+    else{{const k=Math.min(VW,VH)/700,gx=VW*0.62,gy=VH,kick=player.cool>w.rate*0.6?6*k:0,sh=Math.sin(game.t*2)*2*k;ctx.save();ctx.translate(gx+kick*0.6,gy+kick+sh);ctx.scale(k,k);
+        ctx.fillStyle='#1c1d20';ctx.strokeStyle='#000';ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(-40,0);ctx.lineTo(-10,-150);ctx.lineTo(18,-210);ctx.lineTo(40,-212);ctx.lineTo(48,-150);ctx.lineTo(120,0);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle='#2c2e33';ctx.beginPath();ctx.moveTo(10,-205);ctx.lineTo(22,-300);ctx.lineTo(34,-300);ctx.lineTo(42,-206);ctx.closePath();ctx.fill();ctx.stroke();
+        ctx.fillStyle='#5a3a24';ctx.beginPath();ctx.moveTo(60,-60);ctx.lineTo(150,0);ctx.lineTo(70,0);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle='#d8a070';ctx.beginPath();ctx.ellipse(70,-40,38,26,-0.5,0,TAU);ctx.fill();ctx.stroke();
+        if(kick){ctx.globalCompositeOperation='lighter';ctx.fillStyle='rgba(255,220,120,.85)';ctx.beginPath();ctx.arc(28,-312,22,0,TAU);ctx.fill();}ctx.restore();}
+      ctx.strokeStyle=hitMarks.length?'#ff4040':'rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,9,0,TAU);ctx.moveTo(cx-18,cy);ctx.lineTo(cx-11,cy);ctx.moveTo(cx+11,cy);ctx.lineTo(cx+18,cy);ctx.moveTo(cx,cy+11);ctx.lineTo(cx,cy+18);ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(cx-1,cy-1,2,2);}}
   else if(LOCK.t&&game.state==='play')drawLockMarker(LOCK.t,sc,false);
   else if(SOFT.t&&!SOFT.t.gone&&game.t-SOFT.at<0.35&&!player.car&&game.state==='play')drawLockMarker(SOFT.t,sc,true);
   if(!touchMode&&mouse.used&&game.state==='play'&&!game.paused&&!LOCK.t&&!SCOPE.on){
