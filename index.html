@@ -6,8 +6,8 @@
 <title>Gridlock City</title>
 <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Bungee&family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
 <style>
-html,body{margin:0;height:100%;background:#111;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-canvas{display:block;width:100vw;height:100vh;cursor:none;image-rendering:pixelated}
+html,body{margin:0;height:100%;height:100dvh;background:#111;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;cursor:none;image-rendering:pixelated}
 #menu{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(ellipse at center,rgba(20,20,28,.82),rgba(0,0,0,.95));color:#eee;z-index:5}
 #menu .box{max-width:560px;width:92%;text-align:center}
 #menu h1{font-family:Black Ops One,Impact,sans-serif;font-size:clamp(38px,9vw,72px);margin:0;line-height:1;color:#e9dfc4;text-shadow:3px 3px 0 #8a0f14,6px 6px 0 #000;letter-spacing:1px}
@@ -44,15 +44,15 @@ canvas{display:block;width:100vw;height:100vh;cursor:none;image-rendering:pixela
 </div>
 <div class="links"><button id="updBtn">Check for updates</button><a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">💜 Sponsor</a></div>
 <div id="upd"></div>
-<div class="small">v3.3.2 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
+<div class="small">v3.3.3 · Three gangs run the city. Their payphones give jobs, and respect decides who shoots at you.<br>On a phone? Touch controls appear automatically.</div>
 </div></div>
 <script>
 'use strict';
-const VERSION='3.3.2',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.3.3',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
-function resize(){DPR=Math.min(2,window.devicePixelRatio||1);VW=window.innerWidth;VH=window.innerHeight;cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);}
+function resize(){DPR=Math.min(2,window.devicePixelRatio||1);const vv=window.visualViewport;VW=Math.round(vv?vv.width:window.innerWidth);VH=Math.round(vv?vv.height:window.innerHeight);cv.style.width=VW+'px';cv.style.height=VH+'px';cv.width=Math.floor(VW*DPR);cv.height=Math.floor(VH*DPR);}
 window.addEventListener('resize',resize);resize();
 
 const PI=Math.PI,TAU=PI*2;
@@ -1156,14 +1156,15 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 // touch
 const joy={id:null,ox:0,oy:0,x:0,y:0,active:false},aimJoy={id:null,ox:0,oy:0,x:0,y:0,active:false};
-const tbtn={fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
+const tbtn={look:{id:null,on:false},fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
 function touchScale(){return clamp(Math.min(VW,VH)/420,0.72,1.2)}
 function btnLayout(){const s=touchScale(),pad=16*s,bx=VW-pad,by=VH-pad-8;
   const L={fire:{x:bx-46*s,y:by-46*s,r:46*s,label:'FIRE'},
     brake:{x:bx-148*s,y:by-34*s,r:33*s,label:'DRIFT'},
     car:{x:bx-46*s,y:by-150*s,r:33*s,label:'CAR'},
     gun:{x:bx-128*s,y:by-122*s,r:25*s,label:'GUN'},
-    pause:{x:VW/2,y:24*s,r:17*s,label:'II'}};
+    pause:{x:VW/2,y:24*s,r:17*s,label:'II'},
+    look:{x:bx-128*s,y:by-192*s,r:22*s,label:'LOOK'}};
   if(player.car)L.radio={x:bx-46*s,y:by-226*s,r:23*s,label:'RADIO'};
   return L;}
 function joyHome(){const s=touchScale();return{x:16*s+72*s,y:VH-16*s-8-72*s,r:62*s}}
@@ -1763,7 +1764,7 @@ function update(dt){
     if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;want=c.a;
       dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=3.2;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
-    if(keys.KeyC){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
+    if(keys.KeyC||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
     if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);dist+=k*k*110;hgt+=k*k*90;rate*=0.15;}
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
@@ -1795,6 +1796,8 @@ function resizeLow(){
   SCL=Math.max(VW/LW,VH/LH);OX=(VW-LW*SCL)/2;OY=(VH-LH*SCL)/2;
 }
 window.addEventListener('resize',resizeLow);resizeLow();
+if(window.visualViewport)visualViewport.addEventListener('resize',()=>{resize();resizeLow();});
+window.addEventListener('orientationchange',()=>setTimeout(()=>{resize();resizeLow();},250));
 function setCam(){CX=cam.x;CY=cam.y;CZ=Math.max(cam.h+(cam.gz||0),GH(cam.x,cam.y)+14);CC=Math.cos(cam.yaw);CS=Math.sin(cam.yaw);}
 function proj(x,y,z){const dx=x-CX,dy=y-CY,f=dx*CC+dy*CS;if(f<NEAR)return false;const k=FOC/f;PX=HW+(-dx*CS+dy*CC)*k;PY=HOR+(CZ-z-ZOFF)*k;PK=k;PF=f;return true}
 function projFull(x,y,z){ZOFF=GH(x,y);if(!proj(x,y,z))return null;return[OX+PX*SCL,OY+PY*SCL,PF]}
@@ -2479,7 +2482,7 @@ const DEATH_T=3.4;let fadeIn=0,fadeLast=0;
 let MIRROR=false,mirrorOn=true,MIRH=0;try{mirrorOn=localStorage.getItem('gc_mirror')!=='0'}catch(_){}
 const MWm=176,MHm=46,mirC=document.createElement('canvas'),mirX=mirC.getContext('2d'),mirG=document.createElement('canvas'),mirGX=mirG.getContext('2d');
 mirC.width=MWm;mirC.height=MHm;const mirImg=mirX.createImageData(MWm,MHm),mirBuf=new Uint32Array(mirImg.data.buffer);
-function mirrorShow(){return mirrorOn&&!!player.car&&!player.car.wreck&&game.state==='play'&&!keys.KeyC;}
+function mirrorShow(){return mirrorOn&&!!player.car&&!player.car.wreck&&game.state==='play'&&!keys.KeyC&&!tbtn.look.on;}
 function renderMirror(top,bot,lightLvl,warm){
   const S=[lowc,L3,LW,LH,HW,HOR,FOC,HALF,lowImg,lowBuf,CX,CY,CZ,CC,CS,cam.yaw,gcv,GCX],c=player.car,yaw=c.a+PI;
   lowc=mirC;L3=mirX;LW=MWm;LH=MHm;HW=LW/2;HOR=Math.round(LH*0.42);FOC=Math.round(LW*0.6);HALF=HW/FOC;lowImg=mirImg;lowBuf=mirBuf;gcv=mirG;GCX=mirGX;

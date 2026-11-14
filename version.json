@@ -1,4 +1,4 @@
 {
-  "version": "3.3.2",
-  "notes": "Blocky 3D trees and street objects that match the city: voxel oaks, pines and cherry trees, lamp posts with arms, payphone booths, hydrants, bins, benches, bushes and rocks."
+  "version": "3.3.3",
+  "notes": "Phone fix: the game now fits the visible screen, so the touch buttons are no longer cut off at the bottom and taps land where the buttons are drawn. New LOOK button to look behind."
 }
