@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.8.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.9.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -78,7 +78,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.8.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.9.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1766,11 +1766,11 @@ function updatePackages(){const o=player.car||player;for(const k of PACKAGES){if
 // ---- standing on things: car roofs and ramps can be landed on and walked over ----
 function carRoof(c){const t=c.t;if(t.roofH)return t.roofH;return(t.tank?24:t.truck?34:t.swat?28:t.ambulance?30:c.type==='sports'?18:21);}
 const WALKS=[];
-let FOOT_LADDER=false; // set while the player's feet are on a ladder: lets them climb over a wall's top edge
-function footFloor(x,y,z){if(z==null)z=1e9;let fl=0,on=null,lad=false;
+let FOOT_LADDER=false,FOOT_FE=false; // set while the player's feet are on a ladder: lets them climb over a wall's top edge
+function footFloor(x,y,z){if(z==null)z=1e9;let fl=0,on=null,lad=false,fe=false;
   for(const r of WALKS){const dx=x-r.x,dy=y-r.y;if(Math.abs(dx)>r.hl+r.hw+4||Math.abs(dy)>r.hl+r.hw+4)continue;const ca=Math.cos(r.a),sa=Math.sin(r.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
-    if(Math.abs(f)<r.hl&&Math.abs(l)<r.hw){const h=r.h0+(r.h1-r.h0)*(f+r.hl)/(2*r.hl);if(h>fl&&h<=z+8){fl=h;on=null;lad=!!r.ladder;}}}
-  FOOT_LADDER=lad;
+    if(Math.abs(f)<r.hl&&Math.abs(l)<r.hw){const h=r.h0+(r.h1-r.h0)*(f+r.hl)/(2*r.hl);if(h>fl&&h<=z+8){fl=h;on=null;lad=!!r.ladder;fe=!!r.fe;}}}
+  FOOT_LADDER=lad;FOOT_FE=fe;
   for(const c of cars){const dx=x-c.x,dy=y-c.y;if(dx*dx+dy*dy>3600)continue;const ca=Math.cos(c.a),sa=Math.sin(c.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
     if(Math.abs(f)<c.t.L/2-1&&Math.abs(l)<c.t.Wd/2){const h=carRoof(c)+(c.az||0);if(h>fl&&h<=z+8){fl=h;on=c;}}}
   {const b=bldAt(x,y);if(b){const h=roofAbs(b,x,y)-GH(x,y)+0.5;if(h>fl&&h<=z+8){fl=h;on=null;}}}
@@ -2200,8 +2200,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.star
 
 // ---------- per-frame hook ----------
 function extTick(dt){extTick5(dt);transitTick(dt);extTick2(dt);extTick3(dt);extTick4(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
-function extSave(){return{story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
-function extLoad(e){if(!e)return;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
+function extSave(){return{roof:{seed:CITY_SEED,got:STASH.map(k=>k.got?1:0)},trash:trashLevel,taco:tacoLevel,story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
+function extLoad(e){if(!e)return;for(const k of STASH)k.got=false;if(e.roof&&e.roof.seed===CITY_SEED)(e.roof.got||[]).forEach((g,i)=>{if(STASH[i])STASH[i].got=!!g;});trashLevel=e.trash||0;tacoLevel=e.taco||0;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
   for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});for(const k in EXPORTED)delete EXPORTED[k];Object.assign(EXPORTED,e.exp||{});pizzaLevel=e.pizza||0;player.armor=e.armor||0;for(const k in TURF)delete TURF[k];Object.assign(TURF,e.turf||{});stuntLevel=e.stunt||0;}
 
 // ---------- traffic on the diagonal avenues ----------
@@ -2226,6 +2226,7 @@ function completion(){const sm=CHAPTERS.reduce((a,c)=>a+c.length,0)+1,sd=STORY.p
 function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS · ${completion()}% COMPLETE</h2><div class="ctl">
 <b>Story</b><span>${STORY.prog.reduce((a,b)=>a+b,0)+STORY.fin} / ${CHAPTERS.reduce((a,c)=>a+c.length,0)+1} missions</span>
 <b>Hidden packages</b><span>${PACKAGES.filter(k=>k.got).length} / ${PACKAGES.length}</span>
+<b>Rooftop stashes</b><span>${STASH.filter(k=>k.got).length} / ${STASH.length}</span><b>Side jobs</b><span>Garbage ${trashLevel} · Taco ${tacoLevel}</span>
 <b>Race golds</b><span>${Object.keys(GOLDS).length} / ${RACES.length} · ${STATS.raceWins} wins</span>
 <b>Safehouses</b><span>${SAFEHOUSES.filter(s=>s.owned).length} / ${SAFEHOUSES.length}</span>
 <b>Job levels</b><span>Duty ${jobLevel} · Fire ${fireLevel}</span>
@@ -2837,7 +2838,11 @@ function stationFor(c){const t=c.type;if(c.t.police||c.t.ambulance||c.t.fire||c.
   if(c.gang!=null)return c.gang%(RADIO.length-1);
   const pref={muscle:0,pickup:0,truck:0,bike:0,sports:1,roadster:1,limo:1,suv:1,icecream:1,compact:2,van:2,sedan:2,taxi:2,wagon:2,foodtruck:2}[t];
   return pref!=null&&R()<0.75?pref:Math.floor(R()*(RADIO.length-1));}
-function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);}
+// ---------- rooftop stashes: duffel bags of cash on roofs you can only reach by climbing ----------
+function updateStash(){if(player.car||game.state!=='play')return;for(const k of STASH){if(k.got||Math.abs(k.x-player.x)>22||Math.abs(k.y-player.y)>22||Math.abs((player.jz||0)-k.z)>14)continue;
+  k.got=true;const n=STASH.filter(q=>q.got).length,pay=300+n*50;addMoney(pay);sfx('pickup');
+  if(n===STASH.length){addMoney(8000);showBig('ALL ROOFTOP STASHES','+$8,000 bonus','#ffd600',3);}else showBig('ROOFTOP STASH','+$'+pay+'  ·  '+n+' / '+STASH.length,'#9fe06a',2);}}
+function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();}
 
 
 window.__roomsReady=true;
@@ -2866,12 +2871,18 @@ function update(dt){
       // sprint: hold SHIFT (or click the left stick, or push the touch stick all the way)
       const run=fwd>0.5&&(kd.ShiftLeft||kd.ShiftRight||(joy.active&&hyp(joy.x,joy.y)>0.97)||(pad.on&&pad.run)),m=Math.abs(fwd)*(run?1.35:1),sp=fwd<0?115:run?245:168,mx=Math.cos(player.body)*fwd,my=Math.sin(player.body)*fwd;
       player.vx=lerp(player.vx,mx*sp,Math.min(1,dt*14));player.vy=lerp(player.vy,my*sp,Math.min(1,dt*14));
-      player.x+=player.vx*dt;player.y+=player.vy*dt;
-      {const[fl,onCar]=footFloor(player.x,player.y,player.jz);
+      const ox0=player.x,oy0=player.y;player.x+=player.vx*dt;player.y+=player.vy*dt;
+      {let[fl,onCar]=footFloor(player.x,player.y,player.jz);
+        // fire escape railings: you can't just walk off the edge (jump to go over them)
+        if(player.onFE&&player.jv<=0&&player.jz-fl>9){player.x=ox0;player.y=oy0;player.vx*=0.2;player.vy*=0.2;[fl,onCar]=footFloor(player.x,player.y,player.jz);}
+        player.onFE=FOOT_FE&&player.jz-fl<6;
         if(onCar&&player.jz>=fl-1.5&&player.jv<=0){player.x+=onCar.vx*dt;player.y+=onCar.vy*dt;}
         const grounded=player.jz<=fl+0.6&&player.jv<=0;
         if((kd.Space||tbtn.brake.on)&&grounded&&!player.jumpHeld){player.jv=180;player.jz=Math.max(player.jz,fl)+0.01;sfx('door',0.4);}
         player.jumpHeld=!!(kd.Space||tbtn.brake.on);
+        // walking down stairs or a slope: stay on it rather than floating off and falling
+        if(player.jv===0&&player.wasGrounded&&player.jz>fl+0.6&&player.jz-fl<=8.5){player.jz=fl;}
+        player.wasGrounded=player.jv===0&&player.jz<=fl+0.6;
         if(player.jv!==0||player.jz>fl+0.6){player.peak=Math.max(player.peak||0,player.jz);player.jz+=player.jv*dt;player.jv-=640*dt;if(player.jz<=fl&&player.jv<=0){player.jz=fl;player.jv=0;
             const drop=(player.peak||0)-fl;if(drop>110&&game.state==='play'){hurtPlayer(Math.round((drop-110)*0.45));sfx('crash',0.4);if(drop>200)note('Ouch. That was a long way down');}player.peak=fl;}}
         else{if(fl>player.jz&&fl-player.jz<=8.5)player.jz=fl;player.peak=player.jz;}} // step up as far as footFloor looks (z+8)
@@ -3164,7 +3175,11 @@ function update(dt){
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
     const inBoat=player.car&&player.car.t.boat;if(inBoat){hgt+=14;dist+=10;}if(player.car&&player.car.t.heli){dist+=50;hgt+=26;}
-    for(let s2=10;s2<=dist;s2+=6){const qx=player.x-ca*s2,qy=player.y-sa*s2;if(solidPx(qx,qy)&&!(inBoat&&tileAt(Math.floor(qx/T),Math.floor(qy/T))===WATER)){dd=Math.max(24,s2-10);break;}}
+    // pull the camera in when a wall is between it and you; up on a roof or fire escape, only things taller than the camera count
+    {const camZ=GH(player.x,player.y)+(player.jz||0)+hgt,hi=(player.jz||0)>12;
+    for(let s2=10;s2<=dist;s2+=6){const qx=player.x-ca*s2,qy=player.y-sa*s2;if(!solidPx(qx,qy)||(inBoat&&tileAt(Math.floor(qx/T),Math.floor(qy/T))===WATER))continue;
+      if(hi){const tt=tileAt(Math.floor(qx/T),Math.floor(qy/T));if(tt===TREE)continue;const bb=bldAt(qx,qy);if(bb&&roofAbs(bb,qx,qy)<camZ-6)continue;}
+      dd=Math.max(24,s2-10);break;}}
     cam.dist=lerp(cam.dist,dd,Math.min(1,dt*(dd<cam.dist?16:2.5)));cam.h=lerp(cam.h,hgt,Math.min(1,dt*3));
     cam.x=player.x-ca*cam.dist;cam.y=player.y-sa*cam.dist;{const gz=GH(player.x,player.y)+(player.riding?EL_H+6:player.car?(player.car.az||0)*0.85:(player.jz||0)>18?player.jz-6:(player.jz||0)*0.4);cam.gz=cam.gz==null?gz:lerp(cam.gz,gz,Math.min(1,dt*(player.car&&player.car.air>0?9:5)));}}
   updateAudio();
@@ -3198,7 +3213,9 @@ const drops=[];for(let i=0;i<220;i++)drops.push({x:Math.random()*2200,y:Math.ran
 //  8. Anything you can climb has a walk surface in WALKS that matches what's drawn: same footprint, same height.
 //     Stairs are flat steps at each drawn tread's height (the player steps up at most 8 at a time), never one
 //     smooth ramp under blocky steps. Ladders are WALKS with ladder:true (they let you climb over a wall's top).
-//     Fire escapes are drawn by fireEscape() and walked on via feGeom(): change one, change the other.
+//     Fire escapes are drawn by fireEscape() and walked on via feLayout()/feGeom(): change one, change the other.
+//     Two walk surfaces must never overlap in plan within 8 of each other's height, or the game can't tell which
+//     one you mean (that's why fire escape stairs run in their own lane beside the landings).
 //  9. Moving things you can stand on (cars, the El train) must report their velocity from footFloor so the
 //     player rides along, and the player must be drawn after them while on top (see the UNDERFOOT block).
 // Checking a change: render the thing from the front, back, both sides and from above at day and night
@@ -3347,19 +3364,30 @@ function faceWall(b,f){const x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;return f===0?[x
 const faceOf=(nx,ny)=>ny<-0.5?0:nx>0.5?1:ny>0.5?2:3;
 function feGeom(b){const[ax,ay,bx,by]=faceWall(b,b.feFace),len=hyp(bx-ax,by-ay),dx=(bx-ax)/len,dy=(by-ay)/len,nx=dy,ny=-dx,H=b.hg*BH,nf=Math.max(1,Math.round(H/(BH/2))),fh=H/nf,nf2=Math.min(nf,14);
   const s0=len*0.3,s1=Math.min(len-8,s0+Math.max(34,len*0.3));return{ax,ay,dx,dy,nx,ny,len,H,fh,nf2,s0,s1,first:1};}
+// Like a real fire escape: landings hug the wall, and the stairs run in a lane just outside them, each flight coming
+// up through an opening in the landing above. Step out onto the stairs to go up or down, step back in to the landing.
+// Stairs and landings never share a footprint at nearby heights, so walking down works as well as walking up.
+// Flights alternate direction; the roof ladder is in the middle of the top landing.
+const FE_LAND=8,FE_LANE=11.6,FE_LW=3.6; // landing depth from the wall; the stairs' lane centre and half-width
+function feLayout(b){const g=feGeom(b),L=g.s1-g.s0,lv=b.feLv||[0],land=[],fl=[];
+  for(let i=0;i+1<lv.length;i++){const ev=i%2===0;fl.push({z0:lv[i],z1:lv[i+1],lo:ev?g.s0:g.s1,hi:ev?g.s0+0.6*L:g.s0+0.4*L});land.push({z:lv[i+1],a:ev?g.s0+0.6*L:g.s0,b:ev?g.s1:g.s0+0.4*L});}
+  const t=land[land.length-1];return{g,land,fl,lad:t?(t.a+t.b)/2:null,top:t?t.z:0};}
 for(const b of buildings){if(!b.fe)continue;b.fe=false;const h=hash(b.id*5+1,b.id*3+7);
   for(let k=0;k<4;k++){const f=((h>>2)+k)&3;b.feFace=f;const g=feGeom(b);if(g.len<=70||g.H<=BH*1.6)continue;
     const mx=g.ax+g.dx*(g.s0+g.s1)/2+g.nx*20,my=g.ay+g.dy*(g.s0+g.s1)/2+g.ny*20,t=tileAt(Math.floor(mx/T),Math.floor(my/T));if(t===BLD||t===WATER||t===TREE)continue;
     b.fe=true;break;}
   if(!b.fe)continue;
-  const g=feGeom(b),sm=(g.s0+g.s1)/2,hl=(g.s1-g.s0)/2,a=Math.atan2(g.dy,g.dx),px=g.ax+g.dx*sm+g.nx*4.5,py=g.ay+g.dy*sm+g.ny*4.5,off=b.base-GH(px,py);
-  const lv=[0];for(let fl=g.first;fl<g.nf2;fl++)lv.push(fl*g.fh);
-  for(let i=1;i<lv.length;i++)WALKS.push({x:px,y:py,a,hl,hw:4.5,h0:lv[i]+off,h1:lv[i]+off});
-  // stairs zigzag: up toward the far end, then back, floor after floor
-  for(let i=0;i+1<lv.length;i++){const up=i%2===0;WALKS.push({x:px,y:py,a:up?a:a+PI,hl,hw:4.5,h0:lv[i]+off,h1:lv[i+1]+off});}
+  const g=feGeom(b),a=Math.atan2(g.dy,g.dx),lv=[0];for(let fl=g.first;fl<g.nf2;fl++)lv.push(fl*g.fh);b.feLv=lv;
+  const Lo=feLayout(b),at=(sx,o)=>[g.ax+g.dx*sx+g.nx*o,g.ay+g.dy*sx+g.ny*o],[cx0,cy0]=at((g.s0+g.s1)/2,4.5),off=b.base-GH(cx0,cy0);
+  for(const d of Lo.land){const[x,y]=at((d.a+d.b)/2,FE_LAND/2);WALKS.push({x,y,a,hl:(d.b-d.a)/2+0.5,hw:FE_LAND/2,h0:d.z+off,h1:d.z+off,fe:true});}
+  for(const f of Lo.fl){const[x,y]=at((f.lo+f.hi)/2,FE_LANE);WALKS.push({x,y,a:f.hi>f.lo?a:a+PI,hl:Math.abs(f.hi-f.lo)/2,hw:FE_LW,h0:f.z0+off,h1:f.z1+off,fe:true});}
   // a ladder from the top landing over the parapet onto the roof
-  const top=lv[lv.length-1];if(lv.length>1)WALKS.push({x:g.ax+g.dx*sm+g.nx*1.5,y:g.ay+g.dy*sm+g.ny*1.5,a:Math.atan2(-g.ny,-g.nx),hl:7.5,hw:4,h0:top+off,h1:g.H+off+1,ladder:true});
-  b.feLv=lv;}
+  if(Lo.lad!=null){const[x,y]=at(Lo.lad,1.5);WALKS.push({x,y,a:Math.atan2(-g.ny,-g.nx),hl:7.5,hw:4,h0:Lo.top+off,h1:g.H+off+1,ladder:true});}}
+// rooftop stashes: one on the roof of each of up to 16 fire-escape buildings spread around town (picked by id, so the
+// city's random stream is untouched), set a little in from the top of the ladder
+const STASH=[];{const fe=buildings.filter(b=>b.fe&&b.feLv&&b.feLv.length>=3).sort((p,q)=>hash(p.id,91)-hash(q.id,91));
+  for(const b of fe){if(STASH.length>=16)break;const Lo=feLayout(b),g=Lo.g;if(Lo.lad==null)continue;const x=g.ax+g.dx*Lo.lad-g.nx*Math.min(36,(g.nx?b.w:b.h)*0.45),y=g.ay+g.dy*Lo.lad-g.ny*Math.min(36,(g.nx?b.w:b.h)*0.45);
+    if(STASH.some(k=>hyp(k.x-x,k.y-y)<700))continue;if(bldAt(x,y)!==b)continue;STASH.push({x,y,z:roofAbs(b,x,y)-GH(x,y)+0.5,got:false});}}
 const TLIGHTS=[];
 for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++){if(nodeDeg(ix,iy)<3)continue;
   for(const[x,y,a,ew]of[[(ix*P-0.5)*T+8,(iy*P+4.5)*T-8,PI,1],[(ix*P+4.5)*T-8,(iy*P-0.5)*T+8,0,1],[(ix*P-0.5)*T+8,(iy*P-0.5)*T+8,-PI/2,0],[(ix*P+4.5)*T-8,(iy*P+4.5)*T-8,PI/2,0]]){
@@ -3668,16 +3696,17 @@ function drawDents(c,t,hl,hw,ca,sa,fg){const lat=(CX-c.x)*-sa+(CY-c.y)*ca;if(Mat
   NOTOP=false;}
 // a black iron fire escape: a landing at every floor, railings, zigzag stairs from the sidewalk and a ladder to the
 // roof. Its walk surfaces (feGeom, after the buildings are set up) use the same numbers, so what you see is what you climb.
-function fireEscape(b,fg){const g=feGeom(b),{ax,ay,dx,dy,nx,ny,s0,s1}=g,sm=(s0+s1)/2,hl=(s1-s0)/2,a=Math.atan2(dy,dx),IR=[40,38,38],lv=b.feLv||[0];
-  const px=ax+dx*sm+nx*4,py=ay+dy*sm+ny*4,ox=ax+dx*sm+nx*7.6,oy=ay+dy*sm+ny*7.6;
-  for(let i=1;i<lv.length;i++){const zz=lv[i];
-    obox(px,py,a,hl,4,zz-0.8,zz,IR,[56,52,50],fg);obox(ox,oy,a,hl,0.35,zz+5.5,zz+6.3,IR,null,fg);
-    for(const t of[-hl,0,hl])obox(ox+dx*t,oy+dy*t,0,0.35,0.35,zz,zz+6,IR,null,fg);}
-  L3.strokeStyle=lit(IR,1,fg);L3.lineWidth=Math.max(1,PK*1.6);
-  for(let i=0;i+1<lv.length;i++){const up=i%2===0,sa0=up?s0+2:s1-2,sb0=up?s1-2:s0+2;
-    if(proj(ax+dx*sa0+nx*4.5,ay+dy*sa0+ny*4.5,lv[i])){const x1=PX,y1=PY;if(proj(ax+dx*sb0+nx*4.5,ay+dy*sb0+ny*4.5,lv[i+1])){L3.beginPath();L3.moveTo(x1,y1);L3.lineTo(PX,PY);L3.stroke();}}}
-  if(lv.length>1){const z0=lv[lv.length-1],z1=g.H+3;for(const t of[-3.5,3.5])obox(ax+dx*(sm+t)+nx*1.2,ay+dy*(sm+t)+ny*1.2,0,0.5,0.5,z0,z1,IR,null,fg);
-    for(let z=z0+3;z<z1;z+=4)obox(ax+dx*sm+nx*1.2,ay+dy*sm+ny*1.2,a,3.5,0.4,z,z+0.7,IR,null,fg);}}
+function fireEscape(b,fg){const Lo=feLayout(b),g=Lo.g,{ax,ay,dx,dy,nx,ny}=g,a=Math.atan2(dy,dx),IR=[40,38,38],o0=FE_LANE-FE_LW,o1=FE_LANE+FE_LW;
+  const at=(sx,o)=>[ax+dx*sx+nx*o,ay+dy*sx+ny*o];
+  for(const d of Lo.land){const hl=(d.b-d.a)/2,sm=(d.a+d.b)/2,[px,py]=at(sm,FE_LAND/2),zz=d.z;obox(px,py,a,hl,FE_LAND/2,zz-0.8,zz,IR,[56,52,50],fg);
+    for(const t of[-hl,hl]){const[qx,qy]=at(sm+t,FE_LAND-0.4);obox(qx,qy,0,0.35,0.35,zz,zz+6,IR,null,fg);}}
+  L3.strokeStyle=lit(IR,1,fg);L3.lineWidth=Math.max(1,PK*1.2);
+  const seg=(s1,o1_,z1,s2,o2,z2)=>{const[x1,y1]=at(s1,o1_);if(!proj(x1,y1,z1))return;const q=[PX,PY];const[x2,y2]=at(s2,o2);if(!proj(x2,y2,z2))return;L3.moveTo(q[0],q[1]);L3.lineTo(PX,PY);};
+  for(const f of Lo.fl){L3.beginPath();seg(f.lo,o0,f.z0,f.hi,o0,f.z1);seg(f.lo,o1,f.z0,f.hi,o1,f.z1);seg(f.lo,o1,f.z0+7,f.hi,o1,f.z1+7);
+    if(PK>0.5)for(let k=1;k<8;k++){const t=k/8,sx=f.lo+(f.hi-f.lo)*t,z=f.z0+(f.z1-f.z0)*t;seg(sx,o0,z,sx,o1,z);}
+    seg(f.lo,o1,f.z0,f.lo,o1,f.z0+7);seg(f.hi,o1,f.z1,f.hi,o1,f.z1+7);L3.stroke();}
+  if(Lo.lad!=null){const z0=Lo.top,z1=g.H+3;for(const t of[-3.5,3.5]){const[x,y]=at(Lo.lad+t,1.2);obox(x,y,0,0.5,0.5,z0,z1,IR,null,fg);}
+    for(let z=z0+3;z<z1;z+=4){const[x,y]=at(Lo.lad,1.2);obox(x,y,a,3.5,0.4,z,z+0.7,IR,null,fg);}}}
 function storefront(ax,ay,dx,dy,nx,ny,len,fh,b,k,fg,litOn){
   const zt=fh*0.74,s0=3,s1=len-3,late=clock>0.96||clock<0.24,closed=litOn&&late&&(hash(b.id,(ax|0)+(ay|0))%5<2);
   if(closed){quad(ax+dx*s0,ay+dy*s0,1.5,ax+dx*s1,ay+dy*s1,1.5,ax+dx*s1,ay+dy*s1,zt,ax+dx*s0,ay+dy*s0,zt,lit([96,98,102],k*0.8,fg));
@@ -4225,6 +4254,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
     case 15:add(15,o,o.x,o.y,5,null,47);break;case 16:add(16,o,o.x,o.y,32,null,16);break;case 19:if(!o.got)add(19,o,o.x,o.y,8,null,16);break;}}});
   if(fare&&fare.stage==='ride')add(18,fare,fare.x,fare.y,40,null,40);
   for(const k of pickups)if(!k.taken)add(4,k,k.x,k.y,8);
+  for(const k of STASH)if(!k.got)add(25,k,k.x,k.y,10,null,12,k.z);
   phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8,null,27));
   if(mission&&mission.items)for(const it of mission.items)if(!it.got)add(6,it,it.x,it.y,8);
   for(const sg of SIGNS){if(sg.sh)sg.text=sg.sh.owned?'SAFEHOUSE':'FOR SALE $'+sg.sh.price.toLocaleString();add(20,sg,sg.x,sg.y,40,null,sg.h+12);}
@@ -4295,6 +4325,7 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
     case 4:drawPickup3(o,fg);break;
     case 5:drawPhone3(o,phones.indexOf(o)===ringing&&!mission,fg);break;
     case 6:drawCase3(o,fg);break;
+    case 25:{ZOFF+=o.z;const bob=Math.sin(game.t*3+o.x)*0.8;obox(o.x,o.y,0.5,7,3.6,0.5+bob,6+bob,[58,84,48],[74,104,60],fg);obox(o.x,o.y,0.5,2,3.8,6+bob,7+bob,[40,40,40],null,fg);if(proj(o.x,o.y,9+bob))glow(PX,PY,4*PK,'#fff2a0',0.35+0.25*Math.sin(game.t*4));break;}
     case 7:drawPart3(o,fg);break;
     case 8:drawBullet3(o);break;
     case 9:{const z=Math.sin(clamp(1-o.t/0.55,0,1)*PI)*16+1;proj(o.b.x,o.b.y,z);drawBody3(o.b,z);break;}
