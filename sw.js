@@ -9,6 +9,15 @@ const ASSETS = [
   './version.json',
   './icon-192.png',
   './icon-512.png',
+  './js/01-core-map.js',
+  './js/02-world.js',
+  './js/03-ai-input.js',
+  './js/04-audio-actions.js',
+  './js/05-story.js',
+  './js/06-city-life.js',
+  './js/07-camera-update.js',
+  './js/08-render.js',
+  './js/09-menu.js',
 ];
 
 self.addEventListener('install', (e) => {
