@@ -589,7 +589,7 @@ for(const k in HANDLING)if(CT[k])CT[k].max=HANDLING[k].max*GT*TICK;
 CT.tank.max=0.1*GT*TICK; // GTA2 Tank max_speed 0.100
 function hand(c){
   const t=c.t;if(t.h)return t.h;
-  const H=Object.assign({},HANDLING[c.type]||HANDLING.sedan);
+  const H=Object.assign({},HANDLING[c.type]||(c.type==='tow'?HANDLING.pickup:null)||HANDLING.sedan);
   H.m=H.mass*1.1;                                   // ConvertMass: mass * 1.1
   const w=t.Wd/GT,h=t.L/GT,fm=H.m*H.fmb,rm=H.m*(1-H.fmb),base=(h*h*0.25+w*w)/12,hq=h*0.25;
   H.cg=(hq*fm-hq*rm)/H.m;                           // centre of mass shift from front mass bias
@@ -610,7 +610,9 @@ function driveCar(c,thr,steer,hb,dt){if(c.t.heli){heliDrive(c,thr,steer,hb,dt);r
     c.va=lerp(c.va,steer*t.turn,Math.min(1,dt*6));c.a+=c.va*dt;
     c.vx=Math.cos(c.a)*vf;c.vy=Math.sin(c.a)*vf;c.skid=false;return;
   }
-  const H=hand(c),n=dt*TICK,isP=c.driver==='player',m=H.m*(isP?1.05:1);
+  const G3H=c.driver==='player'&&OPT.handling==='gta3',H=hand(c),n=dt*TICK,isP=c.driver==='player',m=H.m*(isP?(G3H?1.4:1.05):1);
+  // GTA III-style handling: the wheel turns in progressively instead of snapping, the car feels heavier and slides less
+  if(G3H){c.sm=lerp(c.sm||0,steer,Math.min(1,dt*(Math.abs(steer)>Math.abs(c.sm||0)?4.2:9)));steer=c.sm;}
   const g=c.g||(c.g={fg:false,bg:false,fb:false,pedal:0,bp:0,hbc:0});
   let vx=c.vx/(GT*TICK),vy=c.vy/(GT*TICK),w=c.va/TICK;
   const fx=Math.cos(c.a),fy=Math.sin(c.a),speed=hyp(vx,vy),aligned=vx*fx+vy*fy>=0;
@@ -661,8 +663,8 @@ function driveCar(c,thr,steer,hb,dt){if(c.t.heli){heliDrive(c,thr,steer,hb,dt);r
   // StabilizeVelocityAtSpeed: every tick keep 90% of sideways speed, 97% of forward speed, 88% of spin
   {const ca=Math.cos(c.a),sa=Math.sin(c.a);
     if(Math.abs(vx)<=1/128&&Math.abs(vy)<=1/128){const k=Math.pow(0.9,n);vx*=k;vy*=k;}
-    else{let lon=vx*ca+vy*sa,lat=-vx*sa+vy*ca;lat*=Math.pow(0.9,n);lon*=Math.pow(0.97,n);vx=ca*lon-sa*lat;vy=sa*lon+ca*lat;}
-    w*=Math.pow(0.88,n);}
+    else{let lon=vx*ca+vy*sa,lat=-vx*sa+vy*ca;lat*=Math.pow(G3H&&!hb?0.86:0.9,n);lon*=Math.pow(0.97,n);vx=ca*lon-sa*lat;vy=sa*lon+ca*lat;}
+    w*=Math.pow(G3H?0.85:0.88,n);}
   // EnforceGearSensitiveMaxSpeed: max speed going forwards, gear 2 speed going backwards
   {const sp=hyp(vx,vy),cap=(vx*fx+vy*fy>=0?H.max:H.g2s)*dmg*(c.flat?0.55:1);if(sp>cap){vx*=cap/sp;vy*=cap/sp;}if(c.flat&&sp>0.05)w+=(Math.random()-0.5)*0.004*n;}
   // ApplyArrowSteerAssist: on a road, gas held (pedal >= 2), no steering, within 25 deg of the lane
@@ -1484,6 +1486,10 @@ function updateBullets(dt){
           if(b.kind==='r'){b.life=0;explode(b.x,b.y,b.own);break outer;}
           if(b.kind==='m'){b.life=0;break outer;}
           if(!(c.up&&c.up.bp))damageCar(c,b.cdmg,b.own==='player'?'player':null);
+          if(b.own==='player'&&!(c.up&&c.up.bp)&&!c.t.tank&&!c.t.boat&&!c.t.heli&&!c.wreck){const ca2=Math.cos(c.a),sa2=Math.sin(c.a),lx=(b.x-c.x)*ca2+(b.y-c.y)*sa2,ly=-(b.x-c.x)*sa2+(b.y-c.y)*ca2;
+            // a hit near a wheel can blow the tire (the car slews and slows); a hit low at the back can catch the fuel tank
+            if(!c.flat&&Math.abs(lx)>c.t.L*0.22&&Math.abs(ly)>c.t.Wd*0.25&&(b.dz==null||b.z<GH(c.x,c.y)+12)&&R()<(WEAPONS[player.w].sniper?0.8:0.3)){c.flat=true;c.va+=(R()-0.5)*2.5;puff(b.x,b.y,0,0,0.4,8,'#888','smoke');if(c.ai)c.ai.cruise=Math.min(c.ai.cruise,150);}
+            else if(lx<-c.t.L*0.3&&c.burn<0&&R()<(WEAPONS[player.w].sniper?0.5:0.05)){ignite(c,'player');note('Hit the fuel tank!');}}
           if(b.own==='player')hitMarks.push({x:b.x,y:b.y,t:0.12,kill:false});
           if(b.own==='player'&&c.t.police&&c.driver)crime(0,1);if(b.own==='player')for(const q of peds)if(!q.gone&&!q.cop&&dist2(q.x,q.y,b.x,b.y)<160*160&&R()<0.1)shout(q,'gun');
           if(b.kind==='f'){b.life=0;break outer;}
@@ -2301,11 +2307,12 @@ function hornStart(){if(!AC||hornNode)return;try{const g=AC.createGain();g.gain.
   const o1=AC.createOscillator(),o2=AC.createOscillator();o1.type=o2.type='square';o1.frequency.value=349;o2.frequency.value=440;o1.connect(f);o2.connect(f);f.connect(g);g.connect(AC.destination);o1.start();o2.start();hornNode={g,o1,o2};}catch(_){}}
 function hornStop(){if(!hornNode)return;try{const n=hornNode;n.g.gain.setTargetAtTime(0,AC.currentTime,0.02);n.o1.stop(AC.currentTime+0.1);n.o2.stop(AC.currentTime+0.1);}catch(_){}hornNode=null;}
 function updateHorn(dt){const c=player.car,on=!!(c&&(kd.KeyH||tbtn.horn.on)&&game.state==='play');
-  if(c!==dutyCar){if(duty&&dutyCar)note('Off duty');duty=false;dutyCar=c;if(dutyKind(c))note('Tap the horn ('+(touchMode?'HORN':'H')+') to start '+{taxi:'taxi fares',amb:'ambulance calls',fire:'fire calls',vig:'vigilante missions',trash:'a garbage route',taco:'taco service'}[dutyKind(c)]);}
+  if(c!==dutyCar){if(duty&&dutyCar)note('Off duty');duty=false;dutyCar=c;if(c&&c.t.tow)note('Tow truck: back up to a car and tap the horn ('+(touchMode?'HORN':'H')+') to hook it. Drop a towed car on the crusher to sell it');if(dutyKind(c))note('Tap the horn ('+(touchMode?'HORN':'H')+') to start '+{taxi:'taxi fares',amb:'ambulance calls',fire:'fire calls',vig:'vigilante missions',trash:'a garbage route',taco:'taco service'}[dutyKind(c)]);}
   if(on){if(hornT<0)hornT=0;hornT+=dt;if(hornT>0.22)hornStart();
     if(hornT>0.22){const ca=Math.cos(c.a),sa=Math.sin(c.a);for(const p of peds){if(p.gone||p.cop||p.state==='flee')continue;const dx=p.x-c.x,dy=p.y-c.y,f=dx*ca+dy*sa;if(f<10||f>160||Math.abs(-dx*sa+dy*ca)>40)continue;const s2=(-dx*sa+dy*ca)>=0?1:-1;p.state='flee';p.panic=1.2;p.fx=p.x-sa*s2*40;p.fy=p.y+ca*s2*40;}
       for(const o of cars){if(o===c||o.driver!=='ai'||!o.ai)continue;const dx=o.x-c.x,dy=o.y-c.y,f=dx*ca+dy*sa;if(f>20&&f<180&&Math.abs(-dx*sa+dy*ca)<40)o.ai.cruise=Math.max(o.ai.cruise,240);}}}
-  else if(hornT>=0){if(hornT<=0.22&&c&&dutyKind(c)){
+  else if(hornT>=0){if(hornT<=0.22&&c&&c.t.tow)towToggle(c);
+    else if(hornT<=0.22&&c&&dutyKind(c)){
       if(mission){note('Finish your mission first');}
       else if(!duty&&stars()>(dutyKind(c)==='vig'?1:0)){note('Lose the cops first');}
       else{duty=!duty;sfx(duty?'pickup':'door',0.6);note(duty?'On duty':'Off duty');if(!duty){if(fare)endFare(null);if(job)endJob(null);fireJob=null;sideJob=null;}}}
@@ -2912,6 +2919,21 @@ Object.assign(HANDLING,{
 });
 for(const k of['pickup','suv','muscle','wagon','van','garbage','roadster','foodtruck','bus','limo','icecream','firetruck'])CT[k].max=HANDLING[k].max*GT*TICK;
 Object.assign(FWD_BIAS,{pickup:0,suv:0.3,muscle:0,wagon:0.5,van:0.3,garbage:0,roadster:0,foodtruck:0.3,bus:0,limo:0.2,icecream:0.3,firetruck:0});
+// the tow truck: a pickup with a boom; hook the car behind you with a horn tap and drag it anywhere
+CT.tow=Object.assign({},CT.pickup,{name:'Wrecker',cols:['#d8a020','#c03020','#e8e8e4','#2a4a7a'],tow:true,hp:200,mass:1.9});
+function towHitch(c){const ca=Math.cos(c.a),sa=Math.sin(c.a);return[c.x-ca*(c.t.L/2+6),c.y-sa*(c.t.L/2+6)];}
+function towToggle(c){if(c.towing){const o=c.towing;o.towedBy=null;c.towing=null;sfx('door',0.6);note('Dropped the '+o.t.name);return;}
+  const [hx,hy]=towHitch(c);let best=null,bd=46;
+  for(const o of cars){if(o===c||o.wreck&&o.burn>=0||o.t.boat||o.t.heli||o.t.tank||o.t.bus||o.t.truck||o.towedBy)continue;if(o.driver&&o.driver!=='ai')continue;
+    const oa=Math.cos(o.a),ob=Math.sin(o.a);for(const sd of[1,-1]){const ex=o.x+oa*o.t.L/2*sd,ey=o.y+ob*o.t.L/2*sd,d=hyp(ex-hx,ey-hy);if(d<bd){bd=d;best=[o,sd];}}}
+  if(!best){note('Back up closer to a car to hook it');return;}
+  const [o,sd]=best;if(o.driver==='ai'){ejectDriver(o,true);}o.ai=null;o.traffic=false;o.towedBy=c;o.towEnd=sd;c.towing=o;sfx('door',0.8);note('Hooked the '+o.t.name+'. Tap the horn again to drop it');}
+function updateTow(dt){for(const c of cars){const o=c.towing;if(!o)continue;if(cars.indexOf(o)<0||o.wreck&&o.burn<0&&false||(o.driver&&o.driver!=='ai')){c.towing=null;o.towedBy=null;continue;}
+  const [hx,hy]=towHitch(c);const want=Math.atan2(hy-o.y,hx-o.x)+(o.towEnd>0?0:PI);o.a=lerpAng(o.a,want,Math.min(1,dt*6));
+  const oa=Math.cos(o.a)*o.towEnd,ob=Math.sin(o.a)*o.towEnd;o.x=hx-oa*(o.t.L/2+2);o.y=hy-ob*(o.t.L/2+2);o.vx=c.vx;o.vy=c.vy;o.va=0;
+  // drag it onto the car crusher to sell it for scrap
+  if(c===player.car&&hyp(c.vx,c.vy)<70)for(const cp of crusherPads)if(dist2(cp.x,cp.y,o.x,o.y)<55*55){const pay=Math.round((({compact:250,sedan:350,taxi:350,truck:600,sports:900,police:1200,swat:1500})[o.type]||300)*clamp(0.4+0.6*o.hp/o.t.hp,0.4,1));
+    c.towing=null;cars.splice(cars.indexOf(o),1);for(let k=0;k<18;k++)puff(cp.x+rr(-30,30),cp.y+rr(-30,30),rr(-220,220),rr(-220,220),rr(.5,1),rr(3,6),o.col,'debris');sfx('crash');addMoney(pay);showBig('CRUSHED','+$'+pay,'#e8e05a',2);break;}}}
 // paint jobs: two-tone roofs, racing stripes, company liveries, cargo in the back of pickups
 const LIVERY=[[[214,58,40],'#ffffff'],[[40,110,200],'#ffffff'],[[40,150,80],'#ffffff'],[[240,190,30],'#202020'],[[120,60,150],'#ffffff']];
 function decorateCar(c){const t=c.t,r=Math.random;
@@ -2925,11 +2947,11 @@ function decorateCar(c){const t=c.t,r=Math.random;
 // which vehicles you meet depends on the part of town
 const TMIX={base:['sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police','ambulance','bus','bike','bike','pickup','suv','wagon','van','muscle'],
   '-1':['taxi','taxi','taxi','limo','bus','van','suv','sedan','sports','foodtruck','roadster'],
-  '0':['van','van','pickup','pickup','garbage','truck','muscle','muscle','compact','wagon'],
+  '0':['van','van','pickup','pickup','garbage','truck','muscle','muscle','compact','wagon','tow'],
   '1':['suv','suv','suv','sports','roadster','roadster','limo','sedan','muscle','taxi'],
   '2':['compact','compact','van','bike','bike','foodtruck','roadster','icecream','sports'],
   res:['wagon','wagon','wagon','suv','suv','pickup','pickup','compact','icecream','garbage','sedan'],
-  rare:['firetruck','icecream','limo','garbage']};
+  rare:['firetruck','icecream','limo','garbage','tow']};
 function blockKindAt(x,y){const bx=clamp(Math.floor(x/T/P),0,NB-1),by=clamp(Math.floor(y/T/P),0,NB-1);return BLOCKK[by*NB+bx];}
 function nearRes(x,y){for(const[dx,dy]of[[0,0],[-T*3,0],[T*3,0],[0,-T*3],[0,T*3]])if(blockKindAt(x+dx,y+dy)==='res')return true;return false;}
 function trafficType(x,y){const r=R();if(r<0.03)return pick(TMIX.rare);
@@ -3357,7 +3379,7 @@ function initCountry(){{const ys=[3,9,15].map(iy=>(iy*P+2)*T);
   for(const yy of ys)for(const dx of[380,900])addRamp(WPX+dx,yy,0,'dirt');
   for(let i=0;i<26;i++){const x=WPX+rr(200,1100),y=rr(300,WPX-300);if(ys.some(q=>Math.abs(q-y)<60)||Math.abs(x-(WPX+640))<60||GH(x,y)>150)continue;props.push({x,y,k:'hay',a:rr(0,PI),rad:12,ht:14});}
   props.push({x:WPX+760,y:(9*P+2)*T-140,k:'windmill',rad:40,ht:120});}}
-function extTick14(dt){updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
+function extTick14(dt){updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
 function extTick13(dt){extTick14(dt);updateWaypoint();updateGangWar(dt);updateReputation(dt);updateTurfPressure(dt);updatePolice(dt);updateEscapes(dt);}
 function extTick12(dt){updateCrew(dt);extTick13(dt);}
 function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();extTick12(dt);}
@@ -4479,6 +4501,7 @@ function drawVX(c,fg,t,hl,hw,a,col,front,ca,sa){
   if(k==='pickup'){
     const cab=()=>{fv=B(hl*0.62,0,hl*0.38,hw,4,13,col,lite,mixA(col,TRIM,0.5));B(hl*0.4,0,hl*0.2,hw*0.88,13,23,G,roof);};
     const bed=()=>{B(-hl*0.4,0,hl*0.6,hw,4,8.5,col,wr?dark:[46,44,42]);
+      if(t.tow&&!wr){const Y=[220,170,30];B(-hl*0.62,0,hl*0.05,hw*0.5,8.5,26,Y,Y);B(-hl*0.86,0,hl*0.26,1.6,22,25,Y,Y);B(-hl*1.08,0,0.8,0.8,12,22,[30,30,30],null);B(-hl*1.08,0,2.4,4,10,12,[60,60,60],[80,80,80]);if(proj(c.x-ca*hl*0.62,c.y-sa*hl*0.62,28))glow(PX,PY,3*PK,Math.floor(game.t*4)%2?'#ffb020':'#ff7010',0.7);}
       if(c.cargo&&!wr){B(-hl*0.5,hw*0.2,hl*0.22,hw*0.42,8.5,17,c.cargo,mixA(c.cargo,[255,255,255],0.15));B(-hl*0.15,-hw*0.25,hl*0.16,hw*0.4,8.5,14,mixA(c.cargo,[0,0,0],0.15),c.cargo);}
       B(-hl*0.4,-side*hw*0.92,hl*0.6,hw*0.08,8.5,14,col,lite);B(-hl*0.97,0,hl*0.03,hw,8.5,14,col,lite);B(-hl*0.4,side*hw*0.92,hl*0.6,hw*0.08,8.5,14,col,lite);};
     if(front){bed();cab();}else{cab();bed();}
@@ -5233,6 +5256,7 @@ function drawHUD(){
    if(duty&&player.car){hudText('ON DUTY · tap horn to stop',VW-18*sc,touchMode?VH*0.42:VH*0.36,Math.round(12*sc),'#7dff8a','right',`600 ${Math.round(12*sc)}px system-ui`);}
    if(fireJob){const tm=Math.max(0,Math.ceil(fireJob.timer));hudText('FIRE CALL: '+fireJob.fires.filter(f=>f.hp>0).length+' fires left  '+Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0'),18*sc,(touchMode?msz+34*sc:30*sc),Math.round(16*sc),'#ff9a2e','left');}
    if(player.car&&player.car.up&&player.car.up.nitro){const w=90*sc,x=VW-18*sc-w,y=touchMode?VH*0.45:VH*0.39;ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(x,y,w,7*sc);ctx.fillStyle='#6ab8ff';ctx.fillRect(x+1,y+1,(w-2)*nitroFuel,7*sc-2);}}
+  if(player.car&&player.car.burn>=0&&game.state==='play'&&Math.floor(game.t*4)%2)bigTextAl('GET OUT!',VW/2,VH*0.62,Math.round(34*sc),'#ff5a2a','center');
   if(bustT>0.05&&game.state==='play'){const w=200*sc,x=VW/2-w/2,y=VH*0.68;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x,y,w,12*sc);ctx.fillStyle='#4da3ff';ctx.fillRect(x+2,y+2,(w-4)*clamp(bustT/1.3,0,1),12*sc-4);hudText('GETTING BUSTED',VW/2,y-12*sc,Math.round(14*sc),'#9fd0ff','center');}
   drawRadioLog(sc);
   if(touchMode)drawTouch();
@@ -5348,6 +5372,7 @@ function openPanel(kind){
     <div class="opt"><span>Slow motion on jumps</span><button data-opt="slowmo">${onoff(OPT.slowmo)}</button></div>
     <div class="opt"><span>Rear-view mirror (V)</span><button data-opt="mirror">${onoff(OPT.mirror)}</button></div>
     <div class="opt"><span>Camera view (V)</span><button data-opt="cam">${CAMV[camMode()].n}</button></div>
+    <div class="opt"><span>Car handling</span><button data-opt="handling">${OPT.handling==='gta3'?'GTA III (HEAVY)':'CLASSIC (GTA2)'}</button></div>
     <div class="opt"><span>Controller layout</span><button data-opt="pad">${OPT.pad==='classic'?'GTA III (PS2)':'MODERN'}</button></div>
     <div class="opt"><span>Autosave every 90 s</span><button data-opt="autosave">${onoff(OPT.autosave)}</button></div>
     <div class="opt"><span>Sound (M)</span><button data-opt="sound">${muted?'OFF':'ON'}</button></div>
@@ -5373,7 +5398,7 @@ function openPanel(kind){
   p.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=readSave(b.dataset.load);if(s)loadFrom(s);});
   p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
   p.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{const k=b.dataset.opt;
-    if(k==='cam')OPT.camMode=(camMode()+1)%CAMV.length;else if(k==='pad')OPT.pad=OPT.pad==='classic'?'modern':'classic';else if(k==='season')OPT.season=OPT.season==='winter'?'summer':OPT.season==='summer'?'auto':'winter';else if(k==='steer')OPT.steer=OPT.steer==='wheel'?'stick':'wheel';else if(k==='btn')OPT.btn=OPT.btn<1?1:OPT.btn>1?0.85:1.2;else if(k==='msens')OPT.msens=OPT.msens<1?1:OPT.msens>1?0.6:1.6;
+    if(k==='cam')OPT.camMode=(camMode()+1)%CAMV.length;else if(k==='pad')OPT.pad=OPT.pad==='classic'?'modern':'classic';else if(k==='handling')OPT.handling=OPT.handling==='gta3'?'gta2':'gta3';else if(k==='season')OPT.season=OPT.season==='winter'?'summer':OPT.season==='summer'?'auto':'winter';else if(k==='steer')OPT.steer=OPT.steer==='wheel'?'stick':'wheel';else if(k==='btn')OPT.btn=OPT.btn<1?1:OPT.btn>1?0.85:1.2;else if(k==='msens')OPT.msens=OPT.msens<1?1:OPT.msens>1?0.6:1.6;
     else if(k==='fs'){try{if(document.fullscreenElement)document.exitFullscreen();else{document.documentElement.requestFullscreen().catch(()=>{});}}catch(_){}setTimeout(()=>openPanel('options'),300);return;}else if(k==='sound'){toggleMute();}else if(k==='city'){openPanel('newcity');return;}else{OPT[k]=!OPT[k];if(k==='mirror')mirrorOn=OPT.mirror;}
     saveOpts();openPanel('options');});
   p.querySelectorAll('[data-yes]').forEach(b=>b.onclick=()=>{try{localStorage.setItem('gc_city_seed',String(((Math.random()*2**31)|0)||7))}catch(_){}location.reload();});
