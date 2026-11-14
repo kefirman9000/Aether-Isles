@@ -1910,7 +1910,7 @@ function updateFares(dt){
   if(fare.stage==='pickup'){
     const p=fare.ped;fare.timer-=dt;if(p.gone||fare.timer<=0){endFare(null);return;}
     if(dist2(p.x,p.y,c.x,c.y)<52*52&&sp<55){p.gone=true;sfx('door');
-      let dest=null;for(let i=0;i<300&&!dest;i++){const [tx,ty]=pick(walkTiles),x=(tx+.5)*T,y=(ty+.5)*T,d=hyp(x-c.x,y-c.y);if(d>900&&d<2300)dest={x,y,d};}
+      let dest=null;for(let i=0;i<300&&!dest;i++){const [tx,ty]=pick(walkTiles),x=(tx+.5)*T,y=(ty+.5)*T,d=hyp(x-c.x,y-c.y);if(d>900&&d<2300&&WOK(x,y))dest={x,y,d};}
       if(!dest){endFare(null);return;}
       fare={stage:'ride',x:dest.x,y:dest.y,dist:dest.d,timer:Math.round(dest.d/150+18)};note('Drive them to the yellow marker');}
   }else{
@@ -1927,9 +1927,9 @@ function updateJobs(dt){
   if(!(c&&(amb||cop)&&duty&&!c.t.boat&&!mission&&game.state==='play'&&stars()<=(cop?1:0))){if(job)endJob(job.kind==='amb'&&job.stage==='ride'?'The patient needed you':job.kind==='vig'?'You left the chase':null);return;}
   if(job&&(job.kind==='amb')!==amb){endJob(null);return;}
   if(!job){jobCool-=dt;if(jobCool>0)return;jobCool=1;
-    if(amb){let spot=null;for(let i=0;i<200&&!spot;i++){const [tx,ty]=pick(walkTiles),x=(tx+.5)*T,y=(ty+.5)*T,d=hyp(x-c.x,y-c.y);if(d>500&&d<1500)spot={x,y,d};}
+    if(amb){let spot=null;for(let i=0;i<200&&!spot;i++){const [tx,ty]=pick(walkTiles),x=(tx+.5)*T,y=(ty+.5)*T,d=hyp(x-c.x,y-c.y);if(d>500&&d<1500&&WOK(x,y))spot={x,y,d};}
       if(!spot)return;const p=makePed(spot.x,spot.y,false);p.injured=true;job={kind:'amb',stage:'pickup',ped:p,timer:Math.round(spot.d/120+25)};note('Ambulance: someone is hurt. Pick them up');}
-    else{const k=spawnTraffic(pick(['sports','sedan','compact']),false);if(!k)return;k.crim=true;k.vip=true;if(k.ai)k.ai.cruise=300+jobLevel*25;job={kind:'vig',car:k,timer:100};note('Vigilante: wreck the suspect\'s car');}
+    else{const k=spawnTraffic(pick(['sports','sedan','compact']),false);if(!k)return;if(!WOK(k.x,k.y)){cars.splice(cars.indexOf(k),1);return;}k.crim=true;k.vip=true;if(k.ai)k.ai.cruise=300+jobLevel*25;job={kind:'vig',car:k,timer:100};note('Vigilante: wreck the suspect\'s car');}
     return;}
   job.timer-=dt;const sp=hyp(c.vx,c.vy);
   if(job.kind==='amb'){
@@ -1983,6 +1983,7 @@ const LM={
   park:{x:((CPARK.x0+CPARK.x1)/2*P+9)*T,y:((CPARK.y0+CPARK.y1)/2*P+9)*T},
   bridgeW:ixPt(6,BIGB),bridgeE:ixPt(8,BIGB),bridgeMid:{x:(RIVX0+RIVX1)/2*T,y:(BIGB*P+2)*T},
   hq:null,hosp:null,
+  beachW:(()=>{for(let bx=1;bx<6;bx++)if(BLOCKK[(NB-1)*NB+bx]==='beach')return{x:(bx*P+9)*T,y:((NB-1)*P+7.5)*T};return blockPt(3,NB-1);})(),
   beach:(()=>{for(let bx=NB-2;bx>=0;bx--)if(BLOCKK[(NB-1)*NB+bx]==='beach')return{x:(bx*P+9)*T,y:((NB-1)*P+7.5)*T};return blockPt(10,NB-1);})(),
   site:(()=>{for(let i=0;i<NB*NB;i++)if(BLOCKK[i]==='construct')return blockPt(i%NB,Math.floor(i/NB));return blockPt(15,4);})(),
   dockW:{x:RIVX0*T+14,y:(6*P+9)*T},dockE:{x:RIVX1*T-14,y:(12*P+9)*T},dockS:{x:RIVX1*T-14,y:(16*P+9)*T},
@@ -2042,7 +2043,7 @@ for(const b of BOSSES){let mk=null;for(const r of[58,72,46])for(let k=0;k<8&&!mk
 const STORY={prog:[0,0,0],fin:0};
 // ---- the city opens up in stages, like GTA III's islands: you start on the west bank (Old Town, the Lotus Quarter).
 // The bridges east stay closed until you've done two jobs for Vince; then the rest of the city opens.
-const cityOpen=()=>!!(STORY.fin||STORY.prog[0]>=2||STORY.prog[1]>0||STORY.prog[2]>0||OPT.openCity);
+const cityOpen=()=>!!(STORY.fin||STORY.prog[0]>=2||STORY.prog[1]>0||STORY.prog[2]>=2||OPT.openCity);
 const WOK=(x,y)=>cityOpen()||x<RIVX0*T;
 const BARRIERS=[];
 {for(const iy of BRIDGES){const y0=iy*P,x=RIVX0+1;for(let ty=y0;ty<y0+4;ty++)BARRIERS.push({tx:x,ty,orig:map[ty*W+x]});
@@ -2115,7 +2116,7 @@ const CHAPTERS=[
  [ // Jade Lotus
   {title:'Beach Pickup',pay:2500,steps:[
     {k:'talk',lines:[[LIN,'Sit. Drink your tea. Good. Now listen.'],[LIN,'A boat dropped three packages on South Beach last night. Find them before the tourists do.']]},
-    {k:'collect',n:3,around:()=>LM.beach,spread:600,sand:true,timer:150,desc:'Find the 3 packages on South Beach'}]},
+    {k:'collect',n:3,around:()=>cityOpen()?LM.beach:LM.beachW,spread:600,sand:true,timer:150,desc:'Find the 3 packages on the beach'}]},
   {title:'Fragile Cargo',pay:3500,steps:[
     {k:'talk',lines:[[LIN,'There\'s a Hauler at the construction site. What\'s inside is worth more than you.'],[LIN,'Bring it to me gently. If the truck is wrecked, do not come back.']]},
     {k:'steal',type:'truck',col:'#7a4824',where:()=>LM.site,desc:'Take the Hauler from the construction site'},
@@ -2153,7 +2154,7 @@ const FINALE={title:'Gridlock',pay:25000,steps:[
   {k:'wreck',at:()=>({x:LM.bridgeMid.x+260,y:LM.bridgeMid.y+20}),type:'fbi',col:'#c0c0c8',hp:420,cruise:300,timer:120,desc:'Wreck Dex\'s car'},
   {k:'lose',timer:240,desc:'Lose the cops'},
   {k:'talk',lines:[[VINCE,'(on the phone) Heard Dex took a swim. Shame.'],[LIN,'(on the phone) The city has a new name for you now.'],[YOU,'Gridlock City is mine.']]}]};
-function storyAvail(g){if(!cityOpen()&&g!==0)return null;if(STORY.prog[g]<CHAPTERS[g].length)return CHAPTERS[g][STORY.prog[g]];if(!STORY.fin&&STORY.prog.every((p,i)=>p>=CHAPTERS[i].length)&&g===0)return FINALE;return null;}
+function storyAvail(g){if(!cityOpen()&&g!==0&&!(g===2&&STORY.prog[2]===0))return null;if(STORY.prog[g]<CHAPTERS[g].length)return CHAPTERS[g][STORY.prog[g]];if(!STORY.fin&&STORY.prog.every((p,i)=>p>=CHAPTERS[i].length)&&g===0)return FINALE;return null;}
 // ---- the mission runner (story missions and races use it) ----
 function runMission(def,opts){
   sfx('pass');mission={type:'story',def,opts:opts||{},title:def.title,desc:'',timer:9999,max:9999,steps:def.steps,si:-1,gang:-1,tgt:null,ring:false,x:0,y:0,clock:0};
@@ -2354,7 +2355,7 @@ function waterCannon(dt){const c=player.car,ca=Math.cos(c.turret!=null?c.turret:
 function updateFire(dt){const c=player.car;if(fireJob){for(const f of fireJob.fires)if(f.hp>0&&R()<dt*30)puff(f.x+rr(-18,18),f.y+rr(-18,18),rr(-10,10),rr(-10,10),rr(.5,.9),rr(7,13),R()<0.6?'#ff7a1a':'#ffd23a','smoke');}
   if(!(c&&c.t.fire&&duty&&!mission&&game.state==='play')){if(fireJob&&!(c&&c.t.fire)){fireJob=null;showBig('FIRE CALL FAILED','You left the truck','#ff4040',2);}return;}
   if(!fireJob){fireCool-=dt;if(fireCool>0)return;fireCool=3;const n=Math.min(5,2+Math.floor(fireLevel/2)),fires=[];let base=null;
-    for(let i=0;i<200&&!base;i++){const [tx,ty]=pick(walkTiles),x=(tx+.5)*T,y=(ty+.5)*T,d=hyp(x-c.x,y-c.y);if(d>600&&d<1500)base={x,y,d};}if(!base)return;
+    for(let i=0;i<200&&!base;i++){const [tx,ty]=pick(walkTiles),x=(tx+.5)*T,y=(ty+.5)*T,d=hyp(x-c.x,y-c.y);if(d>600&&d<1500&&WOK(x,y))base={x,y,d};}if(!base)return;
     for(let i=0;i<n;i++){const q=walkNear(base.x,base.y,140);fires.push({x:q.x,y:q.y,hp:100});}
     fireJob={fires,out:0,timer:Math.round(base.d/110+30+n*8)};note('Fire call: '+n+' fires reported. Hold FIRE to spray');return;}
   fireJob.timer-=dt;const left=fireJob.fires.filter(f=>f.hp>0).length;
@@ -2372,6 +2373,7 @@ for(const r of RACES)SIGNS.push({x:r.start.x,y:r.start.y-70,text:'RACE: '+r.name
 let raceCool=0;
 function updateRaces(dt){raceCool-=dt;const c=player.car;if(mission||DLG.open||!c||c.t.boat||raceCool>0||stars()>0||game.state!=='play')return;
   for(const r of RACES){if(dist2(r.start.x,r.start.y,c.x,c.y)>70*70||hyp(c.vx,c.vy)>80)continue;raceCool=6;
+    if(!cityOpen()&&r.route.some(q=>!WOK(ixPt(q[0],q[1]).x,0))){note('This race crosses the river. It opens when the bridges do');return;}
     say([['Race',r.name+': '+r.route.length+' checkpoints. Gold time '+r.gold+' s.'+(BEST[r.name]?' Your best: '+BEST[r.name].toFixed(1)+' s.':'')]],null,[['RACE',()=>startRace(r)],['NOT NOW',()=>{},'no']]);return;}}
 function startRace(r){const steps=r.route.map((q,i)=>({k:'drive',to:()=>ixPt(q[0],q[1]),car:'any',r:110,desc:'Checkpoint '+(i+1)+' / '+r.route.length}));
   steps[0].timer=Math.round(r.gold*1.8)+3;runMission({title:r.name,steps},{race:r,sub:'Get ready'});mission.cd=3.2;mission.rivals=[];
@@ -3085,10 +3087,10 @@ function tacoSpots(){const out=[];for(let i=0;i<NB*NB;i++){const k=BLOCKK[i];if(
 let TACO=null;
 function startSideJob(c,k){
   if(k==='trash'){if(!BINS.length)for(const o of props)if(o.k==='bin')BINS.push(o);
-    const stops=[];let px=c.x,py=c.y;for(let n=0;n<6;n++){let best=null,bs=1e9;for(const b of BINS){if(stops.includes(b))continue;const d=hyp(b.x-px,b.y-py);if(d<260||d>1100)continue;const sc=Math.abs(d-520)+R()*260;if(sc<bs){bs=sc;best=b;}}if(!best)break;stops.push(best);px=best.x;py=best.y;}
+    const stops=[];let px=c.x,py=c.y;for(let n=0;n<6;n++){let best=null,bs=1e9;for(const b of BINS){if(stops.includes(b)||!WOK(b.x,b.y))continue;const d=hyp(b.x-px,b.y-py);if(d<260||d>1100)continue;const sc=Math.abs(d-520)+R()*260;if(sc<bs){bs=sc;best=b;}}if(!best)break;stops.push(best);px=best.x;py=best.y;}
     if(stops.length<3){note('No bins out on the street around here');return;}
     sideJob={kind:'trash',car:c,stops,i:0,tgt:stops[0],timer:Math.max(80,150-trashLevel*8),hold:0,title:'GARBAGE ROUTE'};note('Garbage route: empty '+stops.length+' bins. Stop next to each one');}
-  else{if(!TACO)TACO=tacoSpots();const cand=TACO.filter(t=>{const d=hyp(t.x-c.x,t.y-c.y);return d>500&&d<2200;});if(!cand.length){note('Nobody hungry around here');return;}
+  else{if(!TACO)TACO=tacoSpots();const cand=TACO.filter(t=>{const d=hyp(t.x-c.x,t.y-c.y);return d>500&&d<2200&&WOK(t.x,t.y);});if(!cand.length){note('Nobody hungry around here');return;}
     const t=pick(cand);sideJob={kind:'taco',car:c,tgt:t,stop:0,stops:3,timer:Math.max(70,110-tacoLevel*6),serve:0,sold:0,title:'TACO SERVICE'};note('Hungry crowd at '+t.name+'. Park there to serve');}
   sfx('pickup',0.5);}
 function updateSideJob(dt){const c=player.car,k=dutyKind(c);
