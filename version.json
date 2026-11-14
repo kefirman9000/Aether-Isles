@@ -1,4 +1,4 @@
 {
-  "version": "4.0.1",
-  "notes": "Ambulances, trucks and fire trucks no longer look see-through."
+  "version": "4.1.0",
+  "notes": "GPS route to your objective on the minimap and city map, bigger guidance arrows, and ambulances, trucks and fire trucks no longer look see-through."
 }

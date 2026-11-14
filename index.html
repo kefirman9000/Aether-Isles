@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.0.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.1.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.0.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.1.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -2062,7 +2062,8 @@ function drawBigMap(sc){const s=Math.min(VW,VH)*0.92,ox=(VW-s)/2,oy=(VH-s)/2,k=s
   icon(hospitalSpawn.x,hospitalSpawn.y,'#ffffff','+');
   for(const c of cars)if(c.t.boat&&!c.driver)icon(c.x,c.y,'#6ab8ff','~');
   icon(SHOWROOM.x,SHOWROOM.y,'#ff6060','A');for(const g of GUNSHOPS)icon(g.x,g.y,'#ff4040','W');icon(EXPORT.x,EXPORT.y,'#6ab8ff','E');icon(PIZZA.x,PIZZA.y,'#ffe25a','P');
-  const tg=objectiveTarget();if(tg){const[a,b]=P2(tg.x,tg.y);ctx.fillStyle='#ffd600';ctx.beginPath();ctx.arc(a,b,6+Math.sin(game.t*6)*2,0,TAU);ctx.fill();ctx.stroke();}
+  const tg=objectiveTarget();if(tg){const gp=gpsRoute(tg);if(gp){ctx.beginPath();const[p0,p1]=P2((player.car||player).x,(player.car||player).y);ctx.moveTo(p0,p1);for(const q of gp){const[x,y]=P2(q.x,q.y);ctx.lineTo(x,y);}ctx.strokeStyle='#ffd600';ctx.lineWidth=3;ctx.stroke();}}
+  if(tg){const[a,b]=P2(tg.x,tg.y);ctx.fillStyle='#ffd600';ctx.beginPath();ctx.arc(a,b,6+Math.sin(game.t*6)*2,0,TAU);ctx.fill();ctx.stroke();}
   {const o=player.car||player,[a,b]=P2(o.x,o.y);ctx.save();ctx.translate(a,b);ctx.rotate(o.a);ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-2,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
   hudText(touchMode?'tap to close':'TAB to close',VW/2,oy+s-14,Math.round(13*sc),'#fff','center',`600 ${Math.round(13*sc)}px system-ui`);
   hudText('! job  H safehouse  R race  $ spray  ~ boat  W guns  A cars  E export  P pizza',VW/2,oy+16,Math.round(12*sc),'#ddd','center',`600 ${Math.round(12*sc)}px system-ui`);}
@@ -2373,6 +2374,17 @@ function raceAI(c,dt){const m=mission;if(!m||!m.opts.race||!c.race){c.driver=nul
   const vf=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a);let thr=vf<target?1:-0.6,st=clamp(diff*2.4,-1,1);
   if(R2.rev>0){R2.rev-=dt;thr=-1;st=-st;if(R2.rev<=0){R2.rev=0;R2.path=null;}}
   driveCar(c,thr,st,Math.abs(diff)>1.1&&sp>200,dt);}
+// ---------- GPS: shortest route along the streets (and the diagonal avenues' ends) to the objective ----------
+const GPS={t:0,key:'',path:null};
+function gpsRoute(tg){const now=game.t,key=Math.round(tg.x/64)+','+Math.round(tg.y/64);
+  if(GPS.path&&now-GPS.t<0.6&&GPS.key===key)return GPS.path;GPS.t=now;GPS.key=key;
+  const o=player.car||player,a=nodeOf(o.x,o.y),b=nodeOf(tg.x,tg.y);
+  if(Math.abs(tg.x-o.x)+Math.abs(tg.y-o.y)<260){GPS.path=[{x:tg.x,y:tg.y}];return GPS.path;}
+  const nodes=roadPath(a,b).map(n=>ixPt(n[0],n[1]));
+  // skip the first node if it's behind us, and finish at the target itself
+  if(nodes.length>1){const n0=nodes[0],n1=nodes[1];if((n1.x-n0.x)*(o.x-n0.x)+(n1.y-n0.y)*(o.y-n0.y)>0)nodes.shift();}
+  nodes.push({x:tg.x,y:tg.y});GPS.path=nodes;return nodes;}
+
 window.__roomsReady=true;
 
 // ================= CAMERA =================
@@ -3697,11 +3709,11 @@ function drawHUD(){
     const pr=projFull(tg.x,tg.y,38+Math.abs(Math.sin(game.t*5))*8);
     if(pr&&pr[0]>m&&pr[0]<VW-m&&pr[1]>m&&pr[1]<VH-m){const s2=clamp(pr[2]?260/pr[2]:1,0.55,1.3)*sc;
       ctx.save();ctx.translate(pr[0],pr[1]);ctx.rotate(PI/2);ctx.fillStyle=colA;ctx.strokeStyle='#000';ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.moveTo(16*s2,0);ctx.lineTo(-10*s2,-12*s2);ctx.lineTo(-4*s2,0);ctx.lineTo(-10*s2,12*s2);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
+      ctx.beginPath();ctx.moveTo(26*s2,0);ctx.lineTo(-16*s2,-20*s2);ctx.lineTo(-6*s2,0);ctx.lineTo(-16*s2,20*s2);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
     else{const rel=angDiff(Math.atan2(tg.y-player.y,tg.x-player.x),cam.yaw),ax=VW/2,ay=MIRH?MIRH+40*sc:(touchMode?92:96)*sc;
       ctx.save();ctx.translate(ax,ay);ctx.rotate(rel-PI/2);ctx.fillStyle=colA;ctx.strokeStyle='#000';ctx.lineWidth=2.5;
-      ctx.beginPath();ctx.moveTo(22*sc,0);ctx.lineTo(-12*sc,-15*sc);ctx.lineTo(-5*sc,0);ctx.lineTo(-12*sc,15*sc);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
-      const d=Math.round(hyp(tg.x-player.x,tg.y-player.y)/T*4);hudText(d+'m',ax,ay+28*sc,Math.round(12*sc),'#fff','center',`bold ${Math.round(12*sc)}px system-ui`);}
+      ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(36*sc,0);ctx.lineTo(-20*sc,-25*sc);ctx.lineTo(-8*sc,0);ctx.lineTo(-20*sc,25*sc);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();
+      const d=Math.round(hyp(tg.x-player.x,tg.y-player.y)/T*4);hudText(d+'m',ax,ay+40*sc,Math.round(15*sc),'#fff','center',`bold ${Math.round(12*sc)}px system-ui`);}
   }
   // minimap (rotates so the way the camera faces is up)
   const ms=msz,mpx=touchMode?12*sc:16*sc,mpy=touchMode?12*sc:VH-ms-16*sc,span=touchMode?44:52,k=ms/span,mcx=mpx+ms/2,mcy=mpy+ms/2,rot=-cam.yaw-PI/2,rc=Math.cos(rot),rs=Math.sin(rot);
@@ -3725,6 +3737,9 @@ function drawHUD(){
     ctx.strokeStyle=spotted?'rgba(255,90,90,.75)':'rgba(120,170,255,.65)';ctx.lineWidth=1.2;ctx.setLineDash([4,3]);ctx.stroke();ctx.setLineDash([]);
     if(seenT>1.2){const [sx,sy]=toMM(lastSeenX,lastSeenY),sr=Math.min(900,180+seenT*40)*lk;ctx.strokeStyle='rgba(255,214,0,.7)';ctx.setLineDash([2,3]);ctx.beginPath();ctx.arc(sx,sy,sr,0,TAU);ctx.stroke();ctx.setLineDash([]);}
     if(seenT>1.2){const [x,y]=toMM(lastSeenX,lastSeenY);ctx.strokeStyle='#ffd0d0';ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x-4,y-4);ctx.lineTo(x+4,y+4);ctx.moveTo(x+4,y-4);ctx.lineTo(x-4,y+4);ctx.stroke();}}
+  if(tg&&game.state==='play'&&!ROOM&&!SUB){const gp=gpsRoute(tg);if(gp&&gp.length){ctx.save();ctx.lineJoin='round';ctx.lineCap='round';
+    const col=mission&&mission.type==='hit'?'#ff3b3b':'#ffd600';ctx.beginPath();let [x0,y0]=toMM(player.x,player.y);ctx.moveTo(x0,y0);for(const q of gp){const [x,y]=toMM(q.x,q.y);ctx.lineTo(x,y);}
+    ctx.strokeStyle='rgba(0,0,0,.6)';ctx.lineWidth=6;ctx.stroke();ctx.strokeStyle=col;ctx.lineWidth=3.2;ctx.stroke();ctx.restore();}}
   for(const b of BOSSES){const av=storyAvail(b.g);const [x,y]=edge(...toMM(b.pt.x,b.pt.y));ctx.fillStyle=GANGS[b.g].col;ctx.fillRect(x-5,y-5,10,10);ctx.strokeStyle=av&&Math.floor(game.t*2)%2?'#ffd600':'#000';ctx.lineWidth=1.5;ctx.strokeRect(x-5,y-5,10,10);ctx.fillStyle='#000';ctx.font='bold 8px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(av?'!':'B',x,y+.5);}
   for(const sh of SAFEHOUSES){const [x,y]=toMM(sh.x,sh.y);if(x<mpx||x>mpx+ms||y<mpy||y>mpy+ms)continue;ctx.fillStyle=sh.owned?'#3ee07a':'#8a8a8a';ctx.fillRect(x-4,y-4,8,8);ctx.fillStyle='#000';ctx.font='bold 7px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('H',x,y+.5);}
   for(const r of RACES){const [x,y]=toMM(r.start.x,r.start.y);if(x<mpx||x>mpx+ms||y<mpy||y>mpy+ms)continue;ctx.fillStyle='#ffd600';ctx.fillRect(x-4,y-4,8,8);ctx.fillStyle='#000';ctx.font='bold 7px system-ui';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('R',x,y+.5);}

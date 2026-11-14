@@ -51,6 +51,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Interiors:** walk into Ammu-Nation (buy at the counter), your safehouse (sleep in the bed to save and heal) and, at night, The Neon Lotus club near Times Square: a flashing dance floor, a crowd, the DJ, music, and a bar (a VIP round makes every gang like you a little more).
 - **City responders:** ambulances drive to people who've been hurt and fire trucks drive to wrecks, and their crews get out to help.
 - **Weather and seasons:** snow in winter (or pick Winter in Options) that settles on the ground, morning fog banks, storms that flood low streets, and lightning that knocks out the power, so traffic lights and street lights go dark for a while. Some nights (and on New Year's and the Fourth of July) there are fireworks over the East River.
+- **GPS route:** the minimap and the city map draw the shortest route along the streets to whatever you're heading for, and the guidance arrow is bigger.
 - **Cop search area:** once you break line of sight, a dashed yellow circle on the minimap shows where the cops are searching, growing the longer they've lost you.
 - **Ammu-Nation:** two gun shops sell SMG, shotgun, flamethrower, Molotov and rocket ammo, plus body armor (a blue bar over your health that soaks up damage).
 - **Export docks:** a crane by the river buys ten particular vehicles once each, from a Pipsqueak to a tank, with a bonus for the full list.
