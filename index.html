@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.12.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.13.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -62,7 +62,8 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <b>Mouse</b><span>Aim anywhere on screen · Left click to shoot · Hold right button to lock on to the nearest target (drag to switch target) · Right-drag with no target to swing the camera round</span>
 <b>F / E / Enter</b><span>Enter or exit / steal a car</span>
 <b>Space</b><span>Jump on foot · Handbrake in a car (drift!)</span>
-<b>Q / Wheel</b><span>Switch weapon</span>
+<b>Q / Wheel</b><span>Switch weapon (fists are always there)</span>
+<b>B</b><span>Set off a car bomb fitted at a spray shop (or phone → Detonate)</span>
 <b>R</b><span>Change radio station (in a car)</span>
 <b>Click in a car</b><span>Drive-by shooting (tanks fire their cannon)</span>
 <b>Ramps · Taxis</b><span>Hit a yellow ramp fast for a stunt bonus · Drive a taxi and passengers hail you</span>
@@ -80,7 +81,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.12.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.13.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -877,8 +878,17 @@ function panicAround(x,y,r){
   for(const p of peds)if(!p.cop&&!p.crew&&!p.follow&&!(p.gang!=null&&(p.angry>0||respect[p.gang]<=-2||respect[p.gang]>=3))&&dist2(p.x,p.y,x,y)<r2){p.state='flee';p.panic=rr(4,8);p.fx=x;p.fy=y;}
   for(const c of cars)if(c.driver==='ai'&&c.ai&&dist2(c.x,c.y,x,y)<r2*0.6)c.ai.cruise=Math.max(c.ai.cruise,260);
 }
+// GTA III-style drops: people you take down leave cash; cops and gang members leave their gun
+const DROPS=[];
+function dropLoot(p){if(DROPS.length>40)DROPS.shift();const o=()=>({x:p.x+rr(-8,8),y:p.y+rr(-8,8),t:30});
+  if(p.cop&&R()<0.35)DROPS.push(Object.assign(o(),{kind:'shotgun'}));else if(p.gang!=null&&R()<0.5)DROPS.push(Object.assign(o(),{kind:'smg'}));
+  if(R()<0.7)DROPS.push(Object.assign(o(),{kind:'cash',n:Math.round(rr(1,8))*5+(p.gang!=null?40:0)}));}
+function updateDrops(dt){for(let i=DROPS.length-1;i>=0;i--){const d=DROPS[i];d.t-=dt;if(d.t<=0){DROPS.splice(i,1);continue;}
+  if(game.state!=='play'||dist2(d.x,d.y,player.x,player.y)>(player.car?28:18)**2||(player.jz||0)>10)continue;
+  if(d.kind==='cash'){addMoney(d.n);}else if(d.kind==='smg'){if(player.ammo[1]===Infinity)continue;player.ammo[1]=(player.ammo[1]||0)+40;note('SMG +40');}else if(d.kind==='shotgun'){if(player.ammo[2]===Infinity)continue;player.ammo[2]=(player.ammo[2]||0)+8;note('Shotgun +8');}
+  sfx('pickup',0.4);DROPS.splice(i,1);}}
 function killPed(p,by,fvx,fvy,burnt){
-  if(p.gone)return;if(p.boss){p.hp=9999;return;}if(by==='player'){STATS.kills++;if(p.cop)STATS.cops++;turfKill(p);}
+  if(p.gone)return;if(p.boss){p.hp=9999;return;}if(by==='player'&&!p.follow&&!p.crew&&!burnt)dropLoot(p);if(by==='player'){STATS.kills++;if(p.cop)STATS.cops++;turfKill(p);}
   p.gone=true;
   const body={k:'body',x:p.x,y:p.y,a:p.a,col:burnt?'#1a1612':p.col,skin:burnt?'#1a1612':p.skin,hair:p.hair,cop:p.cop};
   if(fvx||fvy)flyers.push({b:body,vx:fvx,vy:fvy,va:rr(-12,12),t:0.55});
@@ -1407,7 +1417,7 @@ function updateBullets(dt){
         hurtPlayer(b.dmg);addMark({k:'blood',x:player.x,y:player.y,r:rr(3,6)});b.life=0;break;
       }
     }
-    if(b.life<=0&&b.kind==='m'&&!b.done){b.done=true;molotovBurst(b.x,b.y,b.own);}
+    if(b.life<=0&&b.kind==='m'&&!b.done){b.done=true;if(b.gren)explode(b.x,b.y,b.own);else molotovBurst(b.x,b.y,b.own);}
   }
   bullets=bullets.filter(b=>b.life>0);
 }
@@ -1429,6 +1439,7 @@ window.addEventListener('keydown',e=>{
   if(e.code==='KeyF'||e.code==='KeyE'||e.code==='Enter')pressed.enter=true;
   if(e.code==='KeyQ')pressed.swap=true;
   if(e.code==='KeyT'&&game.started&&!game.paused)recruitNear();
+  if(e.code==='KeyB'&&game.started&&!game.paused&&game.state==='play')detonateBomb();
   if(e.code==='KeyM')toggleMute();
   if(e.code==='KeyV'){mirrorOn=!mirrorOn;OPT.mirror=mirrorOn;saveOpts();note(mirrorOn?'Rear-view mirror on':'Rear-view mirror off');}
   if(e.code==='KeyR'&&player.car)setStation(radio.st+1);
@@ -1672,7 +1683,7 @@ function playerFire(){
   const ivx=inCar?player.car.vx:player.vx,ivy=inCar?player.car.vy:player.vy;
   if(w.fan){for(const deg of w.fan)fireBullet(ox,oy,a+deg*PI/180,w.spd*rr(.92,1.05),'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
   else if(w.dual){for(const sd of [-1,1])fireBullet(ox-Math.sin(a)*5*sd,oy+Math.cos(a)*5*sd,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
-  else fireBullet(ox,oy,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,w.kind==='b'?ivx:0,w.kind==='b'?ivy:0);
+  else{fireBullet(ox,oy,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,w.kind==='b'?ivx:0,w.kind==='b'?ivy:0);if(w.gren)bullets[bullets.length-1].gren=true;}
   const n=w.fan?5:1;
   if(w.kick){if(w.kick>=7)shake=Math.max(shake,w.kick*0.6);}
   if(w.kind==='b'){const ca2=Math.cos(a+PI/2),sa2=Math.sin(a+PI/2);puff(ox,oy,ca2*rr(60,110)+rr(-20,20),sa2*rr(60,110)+rr(-20,20),rr(.25,.4),2,'#d9b24a','debris');}
@@ -1684,7 +1695,7 @@ function playerFire(){
   if(copNear&&copWitness(player.x,player.y))crime(0,1);
   if(player.ammo[player.w]<=0){player.w=0;note('Out of ammo');}
 }
-function swapWeapon(){for(let i=1;i<=WEAPONS.length;i++){const n=(player.w+i)%WEAPONS.length;if(player.ammo[n]>0){if(n!==player.w){player.w=n;note(WEAPONS[n].name);}return;}}}
+function swapWeapon(){for(let i=1;i<=WEAPONS.length;i++){const n=(player.w+i)%WEAPONS.length;if(player.ammo[n]>0||WEAPONS[n].fist){if(n!==player.w){player.w=n;note(WEAPONS[n].name);}return;}}}
 
 // ================= GTA EXTRAS: stunt ramps, police helicopter, taxi fares =================
 // ---- stunt ramps on one-way lanes mid-block ----
@@ -2107,12 +2118,16 @@ function boatSeesPlayer(tg){for(const c of cars)if(c.driver==='copboat'&&dist2(c
 function exitBoatSpot(c){let best=null,bd=1e18;for(let j=-6;j<=6;j++)for(let i=-6;i<=6;i++){const tx=Math.floor(c.x/T)+i,ty=Math.floor(c.y/T)+j,tt=tileAt(tx,ty);if(!(walkable(tt)||tt===ROAD)||BRT[ty*W+tx])continue;const x=(tx+.5)*T,y=(ty+.5)*T,d=dist2(x,y,c.x,c.y);if(d<bd){bd=d;best=[x,y];}}return best;}
 
 // ---------- spray shop upgrades ----------
-const UPG=[['armor','Armor plating','Takes half damage',1500],['bp','Bulletproof','Bullets bounce off',2000],['nitro','Nitro','Hold SHIFT / NOS for a boost',1000],['paint','Respray colour','A fresh coat of paint',200]];
+const UPG=[['armor','Armor plating','Takes half damage',1500],['bp','Bulletproof','Bullets bounce off',2000],['nitro','Nitro','Hold SHIFT / NOS for a boost',1000],['paint','Respray colour','A fresh coat of paint',200],['bomb','Car bomb (remote)','Park it, walk away, press B or phone → Detonate',1000]];
+// remote car bomb, fitted at a spray shop (GTA III's bomb shop, folded in)
+let BOMBCAR=null;
+function detonateBomb(){const c=BOMBCAR;if(!c||c.wreck||cars.indexOf(c)<0){BOMBCAR=null;note('No car bomb is set');return;}
+  if(player.car===c){note('Get out first!');return;}BOMBCAR=null;sfx('ring',0.4);setTimeout(()=>{if(c.wreck||cars.indexOf(c)<0)return;c.up.bomb=false;damageCar(c,9999,'player');explode(c.x,c.y,'player');explode(c.x+rr(-20,20),c.y+rr(-20,20),'player');},350);}
 let shopOpen=null;
 function renderShop(){const el=document.getElementById('shop'),c=player.car;if(!c){el.style.display='none';return;}const up=c.up||{};
   el.innerHTML='<h3>UPGRADES · '+c.t.name.toUpperCase()+'</h3>'+UPG.map(([k,n,d,p])=>`<div class="row"><div>${n}<br><small>${d}</small></div><button data-u="${k}" ${(up[k]&&k!=='paint')||money<p?'disabled':''}>${up[k]&&k!=='paint'?'FITTED':'$'+p.toLocaleString()}</button></div>`).join('')+'<p><small>Drive off to leave.</small></p>';
   el.querySelectorAll('[data-u]').forEach(b=>b.onclick=()=>{const k=b.dataset.u,pr=UPG.find(u=>u[0]===k)[3];if(money<pr)return;addMoney(-pr);c.up=Object.assign({},c.up||{});
-    if(k==='paint')c.col=pick(CT.sedan.cols.concat(CT.sports.cols,CT.compact.cols));else c.up[k]=true;sfx('spray');for(let i=0;i<14;i++)puff(c.x+rr(-30,30),c.y+rr(-30,30),rr(-20,20),rr(-20,20),rr(.4,.9),rr(6,12),'#e8e8e8','smoke');renderShop();});
+    if(k==='paint')c.col=pick(CT.sedan.cols.concat(CT.sports.cols,CT.compact.cols));else c.up[k]=true;if(k==='bomb'){if(BOMBCAR&&BOMBCAR!==c&&BOMBCAR.up)BOMBCAR.up.bomb=false;BOMBCAR=c;note('Bomb fitted. Leave the car and press B (or phone) to set it off');}sfx('spray');for(let i=0;i<14;i++)puff(c.x+rr(-30,30),c.y+rr(-30,30),rr(-20,20),rr(-20,20),rr(.4,.9),rr(6,12),'#e8e8e8','smoke');renderShop();});
   el.style.display='block';}
 function updateShop(){const c=player.car;let at=null;if(c&&!c.t.boat&&game.state==='play'&&stars()===0)for(const sp of sprayPads)if(dist2(sp.x,sp.y,c.x,c.y)<70*70&&hyp(c.vx,c.vy)<60)at=sp;
   if(at&&shopOpen!==c){shopOpen=c;if(c.flat){c.flat=false;note('New tires fitted');}renderShop();}else if(!at&&shopOpen){shopOpen=null;document.getElementById('shop').style.display='none';}}
@@ -2270,7 +2285,7 @@ function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS
 const ORDERS=[['Start a gang war',0,'war'],['Crew upgrades',0,'crewup'],['Crew backup',250,'crew'],['Getaway car',300,'sports'],['Taxi',150,'taxi'],['Pickup truck',250,'pickup'],['Fire truck',600,'firetruck']];
 let delivery=null;
 function phoneMenu(){if(DLG.open||game.state!=='play'||mission&&mission.opts&&mission.opts.race)return;
-  say([['Phone','Who are you calling?']],null,ORDERS.map(([n,p,t])=>[n.toUpperCase()+(p?' $'+p:''),()=>orderCar(n,p,t)]).concat([['HANG UP',()=>{},'no']]));}
+  say([['Phone','Who are you calling?']],null,(BOMBCAR&&!BOMBCAR.wreck&&player.car!==BOMBCAR?[['DETONATE CAR BOMB',detonateBomb]]:[]).concat(ORDERS.map(([n,p,t])=>[n.toUpperCase()+(p?' $'+p:''),()=>orderCar(n,p,t)])).concat([['HANG UP',()=>{},'no']]));}
 function orderCar(n,p,t){if(money<p){note('Not enough cash');return;}if(t==='crew'){if(callBackup())addMoney(-p);return;}if(t==='war'){startGangWar();return;}if(t==='crewup'){setTimeout(crewUpgrades,50);return;}let s=null;for(let i=0;i<60&&!s;i++){const a=R()*TAU,d=rr(160,320);s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);}
   if(!s){note('Nobody can reach you here');return;}addMoney(-p);const c=makeCar(t,s.x,s.y,s.dir*PI/2);c.special=false;delivery={c,t:40};sfx('ring',0.5);note(n+' on its way. Look for the marker');}
 let lastKeyT=0;window.addEventListener('keydown',e=>{const now=performance.now();if(e.key.length===1)lastKeyT=now;
@@ -2289,12 +2304,12 @@ function extTick2(dt){updateShowroom(dt);if(player.car){STATS.dist+=hyp(player.c
 player.armor=0;
 const BATIDX=()=>WEAPONS.findIndex(w=>w.kind==='x');
 const GUNSHOPS=[[3,9],[14,12]].map(([bx,by])=>{const l=nearestLot((bx*P+9)*T,(by*P+9)*T)||lotBlocks[0];const s={x:l.x+50,y:l.y-50};SIGNS.push({x:s.x,y:s.y,text:'AMMU-NATION',bg:'#2a2a2a',fg:'#ff4040',h:42,on:()=>true});return s;});
-const GUNSTOCK=[['Baseball bat',100,'bat',Infinity],['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Body armor',500,-1,100]];
+const GUNSTOCK=[['Baseball bat',100,'bat',Infinity],['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Grenades + 8',900,'gren',8],['Body armor',500,-1,100]];
 let gunCool=0;
 function updateGunShops(dt){}
 function gunMenu(){
     const dk=gunDiscount();say([['Ammu-Nation',dk<1?'Friends of the neighborhood get 20% off. Pick something.':'Protect yourself. Pick something.']],null,GUNSTOCK.map(([n,p0,w,a])=>{const p=Math.round(p0*dk);return[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');
-      if(w==='bat')w=BATIDX();if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}];}).concat([['LEAVE',()=>{},'no']]));}
+      if(w==='bat')w=BATIDX();if(w==='gren')w=GRENIDX();if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}];}).concat([['LEAVE',()=>{},'no']]));}
 // a crane by the river buys particular cars, once each
 const EXPORTS=[['compact',600],['sedan',700],['taxi',900],['sports',2000],['truck',1200],['ambulance',1800],['police',2500],['firetruck',2200],['swat',3500],['muscle',2400],['roadster',2800],['garbage',1600],['tank',10000]];
 const EXPORTED={};
@@ -2394,11 +2409,18 @@ function updateTrain(dt){const off=train.len+6;
 // boarding and riding
 function trainBoard(){if(player.car||player.riding)return false;if(SUB)return subBoard();
   for(let i=0;i<EL_STATIONS.length;i++){const st=EL_STATIONS[i];if(dist2(st.ex,st.ey,player.x,player.y)>75*75||player.jz<EL_H-14)continue;
-    if(train.at===i&&train.wait>0.3){player.riding={from:i};sfx('door');note('Riding the El. Next stop: '+EL_STATIONS[(i+1)%EL_STATIONS.length].name);return true;}
+    if(train.at===i&&train.wait>0.3){player.riding={from:i,last:i,stops:0};sfx('door');note('Stand clear of the closing doors. Next stop: '+EL_STATIONS[(i+1)%EL_STATIONS.length].name);note('Press F at a stop to get off');return true;}
     const eta=Math.round((((st.s-train.s)%EL.L+EL.L)%EL.L)/300)+5;note('Train due in about '+eta+' s');return true;}
   return false;}
+// you stay aboard round the loop (like GTA III's trains) until you press F at a stop; each stop is announced
 function rideTick(dt){const r=player.riding,p=trainCar(1);player.x=p.x;player.y=p.y;player.a=player.body=p.a;player.vx=player.vy=0;player.moving=false;
-  if(train.at>=0&&train.at!==r.from&&train.wait>0){const st=EL_STATIONS[train.at];player.riding=null;player.x=st.ex;player.y=st.ey;player.jz=EL_H;player.jv=0;sfx('door');showBig(st.name.toUpperCase(),'Elevated line','#9fb6ff',1.8);}}
+  if(train.at>=0&&train.wait>0&&train.at!==r.last){r.last=train.at;r.stops++;const st=EL_STATIONS[train.at],nx=EL_STATIONS[(train.at+1)%EL_STATIONS.length];
+    sfx('ring',0.3);zoneBanner={text:st.name.toUpperCase(),sub:'Elevated line  ·  next stop '+nx.name+'  ·  F to get off',col:'#9fb6ff',t:Math.max(2.5,train.wait)};
+    radioMsg('EL: This is '+st.name+'. Next stop, '+nx.name+'.');}
+  if(train.wait<=0&&r.last>=0&&train.at<0)r.last=-2;}
+function trainAlight(){const r=player.riding;if(!r)return;
+  if(!(train.at>=0&&train.wait>0)){note('Wait for the next stop to get off');return;}
+  const st=EL_STATIONS[train.at];player.riding=null;player.x=st.ex;player.y=st.ey;player.jz=EL_H;player.jv=0;player.body=player.a=st.a;sfx('door');}
 // ---- the subway: entrances around town, a $5 ride to any other station ----
 const SUBWAY=[{n:'Westside',p:ixPt(2,4)},{n:'Old Town',p:ixPt(4,13)},{n:'Times Square',p:ixPt(TSQ.ix,TSQ.iy+1)},{n:'Central Park',p:ixPt(CPARK.x0,CPARK.y1+1)},{n:'South Beach',p:ixPt(12,NB-1)},{n:'Police HQ',p:null}].map(s=>{
   if(!s.p)s.p=policeSpawn?{x:policeSpawn.x+3*T,y:policeSpawn.y}:ixPt(15,13);const q={x:s.p.x+2.5*T,y:s.p.y+2.5*T};const w=walkable(tileAt(Math.floor(q.x/T),Math.floor(q.y/T)))?q:walkNear(q.x,q.y,60);s.x=w.x;s.y=w.y;
@@ -2656,16 +2678,21 @@ CT.bike={name:'Shredder',L:30,Wd:11,max:640,acc:600,grip:9.5,turn:3.5,hp:60,mass
 function bikeCrash(c,imp){if(c!==player.car||!c.t.bike||imp<230||game.state!=='play')return;const vx=c.vx,vy=c.vy;exitCar(true);player.vx=vx*0.4;player.vy=vy*0.4;player.jz=6;player.jv=140;hurtPlayer(12);showBig('BAILED!','','#ff9a2e',1);}
 // ---------- melee: a baseball bat ----------
 WEAPONS.push({name:'Baseball Bat',rate:.55,dmg:0,spd:0,spread:0,kind:'x',cdmg:0,kick:0});
-const BAT=WEAPONS.length-1;
-function meleeSwing(){const ca=Math.cos(player.a),sa=Math.sin(player.a);sfx('door',0.5);let hit=false;
+// grenades (GTA III): thrown like a Molotov, but they blow up where they land
+WEAPONS.push({name:'Grenades',rate:.9,dmg:0,spd:430,spread:.03,kind:'m',gren:true,cdmg:0,kick:0});
+const GRENIDX=()=>WEAPONS.findIndex(w=>w.gren);
+// fists (GTA III): always with you, switch to them with Q
+WEAPONS.push({name:'Fists',rate:.38,dmg:0,spd:0,spread:0,kind:'x',fist:true,cdmg:0,kick:0});
+const BAT=WEAPONS.findIndex(w=>w.kind==='x');
+function meleeSwing(){const ca=Math.cos(player.a),sa=Math.sin(player.a),fist=!!WEAPONS[player.w].fist;sfx('door',fist?0.3:0.5);let hit=false;
   for(const p of peds){if(p.gone)continue;const dx=p.x-player.x,dy=p.y-player.y,f=dx*ca+dy*sa,l=Math.abs(-dx*sa+dy*ca);if(f<0||f>34||l>18)continue;hit=true;
-    p.hp-=40;p.flash=0.1;p.stagger=0.5;hitMarks.push({x:p.x,y:p.y,t:0.18,kill:p.hp<=0});
+    p.hp-=fist?14:40;p.flash=0.1;p.stagger=fist?0.35:0.5;hitMarks.push({x:p.x,y:p.y,t:0.18,kill:p.hp<=0});
     if(p.hp<=0)killPed(p,'player',ca*160,sa*160);else{p.x+=ca*10;p.y+=sa*10;if(p.cop)crime(0,1);else if(p.gang!=null)p.angry=12;else{p.state='flee';p.panic=6;p.fx=player.x;p.fy=player.y;}}}
-  for(const c of cars){if(c.wreck||c===player.car)continue;const dx=c.x-player.x,dy=c.y-player.y;if(dx*ca+dy*sa<0||hyp(dx,dy)>c.t.L/2+16)continue;damageCar(c,8,'player');hit=true;}
+  for(const c of cars){if(c.wreck||c===player.car)continue;const dx=c.x-player.x,dy=c.y-player.y;if(dx*ca+dy*sa<0||hyp(dx,dy)>c.t.L/2+16)continue;damageCar(c,fist?2:8,'player');hit=true;}
   if(hit){sfx('hit');shake=Math.max(shake,2);}}
 // ---------- cheats: type them during play (or enter them in the pause menu) ----------
 const CHEATS={
-  GUNSGUNSGUNS:()=>{for(let i=1;i<WEAPONS.length;i++)player.ammo[i]=i===BAT?Infinity:Math.max(player.ammo[i]||0,i===5?20:i===4?20:300);return 'All weapons';},
+  GUNSGUNSGUNS:()=>{for(let i=1;i<WEAPONS.length;i++)player.ammo[i]=i===BAT?Infinity:Math.max(player.ammo[i]||0,i===5||i===4||WEAPONS[i].gren?20:300);return 'All weapons';},
   HEALME:()=>{player.hp=PMAX();player.armor=100;if(player.car)player.car.hp=player.car.t.hp;return 'Health and armor';},
   LEAVEMEALONE:()=>{clearHeat();return 'Wanted level cleared';},
   MOREPOLICE:()=>{crime(0,Math.min(6,stars()+2));return 'More police';},
@@ -3168,7 +3195,7 @@ function initCountry(){{const ys=[3,9,15].map(iy=>(iy*P+2)*T);
   for(const yy of ys)for(const dx of[380,900])addRamp(WPX+dx,yy,0,'dirt');
   for(let i=0;i<26;i++){const x=WPX+rr(200,1100),y=rr(300,WPX-300);if(ys.some(q=>Math.abs(q-y)<60)||Math.abs(x-(WPX+640))<60||GH(x,y)>150)continue;props.push({x,y,k:'hay',a:rr(0,PI),rad:12,ht:14});}
   props.push({x:WPX+760,y:(9*P+2)*T-140,k:'windmill',rad:40,ht:120});}}
-function extTick14(dt){updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
+function extTick14(dt){updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
 function extTick13(dt){extTick14(dt);updateWaypoint();updateGangWar(dt);updateReputation(dt);updateTurfPressure(dt);updatePolice(dt);updateEscapes(dt);}
 function extTick12(dt){updateCrew(dt);extTick13(dt);}
 function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();extTick12(dt);}
@@ -3224,7 +3251,8 @@ function update(dt){
   if(game.state==='play'){
     player.cool-=dt;player.hurt=Math.max(0,player.hurt-dt);
     if(pressed.swap)swapWeapon();
-    if(pressed.enter&&!player.riding){if(player.car)exitCar(false);else if(!trainBoard())tryEnterCar();}
+    if(pressed.enter&&player.riding)trainAlight();
+    else if(pressed.enter&&!player.riding){if(player.car)exitCar(false);else if(!trainBoard())tryEnterCar();}
     if(player.riding){rideTick(dt);}else if(!player.car){
       footLook(dt);
       let fwd=0,turn=0;
@@ -3553,7 +3581,7 @@ function update(dt){
     if(player.car||player.riding){cam.wasFoot=false;LOCK.t=null;}
     if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;want=c.a;
       dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=3.2;}
-    else if(GTA3MOVE()&&cam.base!=null){want=cam.base;dist=LOCK.t?84:96;hgt=LOCK.t?44:40;rate=14;}
+    else if(GTA3MOVE()&&cam.base!=null&&!player.riding){want=cam.base;dist=LOCK.t?84:96;hgt=LOCK.t?44:40;rate=14;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
     if(kd.KeyC||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
     dist*=OPT.cam;
@@ -4455,7 +4483,7 @@ function drawPart3(p,fg){const f=p.life/p.max;let z;
   L3.globalAlpha=1;}
 function drawBullet3(b){
   if(b.kind==='f')return;
-  if(b.kind==='r'||b.kind==='m'){if(!proj(b.x,b.y,b.kind==='m'?16:12))return;const s=Math.max(1,3*PK);L3.fillStyle=b.kind==='r'?'#556b2f':'#5c7a2e';L3.fillRect(R2(PX-s),R2(PY-s/2),R2(s*2),Math.max(1,R2(s)));glow(PX,PY,2.5*PK,'#ffb300',0.9);return;}
+  if(b.kind==='r'||b.kind==='m'){if(!proj(b.x,b.y,b.kind==='m'?16:12))return;const s=Math.max(1,3*PK);L3.fillStyle=b.gren?'#3b4a2a':b.kind==='r'?'#556b2f':'#5c7a2e';L3.fillRect(R2(PX-s),R2(PY-s/2),R2(s*2),Math.max(1,R2(s)));glow(PX,PY,2.5*PK,'#ffb300',0.9);return;}
   if(!proj(b.x,b.y,13))return;const x1=PX,y1=PY;if(!proj(b.x-b.vx*0.03,b.y-b.vy*0.03,13))return;
   L3.strokeStyle='rgba(255,240,170,.95)';L3.lineWidth=1;L3.beginPath();L3.moveTo(x1,y1);L3.lineTo(PX,PY);L3.stroke();}
 
@@ -4642,6 +4670,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
     case 15:add(15,o,o.x,o.y,5,null,47);break;case 16:add(16,o,o.x,o.y,32,null,16);break;case 19:if(!o.got)add(19,o,o.x,o.y,8,null,16);break;}}});
   if(fare&&fare.stage==='ride')add(18,fare,fare.x,fare.y,40,null,40);
   for(const k of pickups)if(!k.taken)add(4,k,k.x,k.y,8);
+  for(const k of DROPS)add(4,k,k.x,k.y,8);
   for(const k of STASH)if(!k.got)add(25,k,k.x,k.y,10,null,12,k.z);
   for(const g of GOLDG)if(!GOLDGOT[g.w])add(27,g,g.x,g.y,10,null,14,g.z);
   if(roofRun){const c=roofRun.cps[roofRun.i];add(26,c,c.x,c.y,30,null,60,c.z);}
@@ -4768,9 +4797,13 @@ function weaponIcon(g,w,x,y,r){const gold=/Golden/.test(w.name),body=gold?'#e8c1
   g.save();g.translate(x,y);g.scale(r/20,r/20);g.lineJoin='round';g.lineWidth=2.2;g.strokeStyle='rgba(0,0,0,.9)';
   const poly=(pts,col)=>{g.beginPath();g.moveTo(pts[0],pts[1]);for(let i=2;i<pts.length;i+=2)g.lineTo(pts[i],pts[i+1]);g.closePath();g.fillStyle=col;g.fill();g.stroke();};
   const n=w.name,k=w.kind;
-  if(k==='x'){g.rotate(-0.6);poly([-22,-2.2,6,-4,20,-5,22,0,20,5,6,4,-22,2.2],'#b98a52');poly([-24,-2.6,-20,-2.6,-20,2.6,-24,2.6],'#3a2a1a');}
+  if(w.fist){g.fillStyle='#e0ac69';g.beginPath();g.roundRect?g.roundRect(-13,-10,24,20,6):g.rect(-13,-10,24,20);g.fill();g.stroke();g.strokeStyle='rgba(0,0,0,.55)';g.beginPath();for(const yy of[-5,0,5]){g.moveTo(-1,yy);g.lineTo(11,yy);}g.stroke();
+    g.strokeStyle='rgba(0,0,0,.9)';g.fillStyle='#d49a58';g.beginPath();g.ellipse(-12,4,6,4,-0.5,0,TAU);g.fill();g.stroke();}
+  else if(k==='x'){g.rotate(-0.6);poly([-22,-2.2,6,-4,20,-5,22,0,20,5,6,4,-22,2.2],'#b98a52');poly([-24,-2.6,-20,-2.6,-20,2.6,-24,2.6],'#3a2a1a');}
   else if(k==='f'){poly([-22,-6,10,-6,14,-3,22,-3,22,1,14,1,10,4,-4,4,-6,12,-12,12,-10,4,-22,4],body);g.fillStyle='#ff8a2a';g.beginPath();g.arc(-14,-1,4,0,TAU);g.fill();g.stroke();
     g.fillStyle='#ffcc40';g.beginPath();g.moveTo(22,-4);g.quadraticCurveTo(30,-1,24,3);g.closePath();g.fill();}
+  else if(w.gren){g.fillStyle='#4f6a34';g.beginPath();g.ellipse(0,4,11,13,0,0,TAU);g.fill();g.stroke();g.strokeStyle='rgba(0,0,0,.5)';g.beginPath();g.moveTo(-11,4);g.lineTo(11,4);g.moveTo(0,-9);g.lineTo(0,17);g.stroke();g.strokeStyle='rgba(0,0,0,.9)';
+    g.fillStyle='#9a9ca0';g.fillRect(-4,-14,8,6);g.strokeRect(-4,-14,8,6);g.beginPath();g.arc(9,-12,4,0,TAU);g.stroke();}
   else if(k==='m'){poly([-7,18,7,18,8,-2,3,-8,3,-14,-3,-14,-3,-8,-8,-2],'#5c8a3a');g.fillStyle='#e9e0c8';g.fillRect(-2,-20,4,7);g.strokeRect(-2,-20,4,7);
     g.fillStyle='#ff9a2e';g.beginPath();g.moveTo(-3,-20);g.quadraticCurveTo(0,-32,4,-21);g.closePath();g.fill();}
   else if(k==='r'){poly([-24,-5,18,-5,22,-8,26,-8,26,8,22,8,18,5,-24,5],'#6f7a52');poly([-10,5,-4,5,-4,14,-10,14],dark);poly([4,5,9,5,9,12,4,12],dark);}
@@ -4785,7 +4818,7 @@ function drawLockMarker(t,sc,soft){const pr=projFull(t.x,t.y,15);if(!pr)return;c
   ctx.save();ctx.translate(pr[0],pr[1]);ctx.fillStyle=col;ctx.strokeStyle='rgba(0,0,0,.85)';ctx.lineWidth=1.8;
   for(let i=0;i<4;i++){const a=sp+i*PI/2;ctx.save();ctx.rotate(a);ctx.beginPath();ctx.moveTo(r,0);ctx.lineTo(r+8*sc,-5*sc);ctx.lineTo(r+8*sc,5*sc);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
   ctx.restore();}
-let HUDCAR=null,carBanner=null;
+let HUDCAR=null,carBanner=null,HUDMIS=null,titleCard=null;
 function bigTextAl(txt,x,y,size,col,al){ctx.save();ctx.font=`${size}px ${G3F}`;const w=ctx.measureText(txt).width*1.1;ctx.translate(al==='right'?x-w:al==='left'?x:x-w/2,y);ctx.scale(1.1,1);ctx.textAlign='left';ctx.textBaseline='middle';ctx.lineJoin='round';
   ctx.lineWidth=Math.max(3,size/6);ctx.strokeStyle='rgba(0,0,0,.9)';ctx.strokeText(txt,0,0);ctx.fillStyle=col;ctx.fillText(txt,0,0);ctx.restore();}
 // big screen words (WASTED, BUSTED, MISSION PASSED!): wide, heavy outline and a drop shadow
@@ -4910,6 +4943,8 @@ function drawHUD(){
   if(frenzy){const tm=Math.max(0,Math.ceil(frenzy.timer));hudText('KILL FRENZY '+frenzy.count+'/'+frenzy.goal+'  0:'+String(tm).padStart(2,'0'),VW/2,touchMode?VH*0.47:60*sc,Math.round(19*sc),Math.floor(game.t*3)%2?'#ff3b3b':'#ffd0d0','center');}
   if(combo.n>=2)hudText('CHAOS x'+combo.n,VW/2,touchMode?VH*0.51:90*sc,Math.round(17*sc),'#ff9a2e','center');
   // area and vehicle names, GTA III-style: big words in the bottom right (centred on phones, where the buttons live)
+  if(mission!==HUDMIS){HUDMIS=mission;titleCard=mission&&!(mission.opts&&mission.opts.race)?{text:mission.title.toUpperCase(),at:game.t}:null;}
+  if(titleCard){const age=game.t-titleCard.at;if(age>3.4)titleCard=null;else if(!big){ctx.globalAlpha=clamp(Math.min(age*3,(3.4-age)*1.5),0,1);bigText(titleCard.text,VW/2,VH*(touchMode?0.4:0.62),Math.round(clamp(VW/22,24,46)),'#e8c14a');ctx.globalAlpha=1;}}
   if(player.car!==HUDCAR){HUDCAR=player.car;carBanner=player.car?{text:player.car.t.name.toUpperCase(),at:game.t}:null;}
   {const bx=touchMode?VW/2:VW-24*sc,al=touchMode?'center':'right';let by=touchMode?VH*0.28:VH-54*sc;
     if(zoneBanner&&!big){ctx.globalAlpha=Math.min(1,zoneBanner.t*1.5);if(!touchMode)hudText(zoneBanner.sub,bx,by+24*sc,Math.round(13*sc),'#ddd',al,`600 ${Math.round(13*sc)}px system-ui`);
