@@ -53,6 +53,9 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Weather and seasons:** snow in winter (or pick Winter in Options) that settles on the ground, morning fog banks, storms that flood low streets, and lightning that knocks out the power, so traffic lights and street lights go dark for a while. Some nights (and on New Year's and the Fourth of July) there are fireworks over the East River.
 - **GPS route:** the minimap and the city map draw the shortest route along the streets to whatever you're heading for, and the guidance arrow is bigger.
 - **Cop search area:** once you break line of sight, a dashed yellow circle on the minimap shows where the cops are searching, growing the longer they've lost you.
+- **Helicopter:** two Sparrows sit on helipads. SPACE (or UP) climbs, SHIFT (or DOWN) descends, W/S and A/D fly. Tall buildings block you, so climb over them.
+- **Robberies:** walk into a 24/7 store and rob the register (2 stars), or crack the vault at Gridlock Savings Bank: stand at the vault for nine seconds while the alarm brings 3, then 4 stars.
+- **Police radio and news:** dispatch calls out your wanted level, where you are and what you're driving, and when they spot or lose you. News flashes report your robberies and the city's gossip.
 - **Ammu-Nation:** two gun shops sell SMG, shotgun, flamethrower, Molotov and rocket ammo, plus body armor (a blue bar over your health that soaks up damage).
 - **Export docks:** a crane by the river buys ten particular vehicles once each, from a Pipsqueak to a tank, with a bonus for the full list.
 - **Pizza runs:** pull up at Pizza Paolo's for three timed deliveries to houses; the pay goes up each level.
