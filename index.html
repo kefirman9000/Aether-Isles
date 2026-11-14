@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.11.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.12.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -71,15 +71,17 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <b>C · V</b><span>Hold C to look behind · V toggles the rear-view mirror</span>
 <b>P / Esc</b><span>Pause · <b style="display:inline">M</b> mute</span>
 <b>SHIFT on foot</b><span>Sprint</span>
+<b>Ladders</b><span>Walk into a roof ladder and push forward to climb, back to go down, SPACE to let go. From a roof, walk off the edge at the top of a ladder</span>
+<b>TAB / tap minimap</b><span>Big map: click or tap it to set a waypoint</span>
 <b>T</b><span>Recruit a crew member (purple) or a friendly gang member to follow you, up to 3. They ride in your car's spare seats and fight for you. Press T by one to send them home. The phone (G) can call crew backup</span>
-<b>Climb</b><span>Walk up fire escapes and the El stairs; ladders take you onto roofs and the station canopies. Jump onto the El train's roof to ride it</span>
+<b>Climb</b><span>Roof ladders, the El stairs and the station canopy ladders. Planks cross some alleys between roofs. Jump onto the El train's roof to ride it</span>
 <b>1-9 in dialogs</b><span>Pick an answer (or arrows + Enter)</span>
 <b>Controller</b><span>Left stick move/steer · RT gas · LT brake · A jump/handbrake · Y car · RB fire · right stick aim · LB weapon · X horn · B look back · L3 sprint/nitro · D-pad up radio, down phone · Back map · Start pause</span>
 </div></div>
 </div></div>
 <script>
 'use strict';
-const VERSION='4.11.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.12.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -115,8 +117,14 @@ function rrect(x,y,w,h,r){ctx.beginPath();if(ctx.roundRect){ctx.roundRect(x,y,w,
 const T=32,P=14,NB=18,W=NB*P+4,WPX=W*T;
 const ROAD=0,WALK=1,BLD=2,GRASS=3,TREE=4,LOT=5,SPRAY=6,CRUSH=7,WATER=8;
 const map=new Uint8Array(W*W);
-const tileAt=(x,y)=>(x<0||y<0||x>=W||y>=W)?(x>=HTX0&&x<HTX1&&y>=HTY0&&y<HTY1?hallTile(x,y):y>=W?oobRoom(x,y):BLD):map[y*W+x];
-function oobRoom(x,y){if(!window.__roomsReady)return BLD;const t=roomTile(x,y);return t<0?BLD:t;}
+const tileAt=(x,y)=>(x<0||y<0||x>=W||y>=W)?(x>=HTX0&&x<HTX1&&y>=HTY0&&y<HTY1?hallTile(x,y):y>=W?oobRoom(x,y):countryTile(x,y)):map[y*W+x];
+function oobRoom(x,y){if(!window.__roomsReady)return countryTile(x,y);const t=roomTile(x,y);return t<0?countryTile(x,y):t;}
+// outside the city: drive and walk on the fields, hills and beaches; the sea is water; the world ends near the terrain edge
+function countryTile(tx,ty){if(!window.__terrainReady)return BLD;const px=(tx+.5)*T,py=(ty+.5)*T;
+  if(px<-HM+180||py<-HM+180||px>WPX+HM-180||py>WPX+HM-180)return BLD;
+  for(const b of OUTB)if(px>b.x&&px<b.x+b.w&&py>b.y&&py<b.y+b.h)return BLD;
+  const t=TTYPE[(((py+HM)/HS)|0)*HN+(((px+HM)/HS)|0)];return t===1?WATER:t===6?BLD:GRASS;}
+const OUTB=[];
 const setT=(x,y,t)=>{map[y*W+x]=t};
 const isSolid=t=>t===BLD||t===TREE||t===WATER;
 const solidPx=(x,y)=>isSolid(tileAt(Math.floor(x/T),Math.floor(y/T)));
@@ -609,7 +617,7 @@ function driveCar(c,thr,steer,hb,dt){if(c.t.heli){heliDrive(c,thr,steer,hb,dt);r
     else{let lon=vx*ca+vy*sa,lat=-vx*sa+vy*ca;lat*=Math.pow(0.9,n);lon*=Math.pow(0.97,n);vx=ca*lon-sa*lat;vy=sa*lon+ca*lat;}
     w*=Math.pow(0.88,n);}
   // EnforceGearSensitiveMaxSpeed: max speed going forwards, gear 2 speed going backwards
-  {const sp=hyp(vx,vy),cap=(vx*fx+vy*fy>=0?H.max:H.g2s)*dmg;if(sp>cap){vx*=cap/sp;vy*=cap/sp;}}
+  {const sp=hyp(vx,vy),cap=(vx*fx+vy*fy>=0?H.max:H.g2s)*dmg*(c.flat?0.55:1);if(sp>cap){vx*=cap/sp;vy*=cap/sp;}if(c.flat&&sp>0.05)w+=(Math.random()-0.5)*0.004*n;}
   // ApplyArrowSteerAssist: on a road, gas held (pedal >= 2), no steering, within 25 deg of the lane
   // direction -> spin straight onto it, capped at 0.26 x speed (0.13 for long vehicles)
   let assist=0;
@@ -918,6 +926,7 @@ const WEAPONS=[
   {name:'Rockets',rate:1.0,dmg:0,spd:520,spread:0,kind:'r',cdmg:0,kick:7},
   {name:'Dual Pistols',rate:.2,dmg:30,spd:980,spread:.01,kind:'b',cdmg:7,dual:true,kick:2.5},
 ];
+var GYM=0;const PMAX=()=>100+GYM*10; // max health: +10 per gym session, up to 150
 const player={x:0,y:0,a:0,body:0,jz:0,jv:0,vx:0,vy:0,hp:100,car:null,w:0,ammo:[Infinity,0,0,0,0,0,0],cool:0,anim:0,hurt:0,moving:false};
 const game={state:'menu',t:0,paused:false,timer:0,started:false};
 let money=0;try{money=+(localStorage.getItem('gridlock_money')||0)||0}catch(e){}
@@ -954,7 +963,7 @@ function nearPlayer(x,y,r){return dist2(x,y,player.x,player.y)<r*r}
 function respawnAt(sp){
   crewReset();
   if(player.car){player.car.driver=null;player.car.traffic=true;player.car=null;}
-  fadeIn=1;player.riding=null;player.x=sp.x;player.y=sp.y;player.body=0;player.a=0;player.jz=0;player.jv=0;cam.yaw=0;cam.dist=96;cam.h=40;cam.x=sp.x-96;cam.y=sp.y;player.hp=100;player.vx=player.vy=0;player.w=0;player.ammo=[Infinity,0,0,0,0,0,0];
+  fadeIn=1;player.riding=null;player.x=sp.x;player.y=sp.y;player.body=0;player.a=0;player.jz=0;player.jv=0;cam.yaw=0;cam.dist=96;cam.h=40;cam.x=sp.x-96;cam.y=sp.y;player.hp=PMAX();player.vx=player.vy=0;player.w=0;player.ammo=[Infinity,0,0,0,0,0,0];
   clearHeat();frenzy=null;
   for(const p of peds)if(p.cop&&dist2(p.x,p.y,sp.x,sp.y)<300*300)p.gone=true;
   game.state='play';
@@ -1429,7 +1438,7 @@ window.addEventListener('keydown',e=>{
 window.addEventListener('keyup',e=>{keys[e.code]=false});
 window.addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouse.down=false;});
 cv.addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY;mouse.used=true;if(mouse.rdown)mouse.turn=(mouse.turn||0)+(e.movementX||0);});
-cv.addEventListener('mousedown',e=>{if(e.button===0)mouse.down=true;if(e.button===2)mouse.rdown=true;mouse.used=true;initAudio();});
+cv.addEventListener('mousedown',e=>{if(BIGMAP&&e.button===0){if(!bigMapTap(e.clientX,e.clientY))BIGMAP=false;return;}if(e.button===0)mouse.down=true;if(e.button===2)mouse.rdown=true;mouse.used=true;initAudio();});
 window.addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false;if(e.button===2)mouse.rdown=false;});
 cv.addEventListener('wheel',e=>{pressed.swap=true;e.preventDefault()},{passive:false});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
@@ -1454,7 +1463,7 @@ function joyHome(){const s=touchScale();return{x:16*s+72*s,y:VH-16*s-8-72*s,r:62
 function onTouch(e){
   e.preventDefault();touchMode=true;mouse.used=false;initAudio();
   if(game.paused&&e.type==='touchstart'){togglePause();return;}
-  if(e.type==='touchstart'){keepAwake();if(BIGMAP){BIGMAP=false;return;}const t0=e.changedTouches[0],ms=118*clamp(Math.min(VW,VH)/700,0.65,1.25);if(game.started&&t0.clientX<12+ms+10&&t0.clientY<12+ms+10){BIGMAP=true;return;}}
+  if(e.type==='touchstart'){keepAwake();if(BIGMAP){const t1=e.changedTouches[0];if(!bigMapTap(t1.clientX,t1.clientY))BIGMAP=false;return;}const t0=e.changedTouches[0],ms=118*clamp(Math.min(VW,VH)/700,0.65,1.25);if(game.started&&t0.clientX<12+ms+10&&t0.clientY<12+ms+10){BIGMAP=true;return;}}
   const L=btnLayout(),JH=joyHome();
   for(const t of e.changedTouches){
     const x=t.clientX,y=t.clientY;
@@ -1607,7 +1616,7 @@ function tryEnterCar(){
   }
   if(best.t.police)crime(best.t.army?1000:0,1);
   if(!best.bought){STATS.stolen++;carAlarm(best);}best.bought=true;
-  player.car=best;best.driver='player';best.ai=null;best.traffic=false;best.lastBy='player';
+  carSwapEscape(best);player.car=best;best.driver='player';best.ai=null;best.traffic=false;best.lastBy='player';
   sfx('door');note(best.t.name+(hadDriver?' (jacked)':''));
   if(best.radio==null)best.radio=stationFor(best);setStation(best.radio);
   if(FOLLOW.length)seatCrew(best);
@@ -1709,7 +1718,7 @@ function carAir(c,dt){
 let heli=null;
 function updateHeli(dt){
   const s=stars(),tg=player.car||player;
-  if(!heli&&s>=5&&game.state==='play'){const a=R()*TAU;heli={x:player.x+Math.cos(a)*1100,y:player.y+Math.sin(a)*1100,z:170,a:0,vx:0,vy:0,hp:420,shootT:2,fall:0,rot:0,snd:0};note('Police helicopter overhead!');}
+  if(!heli&&(s>=5||(s>=2&&!player.car&&(player.jz||0)>45))&&game.state==='play'){const a=R()*TAU;heli={x:player.x+Math.cos(a)*1100,y:player.y+Math.sin(a)*1100,z:170,a:0,vx:0,vy:0,hp:420,shootT:2,fall:0,rot:0,snd:0};note('Police helicopter overhead!');}
   if(!heli)return;
   const h=heli;h.rot+=dt*40;
   if(h.fall>0){h.fall-=dt;h.z=Math.max(0,h.z-dt*190);h.a+=dt*6;if(R()<0.7)puff(h.x,h.y,rr(-20,20),rr(-20,20),rr(.6,1.2),rr(10,16),'#333','smoke');if(h.fall<=0||h.z<=GH(h.x,h.y)+5){explode(h.x,h.y,'player');heli=null;}return;}
@@ -1767,7 +1776,7 @@ function updateJobs(dt){
   if(job.kind==='amb'){
     if(job.stage==='pickup'){const p=job.ped;if(p.gone&&!p.inAmb){endJob('The patient died');return;}
       if(dist2(p.x,p.y,c.x,c.y)<58*58&&sp<55){p.inAmb=true;p.gone=true;sfx('door');job.stage='ride';job.x=hospitalSpawn.x;job.y=hospitalSpawn.y;job.timer+=Math.round(hyp(job.x-c.x,job.y-c.y)/140+12);note('Rush them to the hospital');}}
-    else if(dist2(job.x,job.y,c.x,c.y)<100*100&&sp<70){jobLevel++;const pay=150+jobLevel*100;addMoney(pay);sfx('pass');showBig('PATIENT SAVED','+$'+pay+'  ·  level '+jobLevel,'#7dff8a',2.2);player.hp=Math.min(100,player.hp+20);job=null;jobCool=2;return;}
+    else if(dist2(job.x,job.y,c.x,c.y)<100*100&&sp<70){jobLevel++;const pay=150+jobLevel*100;addMoney(pay);sfx('pass');showBig('PATIENT SAVED','+$'+pay+'  ·  level '+jobLevel,'#7dff8a',2.2);player.hp=Math.min(PMAX(),player.hp+20);job=null;jobCool=2;return;}
   }else{const k=job.car;
     if(k.wreck||k.burn>=0){jobLevel++;const pay=250+jobLevel*150;addMoney(pay);sfx('pass');showBig('SUSPECT TAKEN DOWN','+$'+pay+'  ·  level '+jobLevel,'#4da3ff',2.2);job=null;jobCool=3;return;}
     if(!cars.includes(k)){endJob('The suspect got away');return;}
@@ -2031,6 +2040,7 @@ function storyPass(){const m=mission;mission=null;ringT=6;
   if(m.opts.race){raceDone(m);return;}
   if(m.def.stunt){stuntLevel++;const pay=1200+stuntLevel*600;addMoney(pay);sfx('pass');showBig('STUNT TRIAL PASSED','+$'+pay+'  ·  level '+stuntLevel,'#ffc21a',2.4);return;}
   if(m.def.pizza){pizzaLevel++;const pay=300+pizzaLevel*200;addMoney(pay);sfx('pass');showBig('PIZZAS DELIVERED','+$'+pay+'  ·  level '+pizzaLevel,'#ffe25a',2.4);return;}
+  if(m.opts&&m.opts.replay){const pay=Math.round(m.def.pay/2);addMoney(pay);sfx('pass');showBig('MISSION PASSED','Replay  ·  +$'+pay.toLocaleString(),'#3ee07a',3);return;}
   const d=m.def;addMoney(d.pay);sfx('pass');vib([60,40,60]);
   if(d===FINALE){STORY.fin=1;showBig('GRIDLOCK CITY IS YOURS','+$'+d.pay.toLocaleString()+'  ·  story complete','#ffd600',5);}
   else{STORY.prog[m.g]++;addRespect(m.g,1.5);showBig('MISSION PASSED','+$'+d.pay.toLocaleString(),'#3ee07a',3);
@@ -2105,7 +2115,7 @@ function renderShop(){const el=document.getElementById('shop'),c=player.car;if(!
     if(k==='paint')c.col=pick(CT.sedan.cols.concat(CT.sports.cols,CT.compact.cols));else c.up[k]=true;sfx('spray');for(let i=0;i<14;i++)puff(c.x+rr(-30,30),c.y+rr(-30,30),rr(-20,20),rr(-20,20),rr(.4,.9),rr(6,12),'#e8e8e8','smoke');renderShop();});
   el.style.display='block';}
 function updateShop(){const c=player.car;let at=null;if(c&&!c.t.boat&&game.state==='play'&&stars()===0)for(const sp of sprayPads)if(dist2(sp.x,sp.y,c.x,c.y)<70*70&&hyp(c.vx,c.vy)<60)at=sp;
-  if(at&&shopOpen!==c){shopOpen=c;renderShop();}else if(!at&&shopOpen){shopOpen=null;document.getElementById('shop').style.display='none';}}
+  if(at&&shopOpen!==c){shopOpen=c;if(c.flat){c.flat=false;note('New tires fitted');}renderShop();}else if(!at&&shopOpen){shopOpen=null;document.getElementById('shop').style.display='none';}}
 let nitroT=0,nitroFuel=1;
 function updateNitro(dt){const c=player.car;nitroFuel=Math.min(1,nitroFuel+dt/9);if(!c||!(c.up&&c.up.nitro))return;
   if((kd.ShiftLeft||kd.ShiftRight||tbtn.nos.on)&&nitroFuel>0){nitroFuel=Math.max(0,nitroFuel-dt/2.2);const ca=Math.cos(c.a),sa=Math.sin(c.a);c.vx+=ca*760*dt;c.vy+=sa*760*dt;
@@ -2203,6 +2213,7 @@ function drawBigMap(sc){const s=Math.min(VW,VH)*0.92,ox=(VW-s)/2,oy=(VH-s)/2,k=s
   icon(hospitalSpawn.x,hospitalSpawn.y,'#ffffff','+');
   for(const c of cars)if(c.t.boat&&!c.driver)icon(c.x,c.y,'#6ab8ff','~');
   icon(SHOWROOM.x,SHOWROOM.y,'#ff6060','A');icon(STUNT.x,STUNT.y,'#ffc21a','S');icon(BANK.x,BANK.y,'#1f3f6f','$');for(const s2 of STORES)icon(s2.x,s2.y,'#d8382a','7');for(const h of HELIPADS)icon(h.x,h.y,'#c9a23a','^');icon(CLUB.x,CLUB.y,'#ff4fa8','♪');for(const g of GUNSHOPS)icon(g.x,g.y,'#ff4040','W');icon(EXPORT.x,EXPORT.y,'#6ab8ff','E');icon(PIZZA.x,PIZZA.y,'#ffe25a','P');
+  bigMapExtras(P2,icon,k_);
   const tg=objectiveTarget();if(tg){const gp=gpsRoute(tg);if(gp){ctx.beginPath();const[p0,p1]=P2((player.car||player).x,(player.car||player).y);ctx.moveTo(p0,p1);for(const q of gp){const[x,y]=P2(q.x,q.y);ctx.lineTo(x,y);}ctx.strokeStyle='#ffd600';ctx.lineWidth=3;ctx.stroke();}}
   if(tg){const[a,b]=P2(tg.x,tg.y);ctx.fillStyle='#ffd600';ctx.beginPath();ctx.arc(a,b,6+Math.sin(game.t*6)*2,0,TAU);ctx.fill();ctx.stroke();}
   {const o=player.car||player,[a,b]=P2(o.x,o.y);ctx.save();ctx.translate(a,b);ctx.rotate(o.a);ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-2,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
@@ -2220,8 +2231,8 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.star
 
 // ---------- per-frame hook ----------
 function extTick(dt){extTick5(dt);transitTick(dt);extTick2(dt);extTick3(dt);extTick4(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
-function extSave(){return{roof:{seed:CITY_SEED,got:STASH.map(k=>k.got?1:0)},trash:trashLevel,taco:tacoLevel,story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
-function extLoad(e){if(!e)return;for(const k of STASH)k.got=false;if(e.roof&&e.roof.seed===CITY_SEED)(e.roof.got||[]).forEach((g,i)=>{if(STASH[i])STASH[i].got=!!g;});trashLevel=e.trash||0;tacoLevel=e.taco||0;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
+function extSave(){return{gym:GYM,gold:GOLDGOT,tags:{seed:CITY_SEED,d:TAGS.map(t=>t.done?1:0)},runs:RUNBEST,secret:secretFound,crewup:CREWUP,roof:{seed:CITY_SEED,got:STASH.map(k=>k.got?1:0)},trash:trashLevel,taco:tacoLevel,story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
+function extLoad(e){if(!e)return;GYM=e.gym||0;for(const k in GOLDGOT)delete GOLDGOT[k];Object.assign(GOLDGOT,e.gold||{});applyGold();for(const t of TAGS)t.done=false;if(e.tags&&e.tags.seed===CITY_SEED)(e.tags.d||[]).forEach((d,i)=>{if(TAGS[i])TAGS[i].done=!!d;});for(const k in RUNBEST)delete RUNBEST[k];Object.assign(RUNBEST,e.runs||{});secretFound=!!e.secret;Object.assign(CREWUP,{guns:0,armor:0,slot:0,guard:0},e.crewup||{});for(const k of STASH)k.got=false;if(e.roof&&e.roof.seed===CITY_SEED)(e.roof.got||[]).forEach((g,i)=>{if(STASH[i])STASH[i].got=!!g;});trashLevel=e.trash||0;tacoLevel=e.taco||0;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
   for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});for(const k in EXPORTED)delete EXPORTED[k];Object.assign(EXPORTED,e.exp||{});pizzaLevel=e.pizza||0;player.armor=e.armor||0;for(const k in TURF)delete TURF[k];Object.assign(TURF,e.turf||{});stuntLevel=e.stunt||0;}
 
 // ---------- traffic on the diagonal avenues ----------
@@ -2246,7 +2257,7 @@ function completion(){const sm=CHAPTERS.reduce((a,c)=>a+c.length,0)+1,sd=STORY.p
 function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS · ${completion()}% COMPLETE</h2><div class="ctl">
 <b>Story</b><span>${STORY.prog.reduce((a,b)=>a+b,0)+STORY.fin} / ${CHAPTERS.reduce((a,c)=>a+c.length,0)+1} missions</span>
 <b>Hidden packages</b><span>${PACKAGES.filter(k=>k.got).length} / ${PACKAGES.length}</span>
-<b>Rooftop stashes</b><span>${STASH.filter(k=>k.got).length} / ${STASH.length}</span><b>Side jobs</b><span>Garbage ${trashLevel} · Taco ${tacoLevel}</span>
+<b>Rooftop stashes</b><span>${STASH.filter(k=>k.got).length} / ${STASH.length}</span><b>Gang tags</b><span>${TAGS.filter(t=>t.done).length} / ${TAGS.length}</span><b>Golden guns</b><span>${Object.keys(GOLDGOT).length} / 3</span><b>Secret car</b><span>${secretFound?'Found':'?'}</span><b>Rooftop runs</b><span>${Object.keys(RUNBEST).length} / ${RUNS.length}</span><b>Max health</b><span>${PMAX()}</span><b>Side jobs</b><span>Garbage ${trashLevel} · Taco ${tacoLevel}</span>
 <b>Race golds</b><span>${Object.keys(GOLDS).length} / ${RACES.length} · ${STATS.raceWins} wins</span>
 <b>Safehouses</b><span>${SAFEHOUSES.filter(s=>s.owned).length} / ${SAFEHOUSES.length}</span>
 <b>Job levels</b><span>Duty ${jobLevel} · Fire ${fireLevel}</span>
@@ -2256,11 +2267,11 @@ function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS
 <b>Cars stolen</b><span>${STATS.stolen}</span><b>People taken out</b><span>${STATS.kills} (${STATS.cops} cops)</span>
 <b>Distance driven</b><span>${km} km</span><b>Wasted / busted</b><span>${STATS.wasted} / ${STATS.busted}</span></div>`;}
 // phone: G (or PHONE) orders a car to be dropped off nearby
-const ORDERS=[['Crew backup',250,'crew'],['Getaway car',300,'sports'],['Taxi',150,'taxi'],['Pickup truck',250,'pickup'],['Fire truck',600,'firetruck']];
+const ORDERS=[['Start a gang war',0,'war'],['Crew upgrades',0,'crewup'],['Crew backup',250,'crew'],['Getaway car',300,'sports'],['Taxi',150,'taxi'],['Pickup truck',250,'pickup'],['Fire truck',600,'firetruck']];
 let delivery=null;
 function phoneMenu(){if(DLG.open||game.state!=='play'||mission&&mission.opts&&mission.opts.race)return;
-  say([['Phone','Who are you calling?']],null,ORDERS.map(([n,p,t])=>[n.toUpperCase()+' $'+p,()=>orderCar(n,p,t)]).concat([['HANG UP',()=>{},'no']]));}
-function orderCar(n,p,t){if(money<p){note('Not enough cash');return;}if(t==='crew'){if(callBackup())addMoney(-p);return;}let s=null;for(let i=0;i<60&&!s;i++){const a=R()*TAU,d=rr(160,320);s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);}
+  say([['Phone','Who are you calling?']],null,ORDERS.map(([n,p,t])=>[n.toUpperCase()+(p?' $'+p:''),()=>orderCar(n,p,t)]).concat([['HANG UP',()=>{},'no']]));}
+function orderCar(n,p,t){if(money<p){note('Not enough cash');return;}if(t==='crew'){if(callBackup())addMoney(-p);return;}if(t==='war'){startGangWar();return;}if(t==='crewup'){setTimeout(crewUpgrades,50);return;}let s=null;for(let i=0;i<60&&!s;i++){const a=R()*TAU,d=rr(160,320);s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);}
   if(!s){note('Nobody can reach you here');return;}addMoney(-p);const c=makeCar(t,s.x,s.y,s.dir*PI/2);c.special=false;delivery={c,t:40};sfx('ring',0.5);note(n+' on its way. Look for the marker');}
 let lastKeyT=0;window.addEventListener('keydown',e=>{const now=performance.now();if(e.key.length===1)lastKeyT=now;
   if(e.code==='KeyG'&&game.started&&!game.paused&&!e.repeat){const t0=now;setTimeout(()=>{if(lastKeyT===t0)phoneMenu();},400);}},true);
@@ -2282,8 +2293,8 @@ const GUNSTOCK=[['Baseball bat',100,'bat',Infinity],['SMG + 200',800,1,200],['Sh
 let gunCool=0;
 function updateGunShops(dt){}
 function gunMenu(){
-    say([['Ammu-Nation','Protect yourself. Pick something.']],null,GUNSTOCK.map(([n,p,w,a])=>[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');
-      if(w==='bat')w=BATIDX();if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}]).concat([['LEAVE',()=>{},'no']]));}
+    const dk=gunDiscount();say([['Ammu-Nation',dk<1?'Friends of the neighborhood get 20% off. Pick something.':'Protect yourself. Pick something.']],null,GUNSTOCK.map(([n,p0,w,a])=>{const p=Math.round(p0*dk);return[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');
+      if(w==='bat')w=BATIDX();if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}];}).concat([['LEAVE',()=>{},'no']]));}
 // a crane by the river buys particular cars, once each
 const EXPORTS=[['compact',600],['sedan',700],['taxi',900],['sports',2000],['truck',1200],['ambulance',1800],['police',2500],['firetruck',2200],['swat',3500],['muscle',2400],['roadster',2800],['garbage',1600],['tank',10000]];
 const EXPORTED={};
@@ -2471,8 +2482,8 @@ function leaveRoom(){const b=ROOM.back;if(ROOM.id==='club')for(const p of peds)i
 function updateRooms(dt){roomCool-=dt;if(roomCool>0||player.car||DLG.open||game.state!=='play')return;
   if(ROOM){const r=ROOM.r;if(dist2(player.x,player.y,r.door.x,r.door.y)<24*24){leaveRoom();return;}
     if(ROOM.id==='ammu'&&dist2(player.x,player.y,r.counter.x,r.counter.y+T)<30*30){roomCool=3;gunMenu();}
-    if(ROOM.id==='safe'&&dist2(player.x,player.y,r.bed.x,r.bed.y)<46*46){roomCool=3;player.hp=100;game.paused=true;menuShow('pause');openPanel('save');note('Health restored');}
-    if(ROOM.id==='club'&&dist2(player.x,player.y,r.bar.x-T,r.bar.y)<40*40){roomCool=6;say([['Bartender','What can I get you?']],null,[['SODA $5',()=>{if(money>=5){addMoney(-5);player.hp=Math.min(100,player.hp+10);note('Refreshing. +10 health');}}],['VIP ROUND $200',()=>{if(money>=200){addMoney(-200);for(let g=0;g<3;g++)addRespect(g,0.3);note('Word gets around. Every gang likes you a little more.');}}],['NOTHING',()=>{},'no']]);}
+    if(ROOM.id==='safe'&&dist2(player.x,player.y,r.bed.x,r.bed.y)<46*46){roomCool=3;player.hp=PMAX();game.paused=true;menuShow('pause');openPanel('save');note('Health restored');}
+    if(ROOM.id==='club'&&dist2(player.x,player.y,r.bar.x-T,r.bar.y)<40*40){roomCool=6;say([['Bartender','What can I get you?']],null,[['SODA $5',()=>{if(money>=5){addMoney(-5);player.hp=Math.min(PMAX(),player.hp+10);note('Refreshing. +10 health');}}],['VIP ROUND $200',()=>{if(money>=200){addMoney(-200);for(let g=0;g<3;g++)addRespect(g,0.3);note('Word gets around. Every gang likes you a little more.');}}],['NOTHING',()=>{},'no']]);}
     return;}
   for(const g of GUNSHOPS)if(dist2(g.x,g.y,player.x,player.y)<34*34){enterRoom('ammu',{x:g.x,y:g.y+40});return;}
   for(const sh of SAFEHOUSES)if(sh.owned&&stars()===0&&dist2(sh.x,sh.y,player.x,player.y)<34*34){enterRoom('safe',{x:sh.x,y:sh.y+40});shCool=4;return;}
@@ -2591,7 +2602,7 @@ function updateRobbery(dt){robCool-=dt;if(game.state!=='play')return;
     if(dist2(BANK.x,BANK.y,player.x,player.y)<30*30){ROOM_FROM=BANK;enterRoom('bank',{x:BANK.x,y:BANK.y+40});}return;}
   const r=ROOM.r,armed=player.w>0||player.ammo[0]>0;
   if(ROOM.id==='store'&&robCool<=0&&!DLG.open&&dist2(player.x,player.y,r.counter.x,r.counter.y+T)<30*30){robCool=4;const s=ROOM_FROM;
-    say([['Clerk','Welcome to 24/7. What do you want?']],null,[['SNACK $5',()=>{if(money>=5){addMoney(-5);player.hp=Math.min(100,player.hp+20);note('+20 health');}}],
+    say([['Clerk','Welcome to 24/7. What do you want?']],null,[['SNACK $5',()=>{if(money>=5){addMoney(-5);player.hp=Math.min(PMAX(),player.hp+20);note('+20 health');}}],
       ...(armed?[['ROB THE REGISTER',()=>{if(game.t-s.robT<300){note('The register is still empty from last time');return;}s.robT=game.t;const cash=Math.round(rr(300,800));addMoney(cash);crime(400,2);showBig('ROBBERY','+$'+cash,'#ff4040',2);radioMsg('DISPATCH: Armed robbery at a 24/7. Suspect still on scene.');}]]:[]),['LEAVE',()=>{},'no']]);}
   if(ROOM.id==='bank'){const v=r.vault,near=dist2(player.x,player.y,v.x,v.y+T)<40*40;
     if(near&&!drill&&robCool<=0&&!DLG.open){robCool=4;if(game.t-BANK.robT<600){note('The vault is empty. Come back another day');return;}
@@ -2655,7 +2666,7 @@ function meleeSwing(){const ca=Math.cos(player.a),sa=Math.sin(player.a);sfx('doo
 // ---------- cheats: type them during play (or enter them in the pause menu) ----------
 const CHEATS={
   GUNSGUNSGUNS:()=>{for(let i=1;i<WEAPONS.length;i++)player.ammo[i]=i===BAT?Infinity:Math.max(player.ammo[i]||0,i===5?20:i===4?20:300);return 'All weapons';},
-  HEALME:()=>{player.hp=100;player.armor=100;if(player.car)player.car.hp=player.car.t.hp;return 'Health and armor';},
+  HEALME:()=>{player.hp=PMAX();player.armor=100;if(player.car)player.car.hp=player.car.t.hp;return 'Health and armor';},
   LEAVEMEALONE:()=>{clearHeat();return 'Wanted level cleared';},
   MOREPOLICE:()=>{crime(0,Math.min(6,stars()+2));return 'More police';},
   CASHMONEY:()=>{addMoney(10000);return '+$10,000';},
@@ -2861,7 +2872,7 @@ function stationFor(c){const t=c.type;if(c.t.police||c.t.ambulance||c.t.fire||c.
 // ---------- rooftop stashes: duffel bags of cash on roofs you can only reach by climbing ----------
 function updateStash(){if(player.car||game.state!=='play')return;for(const k of STASH){if(k.got||Math.abs(k.x-player.x)>22||Math.abs(k.y-player.y)>22||Math.abs((player.jz||0)-k.z)>14)continue;
   k.got=true;const n=STASH.filter(q=>q.got).length,pay=300+n*50;addMoney(pay);sfx('pickup');
-  if(n===STASH.length){addMoney(8000);showBig('ALL ROOFTOP STASHES','+$8,000 bonus','#ffd600',3);}else showBig('ROOFTOP STASH','+$'+pay+'  ·  '+n+' / '+STASH.length,'#9fe06a',2);}}
+  if(n===STASH.length){addMoney(8000);showBig('ALL STASHES','+$8,000 bonus','#ffd600',3);}else showBig('ROOFTOP STASH','+$'+pay+'  ·  '+n+' / '+STASH.length,'#9fe06a',2);}}
 // ================= v4.11: YOUR CREW =================
 // Take turf and your own crew (in purple) starts hanging out on your blocks. Gangs that love you (respect 3+) count as
 // allies. Allies near you shoot it out with the cops and with rival gangs, your turf hides you from the police, and you
@@ -2871,7 +2882,7 @@ const CREW_COL='#9a5ad8',FOLLOW=[];let crewSpawnT=0,crewTickT=0;
 function seatsOf(c){const t=c.t,k=c.type;if(!c||t.tank)return 0;if(t.bus)return 3;if(t.bike||t.heli)return 1;if(t.boat)return 2;
   if(['sports','roadster','muscle','compact','truck','garbage','ambulance','icecream','foodtruck','firetruck','armytruck','fbi'].includes(k))return 1;
   if(k==='pickup'||k==='van')return 2;return 3;}
-function makeCrew(p,bi){p.crew=true;p.gang=null;p.col=CREW_COL;p.hp=60;p.home=bi;p.state='walk';p.shootT=rr(.3,.8);p.hair=pick(['#222','#3a2a1a','#111']);
+function makeCrew(p,bi){p.crew=true;p.gang=null;p.col=CREW_COL;p.hp=CREWUP.armor?110:60;p.home=bi;p.state='walk';p.shootT=rr(.3,.8);p.hair=pick(['#222','#3a2a1a','#111']);
   const bx=bi%NB,by=Math.floor(bi/NB);p.homeX=(bx*P+9)*T;p.homeY=(by*P+9)*T;}
 const isAlly=p=>!!p&&!p.gone&&(p.crew||p.follow||(p.gang!=null&&respect[p.gang]>=3&&!(p.angry>0)));
 function crewHostile(q){if(q.gone||q.injured||q.crew||q.follow)return false;
@@ -2883,8 +2894,8 @@ function crewTarget(x,y,r){let best=null,bd=r*r;
 function crewShoot(p,tg,dt){p.gun=true;const d=hyp(tg.x-p.x,tg.y-p.y),a=Math.atan2(tg.y-p.y,tg.x-p.x);p.a=lerpAng(p.a,a,0.3);
   let sp=d>230?140:d<80?-50:0;if(p.follow&&hyp(player.x-p.x,player.y-p.y)>240)sp=0;
   p.vx=Math.cos(a)*sp;p.vy=Math.sin(a)*sp;p.moving=sp!==0;p.anim+=dt*20;p.x+=p.vx*dt;p.y+=p.vy*dt;circleTiles(p,6);
-  p.shootT-=dt;if(p.shootT<=0){p.shootT=rr(.55,1.05);const aa=a+rr(-0.08,0.08)*(sp!==0?1.6:1); // your crew can actually shoot
-    fireBullet(p.x+Math.cos(aa)*12,p.y+Math.sin(aa)*12,aa,850,'crew',9,'b',6);
+  p.shootT-=dt;if(p.shootT<=0){p.shootT=rr(.55,1.05)*(CREWUP.guns&&(p.crew||p.follow)?0.6:1);const aa=a+rr(-0.08,0.08)*(sp!==0?1.6:1); // your crew can actually shoot
+    fireBullet(p.x+Math.cos(aa)*12,p.y+Math.sin(aa)*12,aa,850,'crew',CREWUP.guns?12:9,'b',6);
     sfx('shot',nearPlayer(p.x,p.y,600)?0.4:0.12);puff(p.x+Math.cos(aa)*14,p.y+Math.sin(aa)*14,0,0,0.06,9,'#fff2a8','flash');if(tg.cop)tg.foe=p;}}
 // one crew member's (or ally's) turn: fight, follow you, or hang out on the home block. Returns true when it moved them.
 function crewTick(p,dt){if(p.state==='flee'){p.state='walk';p.panic=0;}
@@ -2911,17 +2922,17 @@ function recruitNear(){if(player.car||game.state!=='play')return;let best=null,b
   for(const p of peds){if(p.gone||!isAlly(p))continue;const d=dist2(p.x,p.y,player.x,player.y);if(d<bd){bd=d;best=p;}}
   if(!best){note(TURF&&Object.keys(TURF).length?'Walk up to one of your crew (purple) to recruit them':'Take some turf, or win a gang over, to have a crew');return;}
   if(best.follow){best.follow=false;best.wait=false;FOLLOW.splice(FOLLOW.indexOf(best),1);if(best.crew&&best.home!=null){const bx=best.home%NB,by=Math.floor(best.home/NB);best.homeX=(bx*P+9)*T;best.homeY=(by*P+9)*T;}note('Sent home. Crew: '+FOLLOW.length+'/3');return;}
-  if(FOLLOW.length>=3){note('Your crew is full (3). Press T next to one to send them home');return;}
+  if(FOLLOW.length>=crewMax()){note('Your crew is full ('+crewMax()+'). Press T next to one to send them home');return;}
   best.follow=true;best.wait=false;best.state='walk';FOLLOW.push(best);sfx('pickup',0.4);
   best.say={text:pick(['Let\'s ride.','I got you.','Where we going?','Say less.']),t:2};
-  note((best.crew?'Crew member':GANGS[best.gang].name+' member')+' is with you  ·  '+FOLLOW.length+'/3');}
+  note((best.crew?'Crew member':GANGS[best.gang].name+' member')+' is with you  ·  '+FOLLOW.length+'/'+crewMax());}
 function seatCrew(c){let free=seatsOf(c),n=0;for(const p of FOLLOW){if(p.seated)continue;if(free>0&&hyp(p.x-c.x,p.y-c.y)<300){p.seated=c;p.gone=true;p.wait=false;free--;n++;}else p.wait=true;}
   const left=FOLLOW.filter(p=>!p.seated).length;if(n||left)note((n?n+' crew in the car':'')+(n&&left?' · ':'')+(left?left+' waiting here (no seats)':''));}
 function unseatCrew(c){let i=0;const ca=Math.cos(c.a),sa=Math.sin(c.a);for(const p of FOLLOW){if(p.seated!==c)continue;const sd=i%2?1:-1,f=(Math.floor(i/2)-0.5)*14;i++;
   p.x=c.x+ca*f-sa*sd*(c.t.Wd/2+10);p.y=c.y+sa*f+ca*sd*(c.t.Wd/2+10);p.seated=null;p.gone=false;p.vx=p.vy=0;p.state='walk';p.scanT=0;if(peds.indexOf(p)<0)peds.push(p);}}
 function crewReset(){for(const p of FOLLOW){p.follow=false;p.seated=null;}FOLLOW.length=0;}
-function callBackup(){if(!Object.keys(TURF).length){note('You need turf before you have a crew to call');return false;}if(FOLLOW.length>=3){note('Your crew is already with you');return false;}
-  let n=0;for(let i=0;i<20&&FOLLOW.length<3;i++){const a=R()*TAU,d=rr(220,320),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d,t=tileAt(Math.floor(x/T),Math.floor(y/T));
+function callBackup(){if(!Object.keys(TURF).length){note('You need turf before you have a crew to call');return false;}if(FOLLOW.length>=crewMax()){note('Your crew is already with you');return false;}
+  let n=0;for(let i=0;i<20&&FOLLOW.length<crewMax();i++){const a=R()*TAU,d=rr(220,320),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d,t=tileAt(Math.floor(x/T),Math.floor(y/T));
     if(t!==WALK&&t!==ROAD&&t!==LOT&&t!==GRASS||camSees(x,y))continue;const p=makePed(x,y,false);makeCrew(p,+pick(Object.keys(TURF)));p.follow=true;p.homeX=null;FOLLOW.push(p);n++;}
   if(n){note(n+' of your crew are on their way');sfx('ring',0.4);return true;}note('Nobody can reach you here');return false;}
 function updateCrew(dt){
@@ -2936,7 +2947,230 @@ function updateCrew(dt){
   crewSpawnT-=dt;if(crewSpawnT<=0&&game.state==='play'){crewSpawnT=2;
     for(const k in TURF){const bi=+k,bx=bi%NB,by=Math.floor(bi/NB),cx=(bx*P+9)*T,cy=(by*P+9)*T;if(dist2(cx,cy,player.x,player.y)>1100*1100)continue;
       if(peds.filter(q=>!q.gone&&q.crew&&q.home===bi&&!q.follow).length>=3)continue;const q=walkNear(cx,cy,200);if(camSees(q.x,q.y))continue;makeCrew(makePed(q.x,q.y,false),bi);}}}
-function extTick12(dt){updateCrew(dt);}
+// ================= v4.12: WAYPOINTS, MISSION REPLAY, GANG WARS, CREW UPGRADES, REPUTATION, TURF PRESSURE, POLICE =================
+// ---------- your own waypoint: click or tap the big map (TAB) to set it, again on it to clear it ----------
+let WAYPOINT=null,roofRun=null;
+function bigMapGeom(){const s=Math.min(VW,VH)*0.92;return{ox:(VW-s)/2,oy:(VH-s)/2,k:s/WPX,s};}
+function bigMapTap(sx,sy){const g=bigMapGeom();if(sx<g.ox||sy<g.oy||sx>g.ox+g.s||sy>g.oy+g.s)return false;const x=(sx-g.ox)/g.k,y=(sy-g.oy)/g.k;
+  if(WAYPOINT&&hyp(x-WAYPOINT.x,y-WAYPOINT.y)<16/g.k){WAYPOINT=null;note('Waypoint cleared');return true;}WAYPOINT={x,y};sfx('pickup',0.3);note('Waypoint set. Follow the route on the map');return true;}
+function updateWaypoint(){if(WAYPOINT&&hyp((player.car||player).x-WAYPOINT.x,(player.car||player).y-WAYPOINT.y)<70){WAYPOINT=null;note('You\'ve arrived');sfx('pass',0.4);}}
+function bigMapExtras(P2,icon,kk){
+  // turf under pressure blinks orange; gang war block red
+  for(const k in TURF){const t=TURF[k];if(!(t.p>0))continue;const bi=+k,[a,b2]=P2((bi%NB)*P*T+4*T,Math.floor(bi/NB)*P*T+4*T);if(t.p>=2&&Math.floor(game.t*2)%2)continue;ctx.strokeStyle=t.p>=2?'#ff7a2a':'#ffb35a';ctx.lineWidth=2;ctx.strokeRect(a,b2,10*T*kk,10*T*kk);}
+  if(GWAR){const bi=GWAR.bi,[a,b2]=P2((bi%NB)*P*T+4*T,Math.floor(bi/NB)*P*T+4*T);ctx.fillStyle='rgba(255,40,40,.35)';ctx.fillRect(a,b2,10*T*kk,10*T*kk);}
+  if(WAYPOINT){const[a,b2]=P2(WAYPOINT.x,WAYPOINT.y);ctx.fillStyle='#ff4fa8';ctx.beginPath();ctx.moveTo(a,b2);ctx.lineTo(a-7,b2-16);ctx.lineTo(a+7,b2-16);ctx.closePath();ctx.fill();ctx.strokeStyle='#000';ctx.lineWidth=1.5;ctx.stroke();}
+  ctx.font='600 12px system-ui';ctx.fillStyle='#ddd';ctx.textAlign='center';const g=bigMapGeom();ctx.fillText(touchMode?'Tap the map to set a waypoint · tap outside to close':'Click to set a waypoint · TAB to close',VW/2,g.oy+g.s+14);}
+// ---------- replay finished story missions from the pause menu ----------
+function missionsHTML(){let h='<h2>MISSIONS</h2><p class="note">Replay any story mission you\'ve finished, for half the pay. Lose the cops first.</p>';
+  CHAPTERS.forEach((ch,g)=>{h+=`<p style="color:${GANGS[g].col};margin:10px 0 2px">${BOSSES[g].name}</p>`;ch.forEach((m,i)=>{const done=i<STORY.prog[g];h+=`<div class="opt"><span>${done?m.title:'<i style="color:#666">locked</i>'}</span>${done?`<button data-rep="${g},${i}">REPLAY</button>`:''}</div>`;});});
+  if(STORY.fin)h+=`<div class="opt"><span>${FINALE.title}</span><button data-rep="f">REPLAY</button></div>`;return h;}
+function replayMission(key){if(mission||stars()>0||game.state!=='play'){note(stars()>0?'Lose the cops first':'Finish what you\'re doing first');return;}
+  const def=key==='f'?FINALE:CHAPTERS[+key.split(',')[0]][+key.split(',')[1]],g=key==='f'?0:+key.split(',')[0];togglePause();runMission(def,{sub:'Replay',replay:true});mission.g=g;mission.gang=-1;}
+// ---------- gang wars: start one on a rival block (phone), hold out against three waves ----------
+let GWAR=null;
+function startGangWar(){const bi=blockOf(player.x,player.y),bx=bi%NB,by=Math.floor(bi/NB),z=zoneOf((bx*P+9)*T,(by*P+9)*T);
+  if(GWAR||mission){note('You\'re busy');return false;}if(z<0||TURF[bi]||['park','cpark','river','beach','stadium'].includes(BLOCKK[bi])){note('Stand in a rival gang\'s block to start a war');return false;}
+  if(respect[z]>=3){note(GANGS[z].name+' are your friends. Lose their respect first');return false;}
+  GWAR={bi,g:z,wave:0,waves:3,list:[],t:4,cx:(bx*P+9)*T,cy:(by*P+9)*T};showBig('GANG WAR',GANGS[z].name+' are coming. Hold the block!','#ff4040',2.6);sfx('ring');
+  radioMsg('NEWS: Gunfire reported on '+GANGS[z].name+' turf.');return true;}
+function updateGangWar(dt){const W2=GWAR;if(!W2)return;
+  if(game.state!=='play'||dist2(player.x,player.y,W2.cx,W2.cy)>900*900){showBig('GANG WAR LOST','You left the block','#ff4040',2.4);sfx('fail');for(const q of W2.list)q.target=false;GWAR=null;return;}
+  W2.list=W2.list.filter(q=>!q.gone);
+  if(W2.list.length){W2.wt=(W2.wt||0)+dt;if(W2.wt>90){showBig('GANG WAR LOST','They held their ground','#ff4040',2.4);sfx('fail');for(const q of W2.list)q.target=false;GWAR=null;}return;}
+  W2.t-=dt;if(W2.t>0)return;
+  if(W2.wave>=W2.waves){TURF[W2.bi]={g:W2.g,v:game.playT||0,p:0};const pay=2000+trashLevel*0;addMoney(pay);addRespect(W2.g,-1.5);sfx('pass');showBig('GANG WAR WON','The block is yours  ·  +$'+pay.toLocaleString(),'#c07cff',3);GWAR=null;return;}
+  W2.wave++;W2.wt=0;W2.t=5;const n=3+W2.wave+(CREWUP.guns?1:0);
+  for(let i=0;i<n;i++){let q=null;for(let k=0;k<20;k++){const a=R()*TAU,d=rr(260,380),x=W2.cx+Math.cos(a)*d,y=W2.cy+Math.sin(a)*d,t=tileAt(Math.floor(x/T),Math.floor(y/T));if((t===WALK||t===ROAD||t===LOT)&&!camSees(x,y)){q={x,y};break;}}if(!q)q=walkNear(W2.cx,W2.cy,300);
+    const e=makePed(q.x,q.y,false);makeGang(e,W2.g);e.angry=999;e.target=true;e.hp=45+W2.wave*10;if(W2.wave===3&&i<2)player.ammo[1]>=0&&(e.heavy=true);pedPickNext(e);W2.list.push(e);}
+  note('Wave '+W2.wave+' of '+W2.waves+': '+n+' '+GANGS[W2.g].name);}
+// ---------- crew upgrades (phone): better guns, body armor, a fourth slot, turf guards ----------
+const CREWUP={guns:0,armor:0,slot:0,guard:0};
+const crewMax=()=>3+(CREWUP.slot?1:0);
+function crewUpgrades(){if(!Object.keys(TURF).length){note('You need turf before you have a crew');return;}
+  const opts=[['guns','Crew SMGs',3000,'They fire faster and hit harder'],['armor','Crew body armor',2500,'Your crew can take more'],['slot','Fourth crew slot',5000,'Up to 4 followers'],['guard','Turf guards',2000,'Your blocks hold out twice as long']].filter(o=>!CREWUP[o[0]]);
+  if(!opts.length){say([['Crew','We\'re fully kitted out, boss.']]);return;}
+  say([['Crew','What are we spending turf money on?']],null,opts.map(([k,n,pr,d])=>[n.toUpperCase()+' $'+pr.toLocaleString(),()=>{if(money<pr){note('Not enough cash');return;}addMoney(-pr);CREWUP[k]=1;sfx('pickup');note(n+': '+d);}]).concat([['NOTHING',()=>{},'no']]));}
+// ---------- reputation you can see: friendly greetings and honks, Ammu-Nation discounts, ambushes near your safehouses ----------
+const GREET=['Yo, homie!','Respect.','Looking sharp.','Our streets are your streets.','Need anything, call us.'];
+let repT=0,ambushT=90;
+function updateReputation(dt){repT-=dt;if(repT>0||game.state!=='play')return;repT=0.6;
+  if(!player.car)for(const p of peds){if(p.gone||p.gang==null||p.greeted||respect[p.gang]<3||p.angry>0)continue;if(dist2(p.x,p.y,player.x,player.y)<80*80){p.greeted=true;p.say={text:pick(GREET),t:2.2};p.a=Math.atan2(player.y-p.y,player.x-p.x);}}
+  for(const c of cars){if(c.gang==null||c.greeted||!c.driver||c===player.car||respect[c.gang]<3)continue;if(dist2(c.x,c.y,(player.car||player).x,(player.car||player).y)<130*130){c.greeted=true;hornBeep(c.x,c.y,380);}}
+  ambushT-=0.6;if(ambushT<=0&&stars()===0&&!mission&&!GWAR){ambushT=rr(120,200);
+    for(const sh of SAFEHOUSES){if(!sh.owned||dist2(sh.x,sh.y,player.x,player.y)>450*450)continue;const g=zoneOf(sh.x,sh.y);if(g<0||respect[g]>-3)continue;
+      let n=0;for(let k=0;k<30&&n<3;k++){const a=R()*TAU,d=rr(250,360),x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d,t=tileAt(Math.floor(x/T),Math.floor(y/T));if(t!==WALK&&t!==ROAD||camSees(x,y))continue;const e=makePed(x,y,false);makeGang(e,g);e.angry=60;pedPickNext(e);n++;}
+      if(n){showBig('AMBUSH!',GANGS[g].name+' were waiting for you','#ff4040',2);}break;}}}
+const gunDiscount=()=>{const z=zoneOf(player.x,player.y);return z>=0&&respect[z]>=3?0.8:1;};
+// ---------- turf slips away if you neglect it: visit your blocks (or buy turf guards) ----------
+let turfPT=0;
+function updateTurfPressure(dt){if(game.state!=='play')return;const now=game.playT||0,bi=blockOf(player.x,player.y);
+  if(TURF[bi]){TURF[bi].v=now;TURF[bi].p=0;}
+  turfPT-=dt;if(turfPT>0)return;turfPT=60;const keys2=Object.keys(TURF);
+  for(const k of keys2){const t=TURF[k];if(t.v==null)t.v=now;const away=now-t.v,limit=CREWUP.guard?720:360;
+    if(away>limit){t.p=(t.p||0)+1;t.v=now-limit*0.5;
+      if(t.p===2)note('One of your blocks is under pressure from the '+GANGS[t.g].name+' (orange on the map). Pay it a visit');
+      if(t.p>=3){delete TURF[k];note('The '+GANGS[t.g].name+' took back a block while you were away');sfx('fail',0.5);}}}}
+// ---------- smarter police: spike strips, a chopper over the rooftops, and cops who search where they last saw you ----------
+const SPIKES=[];
+function spawnSpikes(){const c0=player.car;if(!c0)return false;const sp=hyp(c0.vx,c0.vy);if(sp<120)return false;const dx=c0.vx/sp,dy=c0.vy/sp;
+  for(let tries=0;tries<6;tries++){const dd=FOG1*0.7+tries*70,px=c0.x+dx*dd,py=c0.y+dy*dd,tx=Math.floor(px/T),ty=Math.floor(py/T);if(tx<0||ty<0||tx>=W||ty>=W||map[ty*W+tx]!==ROAD)continue;
+    const mx=tx%P,my=ty%P;if((mx<4)===(my<4))continue;const vert=mx<4,k=vert?Math.floor(tx/P):Math.floor(ty/P),x=vert?(k*P+2)*T:(tx+.5)*T,y=vert?(ty+.5)*T:(k*P+2)*T;
+    SPIKES.push({x,y,a:vert?0:PI/2,hl:60,t:70});const cp=makePed(x+(vert?70:0),y+(vert?0:70),true);cp.state='cop';cp.gun=true;radioMsg('DISPATCH: Spike strip deployed ahead of the suspect.');return true;}
+  return false;}
+let spikeT=25;
+function updatePolice(dt){const s=stars();
+  if(s>=3&&player.car&&game.state==='play'){spikeT-=dt;if(spikeT<=0){spikeT=spawnSpikes()?rr(28,45):4;}}else spikeT=Math.max(spikeT,12);
+  for(let i=SPIKES.length-1;i>=0;i--){const k=SPIKES[i];k.t-=dt;if(k.t<=0||dist2(k.x,k.y,player.x,player.y)>2200*2200){SPIKES.splice(i,1);continue;}
+    for(const c of cars){if(c.flat||c.t.tank||c.t.boat||c.t.heli||c.air>0)continue;const dx=c.x-k.x,dy=c.y-k.y,ca=Math.cos(k.a),sa=Math.sin(k.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
+      if(Math.abs(f)<6+c.t.L*0.3&&Math.abs(l)<k.hl){c.flat=true;if(c===player.car){showBig('TIRES SHREDDED','Find a spray shop to fix them','#ff9a2e',2);sfx('crash',0.5);shake=Math.max(shake,5);}}}}
+  // sparks from shredded tires
+  for(const c of cars)if(c.flat&&!c.wreck&&hyp(c.vx,c.vy)>80&&R()<dt*14&&dist2(c.x,c.y,player.x,player.y)<700*700)puff(c.x+rr(-10,10),c.y+rr(-10,10),rr(-60,60),rr(-60,60),0.2,2,'#ffd27a','spark');}
+// ---------- losing the cops in style: a respray out of sight, or switching cars where nobody sees ----------
+let resprayCool=0,lastCarSwap=null;
+function updateEscapes(dt){resprayCool-=dt;const c=player.car;if(!c||stars()===0||game.state!=='play'||resprayCool>0)return;
+  if(seenT>1.2&&!c.t.boat)for(const sp of sprayPads)if(dist2(sp.x,sp.y,c.x,c.y)<70*70&&hyp(c.vx,c.vy)<70){resprayCool=8;
+    if(money<250){note('A respray costs $250');return;}addMoney(-250);c.col=pick(CT.sedan.cols.concat(CT.sports.cols));c.flat=false;clearHeat();sfx('spray');
+    for(let i=0;i<14;i++)puff(c.x+rr(-30,30),c.y+rr(-30,30),rr(-20,20),rr(-20,20),rr(.4,.9),rr(6,12),'#e8e8e8','smoke');showBig('FRESH PAINT','The cops lost you  ·  -$250','#3ee07a',2.2);radioMsg('DISPATCH: We lost the vehicle. Suspect may have changed paint.');return;}}
+function carSwapEscape(c){if(stars()>0&&seenT>1.2&&c!==lastCarSwap){const s=stars();heat=TH[Math.max(0,s-1)]+1;radioMsg('DISPATCH: Suspect switched vehicles. We\'re looking for the wrong car.');note('You switched cars out of sight: one star less');}lastCarSwap=c;}
+// ---------- climbing ladders: push toward the wall to go up, pull back to go down, jump to let go ----------
+let climbIn=0;
+function climbPre(fwd,dt){const L=player.climb;
+  if(!L){if(player.car||player.riding||game.state!=='play'||fwd<0.3)return false;
+    for(const q of LADDERS){if(Math.abs(q.x-player.x)>40||Math.abs(q.y-player.y)>40)continue;const rx=player.x-q.x,ry=player.y-q.y,o=rx*q.nx+ry*q.ny,sl=Math.abs(rx*q.dx+ry*q.dy);if(sl>9)continue;
+      const topRel=q.top-GH(q.px,q.py),facing=Math.cos(player.body)*q.nx+Math.sin(player.body)*q.ny;
+      if(player.jz<4&&o>0&&o<16&&facing<-0.55){player.climb=q;q.dir=1;player.climbZ=player.jz;sfx('door',0.3);return true;}            // from the sidewalk
+      if(Math.abs(player.jz-topRel)<6&&o<2&&o>-14&&facing>0.55){player.climb=q;q.dir=-1;player.climbZ=topRel-1;sfx('door',0.3);return true;} // from the roof
+    }return false;}
+  const topRel=L.top-GH(L.px,L.py);climbIn=fwd;player.climbZ+=L.dir*fwd*80*dt;player.anim+=Math.abs(fwd)*dt*10;
+  if(kd.Space&&!player.jumpHeld){player.climb=null;player.jv=120;player.vx=L.nx*90;player.vy=L.ny*90;player.jumpHeld=true;return false;}
+  if(player.climbZ>=topRel){player.climb=null;player.x=L.x-L.nx*14;player.y=L.y-L.ny*14;player.jz=topRel+0.5;player.jv=0;player.peak=player.jz;return true;}
+  if(player.climbZ<=0){player.climb=null;player.jz=0;player.jv=0;player.peak=0;player.x=L.px+L.nx*4;player.y=L.py+L.ny*4;return true;}
+  return true;}
+function climbPost(){const L=player.climb;if(!L)return;player.x=L.px;player.y=L.py;player.jz=player.climbZ;player.jv=0;player.vx=player.vy=0;player.peak=player.jz;
+  player.body=player.a=Math.atan2(-L.ny,-L.nx);player.moving=Math.abs(climbIn)>0.1;}
+// ================= v4.12 (part 2): DINER, GYM, PAWN SHOP, ROOFTOP PLANKS AND RUNS, COLLECTIBLES, RAIN AND NIGHT, COUNTRYSIDE =================
+// ---------- three new places to walk into ----------
+ROOMS.diner={tx0:146,ty0:W+13,tx1:158,ty1:W+21,floor:[200,196,186],wall:[120,170,170],name:'BLUE PLATE DINER'};
+ROOMS.gym={tx0:162,ty0:W+13,tx1:176,ty1:W+22,floor:[90,80,72],wall:[150,150,156],name:'IRON WORKS GYM'};
+ROOMS.pawn={tx0:180,ty0:W+13,tx1:190,ty1:W+20,floor:[120,96,70],wall:[170,150,110],name:'LUCKY PAWN'};
+for(const k of['diner','gym','pawn']){const r=ROOMS[k];r.id=k;r.x0=r.tx0*T;r.y0=r.ty0*T;r.x1=r.tx1*T;r.y1=r.ty1*T;r.cx=(r.x0+r.x1)/2;r.cy=(r.y0+r.y1)/2;r.door={x:r.cx,y:r.y1-T*1.6};r.props=[];
+  const hw=(r.x1-r.x0)/2,hh=(r.y1-r.y0)/2;
+  r.props.push({x:r.cx,y:r.y0+T/2,k:'rwall',hl:hw,hw:T/2,rad:hw+20,ht:70,c:r.wall},{x:r.cx,y:r.y1-T/2,k:'rwall',hl:hw,hw:T/2,rad:hw+20,ht:70,c:r.wall},
+    {x:r.x0+T/2,y:r.cy,k:'rwall',hl:T/2,hw:hh,rad:hh+20,ht:70,c:r.wall},{x:r.x1-T/2,y:r.cy,k:'rwall',hl:T/2,hw:hh,rad:hh+20,ht:70,c:r.wall},{x:r.door.x,y:r.y1-T*1.05,k:'rdoor',rad:30,ht:60});
+  ROOMLIST.push(r);}
+{const r=ROOMS.diner;r.counter={x:r.cx,y:r.y0+T*2.2};r.props.push({x:r.cx,y:r.y0+T*2.2,k:'rbox',hl:T*3.2,hw:T*0.5,z0:0,z1:16,c:[200,60,60],rad:110,ht:18});
+  for(let i=-3;i<=3;i++)r.props.push({x:r.cx+i*T*0.9,y:r.y0+T*3.1,k:'rbox',hl:3,hw:3,z0:0,z1:10,c:[220,220,220],rad:8,ht:10});
+  for(const sx of[-1,1])for(let j=0;j<2;j++)r.props.push({x:r.cx+sx*T*4,y:r.y0+T*(4.4+j*1.6),k:'rbox',hl:T*0.9,hw:T*0.5,z0:0,z1:12,c:[170,40,40],rad:34,ht:14});
+  r.props.push({x:r.cx,y:r.y0+T*1.1,k:'rsign',text:'BLUE PLATE',bg:'#2a7a8a',fg:'#ffffff',z:48,rad:30,ht:56});}
+{const r=ROOMS.gym;r.counter={x:r.cx,y:r.y0+T*2.2};r.props.push({x:r.cx,y:r.y0+T*2.2,k:'rbox',hl:T*1.6,hw:T*0.5,z0:0,z1:16,c:[60,60,66],rad:60,ht:18});
+  for(let i=0;i<3;i++)r.props.push({x:r.x0+T*(2.5+i*3),y:r.y1-T*3,k:'rbox',hl:T*0.9,hw:T*0.35,z0:0,z1:8,c:[40,40,44],rad:34,ht:10},{x:r.x0+T*(2.5+i*3),y:r.y1-T*3,k:'rbox',hl:T*1.1,hw:2,z0:12,z1:14,c:[150,150,156],rad:40,ht:16});
+  r.props.push({x:r.x1-T*3,y:r.cy,k:'rbox',hl:T*1.8,hw:T*1.8,z0:0,z1:2,c:[40,80,160],rad:70,ht:4},{x:r.cx,y:r.y0+T*1.1,k:'rsign',text:'IRON WORKS',bg:'#202020',fg:'#ffb03a',z:48,rad:30,ht:56});}
+{const r=ROOMS.pawn;r.counter={x:r.cx,y:r.y0+T*2.2};r.props.push({x:r.cx,y:r.y0+T*2.2,k:'rbox',hl:T*2.2,hw:T*0.5,z0:0,z1:16,c:[110,80,50],rad:80,ht:18});
+  for(const sx of[-1,1])r.props.push({x:r.cx+sx*T*3.4,y:r.y1-T*3,k:'rbox',hl:T*0.5,hw:T*1.4,z0:0,z1:26,c:[90,70,50],rad:50,ht:28});
+  r.props.push({x:r.cx,y:r.y0+T*1.1,k:'rsign',text:'LUCKY PAWN',bg:'#d8a020',fg:'#202020',z:48,rad:30,ht:56});}
+const PLACES=[['diner',4,5,'BLUE PLATE DINER','#2a7a8a'],['gym',4,12,'IRON WORKS GYM','#202020'],['pawn',13,14,'LUCKY PAWN','#d8a020']].map(([id,bx,by,txt,bg])=>{
+  const l=nearestLot((bx*P+9)*T,(by*P+9)*T)||lotBlocks[0];const d={id,x:l.x-60,y:l.y-40};SIGNS.push({x:d.x,y:d.y-36,text:txt,bg,fg:'#ffffff',h:40,on:()=>true});return d;});
+let placeCool=0;
+function updatePlaces(dt){placeCool-=dt;if(placeCool>0||player.car||DLG.open||game.state!=='play')return;
+  if(!ROOM){if(roomCool>0)return;for(const d of PLACES)if(dist2(d.x,d.y,player.x,player.y)<30*30){enterRoom(d.id,{x:d.x,y:d.y+40});return;}return;}
+  const r=ROOM.r;if(!r.counter||!['diner','gym','pawn'].includes(ROOM.id)||dist2(player.x,player.y,r.counter.x,r.counter.y+T)>30*30)return;placeCool=4;
+  const buy=(p,f)=>()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');f();};
+  if(ROOM.id==='diner')say([['Waitress','What\'ll it be, hon?']],null,[['COFFEE $5',buy(5,()=>{player.hp=Math.min(PMAX(),player.hp+15);note('+15 health');})],['BURGER $15',buy(15,()=>{player.hp=PMAX();note('Full health');})],
+    ['BLUE PLATE SPECIAL $40',buy(40,()=>{player.hp=PMAX();player.armor=Math.max(player.armor||0,25);note('Full health and a little armor');})],['NOTHING',()=>{},'no']]);
+  else if(ROOM.id==='gym'){if(GYM>=5){say([['Trainer','You\'re in the best shape of your life. Nothing left to teach you.']]);return;}const pr=150+GYM*100;
+    say([['Trainer','A session costs $'+pr+'. Every one makes you tougher.']],null,[['TRAIN $'+pr,buy(pr,()=>{GYM++;player.hp=PMAX();showBig('TOUGHER','Max health '+PMAX(),'#ffb03a',2);})],['LATER',()=>{},'no']]);}
+  else say([['Pawnbroker','Everything\'s a bargain. Mostly.']],null,[['BODY ARMOR $350',buy(350,()=>{player.armor=100;note('Body armor on');})],['BASEBALL BAT $60',buy(60,()=>{player.w=BATIDX();note('Bat ready');})],
+    ['SMG AMMO +100 $350',buy(350,()=>{if(player.ammo[1]!==Infinity)player.ammo[1]=(player.ammo[1]||0)+100;player.w=1;note('SMG loaded');})],['JUST LOOKING',()=>{},'no']]);}
+// ---------- planks across the alleys, so rooftops link up into routes ----------
+const PLANKS=[],RUNS=[],RUNBEST={};
+// (planks and runs need the buildings' heights and ladders, so they're built by initWorld412 after the buildings are set up)
+function initPlanksRuns(){{const cand=buildings.filter(b=>!b.outside&&b.st!=='house'&&b.kind!=='stadium');
+  for(let i=0;i<cand.length;i++)for(let j=i+1;j<cand.length;j++){const A=cand[i],B=cand[j];
+    const ox=Math.min(A.x+A.w,B.x+B.w)-Math.max(A.x,B.x),oy=Math.min(A.y+A.h,B.y+B.h)-Math.max(A.y,B.y);let pl=null;
+    if(oy>=26){const g1=B.x-(A.x+A.w),g2=A.x-(B.x+B.w),gap=Math.max(g1,g2);if(gap>=24&&gap<=80){const x=g1>0?A.x+A.w+gap/2:B.x+B.w+gap/2,y=Math.max(A.y,B.y)+oy/2;pl={x,y,a:0,hl:gap/2+7};}}
+    else if(ox>=26){const g1=B.y-(A.y+A.h),g2=A.y-(B.y+B.h),gap=Math.max(g1,g2);if(gap>=24&&gap<=80){const y=g1>0?A.y+A.h+gap/2:B.y+B.h+gap/2,x=Math.max(A.x,B.x)+ox/2;pl={x,y,a:PI/2,hl:gap/2+7};}}
+    if(!pl)continue;const ra=A.base+(A.tier?A.hg:A.hg)*BH,rb=B.base+B.hg*BH;if(Math.abs(ra-rb)>8||Math.min(ra,rb)<60)continue;if(hash(A.id,B.id)%10>5)continue;
+    const ca=Math.cos(pl.a),sa=Math.sin(pl.a),gA=(A.x<=pl.x&&pl.x<=A.x+A.w)?0:1,end=(sg)=>{const ex=pl.x+ca*pl.hl*sg,ey=pl.y+sa*pl.hl*sg;return bldAt(ex,ey);};
+    const e1=end(-1),e2=end(1);if(!e1||!e2||e1===e2)continue;const z1=e1.base+e1.hg*BH,z2=e2.base+e2.hg*BH,g0=GH(pl.x,pl.y);
+    pl.z=(z1+z2)/2-g0;PLANKS.push(pl);WALKS.push({x:pl.x,y:pl.y,a:pl.a,hl:pl.hl,hw:5.5,h0:z1-g0+0.5,h1:z2-g0+0.5});props.push({x:pl.x,y:pl.y,k:'plank',a:pl.a,hl:pl.hl,z:pl.z,rad:pl.hl+4,ht:pl.z+2});}}
+// ---------- rooftop runs: timed checkpoint races across connected roofs, started from a roof with a ladder ----------
+{const roofs=buildings.filter(b=>!b.outside&&b.st!=='house'&&b.kind!=='stadium'&&b.hg>=1.5),top=b=>b.base+b.hg*BH;
+  const near=(A,B)=>{const ox=Math.min(A.x+A.w,B.x+B.w)-Math.max(A.x,B.x),oy=Math.min(A.y+A.h,B.y+B.h)-Math.max(A.y,B.y),gx=Math.max(A.x-(B.x+B.w),B.x-(A.x+A.w)),gy=Math.max(A.y-(B.y+B.h),B.y-(A.y+A.h));
+    return(oy>=20&&gx<=2)||(ox>=20&&gy<=2);};
+  const nb=b=>{if(b._nb)return b._nb;b._nb=[];for(const q of roofs){if(q===b)continue;if(Math.abs(q.x-b.x)>260||Math.abs(q.y-b.y)>260)continue;const dz=top(q)-top(b);
+      if(near(b,q)&&dz<=7&&dz>=-45)b._nb.push(q);}
+    for(const pl of PLANKS){const e1=bldAt(pl.x-Math.cos(pl.a)*pl.hl,pl.y-Math.sin(pl.a)*pl.hl),e2=bldAt(pl.x+Math.cos(pl.a)*pl.hl,pl.y+Math.sin(pl.a)*pl.hl);if(e1===b&&e2)b._nb.push(e2);if(e2===b&&e1)b._nb.push(e1);}return b._nb;};
+  const starts=buildings.filter(b=>b.lad&&b.hg>=2).sort((p2,q)=>hash(p2.id,333)-hash(q.id,333));
+  for(const s0 of starts){if(RUNS.length>=4)break;if(RUNS.some(r=>hyp(r.sx-s0.lad.x,r.sy-s0.lad.y)<900))continue;
+    const path=[s0],seen=new Set([s0]);let cur=s0;for(let k=0;k<12&&path.length<6;k++){const opts=nb(cur).filter(q=>!seen.has(q));if(!opts.length)break;cur=opts[hash(cur.id,k+7)%opts.length];seen.add(cur);path.push(cur);}
+    if(path.length<4)continue;const L=s0.lad,sx=L.x-L.nx*18,sy=L.y-L.ny*18;
+    const cps=path.slice(1).map(b=>{const x=b.x+b.w/2,y=b.y+b.h/2;return{x,y,z:roofAbs(b,x,y)-GH(x,y)};});
+    let len=hyp(cps[0].x-sx,cps[0].y-sy);for(let k=1;k<cps.length;k++)len+=hyp(cps[k].x-cps[k-1].x,cps[k].y-cps[k-1].y);
+    const r={id:RUNS.length,sx,sy,sz:roofAbs(s0,sx,sy)-GH(sx,sy),cps,time:Math.round(len/95+8+cps.length*2)};RUNS.push(r);
+    SIGNS.push({x:sx,y:sy,text:'ROOFTOP RUN',bg:'#7a3ab0',fg:'#ffffff',h:r.sz+30,on:()=>true});}}}
+let runCool=0;
+function updateRoofRun(dt){runCool-=dt;
+  if(roofRun){const R2=roofRun,c=R2.cps[R2.i];R2.timer-=dt;R2.t+=dt;
+    if(R2.timer<=0||player.car||(player.jz<4&&!player.climb)){showBig(player.jz<4?'YOU FELL':'OUT OF TIME','Rooftop run failed','#ff4040',2);sfx('fail');roofRun=null;runCool=4;return;}
+    if(hyp(player.x-c.x,player.y-c.y)<30&&Math.abs(player.jz-c.z)<14){R2.i++;sfx('pickup',0.5);
+      if(R2.i>=R2.cps.length){const t=R2.t,best=RUNBEST[R2.run.id],pay=600+Math.max(0,Math.round(R2.timer))*20;addMoney(pay);RUNBEST[R2.run.id]=best?Math.min(best,t):t;
+        showBig('RUN COMPLETE',t.toFixed(1)+' s'+(best&&t<best?'  ·  NEW BEST':'')+'  ·  +$'+pay,'#c07cff',3);sfx('pass');roofRun=null;runCool=6;}
+      else note('Checkpoint '+R2.i+' / '+R2.cps.length);}
+    return;}
+  if(runCool>0||mission||DLG.open||player.car||game.state!=='play')return;
+  for(const r of RUNS)if(hyp(player.x-r.sx,player.y-r.sy)<34&&Math.abs(player.jz-r.sz)<10){runCool=5;
+    say([['Rooftop Run','Hit '+r.cps.length+' checkpoints across the roofs in '+r.time+' s. Touch the street and you\'re out.'+(RUNBEST[r.id]?' Best: '+RUNBEST[r.id].toFixed(1)+' s':'')]],null,[['GO',()=>{roofRun={run:r,cps:r.cps,i:0,timer:r.time,t:0};showBig('GO!','','#ffd600',0.8);}],['NOT NOW',()=>{},'no']]);break;}}
+function roofRunHUD(sc,ly){const R2=roofRun;hudText('ROOFTOP RUN  ·  '+R2.i+' / '+R2.cps.length,18*sc,ly+12*sc,Math.round(16*sc),'#c9a0ff','left');const tm=Math.max(0,R2.timer);hudText(tm.toFixed(1)+' s',18*sc,ly+40*sc,Math.round(22*sc),tm<=5&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}
+// ---------- collectibles: three golden guns, a secret car, and twelve gang tags to spray over ----------
+const GOLDG=[],GOLDGOT={};
+function initGold(){{const lads=buildings.filter(b=>b.lad&&b.hg>=2.5).sort((p2,q)=>hash(q.id,77)-hash(p2.id,77)),b=lads.find(q=>!STASH.some(k=>bldAt(k.x,k.y)===q));
+  if(b){const x=b.x+b.w/2,y=b.y+b.h/2;GOLDG.push({w:0,x,y,z:roofAbs(b,x,y)-GH(x,y)+0.5,name:'Golden Pistol'});}
+  {const x=(CPARK.x0*P+6)*T,y=(CPARK.y1*P+10)*T;GOLDG.push({w:2,x,y,z:0,name:'Golden Shotgun'});}
+  {const x=WPX+640,y=(15*P+2)*T+170;GOLDG.push({w:1,x,y,z:0,name:'Golden SMG'});}}}
+function applyGold(){if(GOLDGOT[0]){WEAPONS[0].name='Golden Pistol';WEAPONS[0].dmg=60;}if(GOLDGOT[1]){WEAPONS[1].name='Golden SMG';player.ammo[1]=Infinity;}if(GOLDGOT[2]){WEAPONS[2].name='Golden Shotgun';player.ammo[2]=Infinity;}}
+function updateGold(){if(player.car||game.state!=='play')return;for(const g of GOLDG){if(GOLDGOT[g.w]||hyp(player.x-g.x,player.y-g.y)>20||Math.abs((player.jz||0)-g.z)>14)continue;
+  GOLDGOT[g.w]=1;applyGold();player.w=g.w;sfx('pickup');showBig(g.name.toUpperCase(),g.w===0?'Double damage':'Never runs out of ammo','#ffd600',3);}}
+// the secret car: a gold Phantom parked behind a farmhouse out east
+CT.phantom={name:'Phantom',L:52,Wd:24,acc:640,grip:12,turn:3.4,hp:160,mass:1.1,cols:['#d4af37'],vx:'muscle',roofH:18};
+HANDLING.phantom={src:'Secret',mass:14,fdb:0.2,fmb:0.48,brake:2.4,turnIn:0.42,turnRatio:0.34,res:1.15,hbs:0.4,thrust:0.18,max:0.47,anti:1.0,skid:0.13,g1:0.62,g2:0.72,g3:1.0,g2s:0.2,g3s:0.3,turbo:1};
+CT.phantom.max=HANDLING.phantom.max*GT*TICK;FWD_BIAS.phantom=0;
+let SECRET=null;
+function spawnSecret(){const b=OUTB[0],SECRETSPOT=b?{x:b.x-40,y:b.y+b.h/2,a:PI/2}:{x:WPX+500,y:WPX/2,a:0};SECRET=makeCar('phantom',SECRETSPOT.x,SECRETSPOT.y,SECRETSPOT.a,'#d4af37');SECRET.stripe=[20,20,22];SECRET.secret=true;}
+let secretFound=false;
+function updateSecret(){if(!secretFound&&player.car&&player.car.secret){secretFound=true;showBig('SECRET CAR FOUND','The Phantom: the fastest thing in Gridlock City','#ffd600',3.2);sfx('pass');}}
+const TAGS=[];
+function initTags(){{for(let g=0;g<3;g++){const cand=buildings.filter(b=>!b.outside&&b.st!=='house'&&b.st!=='glass'&&zoneOf(b.x+b.w/2,b.y+b.h/2)===g&&b.w>=64&&b.h>=64).sort((p2,q)=>hash(p2.id,g*11+5)-hash(q.id,g*11+5));
+  for(const b of cand){if(TAGS.filter(t=>t.g===g).length>=4)break;if(TAGS.some(t=>hyp(t.x-b.x,t.y-b.y)<500))continue;
+    for(let f=0;f<4;f++){const[ax,ay,bx2,by2]=faceWall(b,f),len=hyp(bx2-ax,by2-ay),dx=(bx2-ax)/len,dy=(by2-ay)/len,nx=dy,ny=-dx,sx=len*0.28,x=ax+dx*sx,y=ay+dy*sx;
+      const t=tileAt(Math.floor((x+nx*16)/T),Math.floor((y+ny*16)/T));if(t!==WALK||(b.lad&&b.feFace===f))continue;
+      TAGS.push({b,g,x,y,nx,ny,dx,dy,done:false});props.push({x:x+nx*0.3,y:y+ny*0.3,k:'tag',tag:TAGS[TAGS.length-1],a:Math.atan2(dy,dx),rad:14,ht:24});break;}}}}}
+let tagHold=0;
+function updateTags(dt){if(player.car||game.state!=='play'){tagHold=0;return;}let at=null;
+  for(const t of TAGS){if(t.done)continue;const rx=player.x-t.x,ry=player.y-t.y,o=rx*t.nx+ry*t.ny,sl=Math.abs(rx*t.dx+ry*t.dy);if(o>0&&o<22&&sl<14){at=t;break;}}
+  if(!at){tagHold=0;return;}tagHold+=dt;if(R()<dt*20)puff(at.x+at.nx*3+rr(-6,6)*at.dx,at.y+at.ny*3+rr(-6,6)*at.dy,at.nx*20,at.ny*20,0.4,rr(2,4),'#b77cff','smoke');
+  if(tagHold>1.4){at.done=true;tagHold=0;addRespect(at.g,-0.3);addMoney(150);sfx('spray');const n=TAGS.filter(t=>t.done).length;
+    if(n===TAGS.length){addMoney(5000);showBig('ALL TAGS SPRAYED','The whole city knows your name  ·  +$5,000','#c07cff',3);}else showBig('TAG SPRAYED',n+' / '+TAGS.length+'  ·  over the '+GANGS[at.g].name+'  ·  +$150','#c07cff',2);}}
+// ---------- rain and night: wet reflections, splashes, steaming manholes ----------
+let steamT=0;
+function updateWeatherFx(dt){steamT-=dt;
+  if(rain>0.35)for(const c of cars){if(c.t.boat||c.t.heli||c.air>0)continue;const sp=hyp(c.vx,c.vy);if(sp<120||dist2(c.x,c.y,player.x,player.y)>600*600||R()>dt*sp*0.06)continue;
+    const ca=Math.cos(c.a),sa=Math.sin(c.a),sd=R()<0.5?1:-1;puff(c.x-ca*c.t.L*0.35-sa*sd*c.t.Wd*0.5,c.y-sa*c.t.L*0.35+ca*sd*c.t.Wd*0.5,-c.vx*0.15+rr(-30,30),-c.vy*0.15+rr(-30,30),0.35,rr(2,4),'#cfdcec','smoke');}
+  if(rain>0.35&&!player.car&&player.moving&&R()<dt*8)puff(player.x+rr(-4,4),player.y+rr(-4,4),rr(-20,20),rr(-20,20),0.3,2,'#cfdcec','smoke');
+  // manhole steam: night, rain or winter
+  if(steamT<=0){steamT=0.3;if(LIGHTK>0.2||rain>0.3||SEASON()==='winter'){const tx0=Math.floor(CX/T),ty0=Math.floor(CY/T);
+    for(let j=-14;j<=14;j++)for(let i=-14;i<=14;i++){const tx=tx0+i,ty=ty0+j;if(tx<0||ty<0||tx>=W||ty>=W)continue;const ti=ty*W+tx;if(map[ti]!==ROAD||DIAGT[ti]||TILEH[ti]%29!==0)continue;
+      puff((tx+.5)*T+rr(-3,3),(ty+.5)*T+rr(-3,3),rr(-8,8),rr(-8,8),rr(1.4,2.2),rr(5,8),'#e8ecf0','smoke');}}}}
+// a reflection under a light on wet ground: a soft streak below where the light meets the road
+function wetGlint(gx,gy,ly,col,a){if(rain<0.3||LIGHTK<0.1)return;const len=Math.min(40,Math.max(4,(gy-ly)*0.55));L3.globalCompositeOperation='lighter';L3.fillStyle=col;
+  for(let k=0;k<4;k++){L3.globalAlpha=a*rain*LIGHTK*(1-k/4)*0.35;L3.fillRect(R2(gx-1.5+k*0.3),R2(gy+k*len/4),3,Math.max(1,R2(len/4)));}L3.globalAlpha=1;L3.globalCompositeOperation='source-over';}
+// ---------- the countryside: hay bales, a windmill and dirt jumps on the farm roads ----------
+function initCountry(){{const ys=[3,9,15].map(iy=>(iy*P+2)*T);
+  for(const yy of ys)for(const dx of[380,900])addRamp(WPX+dx,yy,0,'dirt');
+  for(let i=0;i<26;i++){const x=WPX+rr(200,1100),y=rr(300,WPX-300);if(ys.some(q=>Math.abs(q-y)<60)||Math.abs(x-(WPX+640))<60||GH(x,y)>150)continue;props.push({x,y,k:'hay',a:rr(0,PI),rad:12,ht:14});}
+  props.push({x:WPX+760,y:(9*P+2)*T-140,k:'windmill',rad:40,ht:120});}}
+function extTick14(dt){updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
+function extTick13(dt){extTick14(dt);updateWaypoint();updateGangWar(dt);updateReputation(dt);updateTurfPressure(dt);updatePolice(dt);updateEscapes(dt);}
+function extTick12(dt){updateCrew(dt);extTick13(dt);}
 function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();extTick12(dt);}
 
 
@@ -2960,6 +3194,7 @@ function update(dt){
       if(kd.KeyW||kd.ArrowUp)fwd+=1;if(kd.KeyS||kd.ArrowDown)fwd-=1;if(kd.KeyA||kd.ArrowLeft)turn-=1;if(kd.KeyD||kd.ArrowRight)turn+=1;
       if(joy.active){fwd=clamp(-joy.y*1.3,-1,1);turn=Math.abs(joy.x)>0.18?clamp(joy.x*1.3,-1,1):0;}
       if(pad.on&&(pad.lx||pad.ly)){fwd=clamp(-pad.ly*1.15,-1,1);turn=clamp(pad.lx*1.2,-1,1);}
+      if(climbPre(fwd,dt)){fwd=0;turn=0;}
       // hold the right mouse button and drag to turn
       if(mouse.turn){player.body+=mouse.turn*0.006*(OPT.msens||1);mouse.turn=0;}
       player.body+=clamp(turn,-1.5,1.5)*2.8*dt;
@@ -2991,7 +3226,7 @@ function update(dt){
       const w=WEAPONS[player.w],charging=w.kind==='m'&&!(mouse.used&&!touchMode&&!aimJoy.active);
       if(charging){if(held)throwCharge=Math.min(1,throwCharge+dt/0.9);else if(fireWasHeld){playerFire();throwCharge=0;}}
       else if(held)playerFire();
-      fireWasHeld=held;
+      fireWasHeld=held;climbPost();
     }else{
       const c=player.car;
       let thr=0,st=0;
@@ -3175,7 +3410,7 @@ function update(dt){
       else if(k.kind==='flame'){player.ammo[3]+=300;player.w=3;note('Flamethrower');}
       else if(k.kind==='molotov'){player.ammo[4]+=6;player.w=4;note('Molotovs +6');}
       else if(k.kind==='rocket'){player.ammo[5]+=5;player.w=5;note('Rocket launcher +5');}
-      else if(k.kind==='health'){player.hp=Math.min(100,player.hp+50);note('Health +50');}
+      else if(k.kind==='health'){player.hp=Math.min(PMAX(),player.hp+50);note('Health +50');}
       else if(k.kind==='cash'){const n=Math.round(rr(2,6))*50;addMoney(n);note('Found $'+n);}
       k.taken=true;k.t=k.kind==='frenzy'?150:k.kind==='bribe'?90:60;sfx('pickup');
     }
@@ -3311,9 +3546,9 @@ const drops=[];for(let i=0;i<220;i++)drops.push({x:Math.random()*2200,y:Math.ran
 //  8. Anything you can climb has a walk surface in WALKS that matches what's drawn: same footprint, same height.
 //     Stairs are flat steps at each drawn tread's height (the player steps up at most 8 at a time), never one
 //     smooth ramp under blocky steps. Ladders are WALKS with ladder:true (they let you climb over a wall's top).
-//     Fire escapes are drawn by fireEscape() and walked on via feLayout()/feGeom(): change one, change the other.
 //     Two walk surfaces must never overlap in plan within 8 of each other's height, or the game can't tell which
-//     one you mean (that's why fire escape stairs run in their own lane beside the landings).
+//     one you mean. (Fire escapes were dropped for exactly this reason: roof ladders are a climbing state instead,
+//     see climbPre/climbPost, and drawLadder draws them from the same LADDERS entries.)
 //  9. Moving things you can stand on (cars, the El train) must report their velocity from footFloor so the
 //     player rides along, and the player must be drawn after them while on top (see the UNDERFOOT block).
 // Checking a change: render the thing from the front, back, both sides and from above at day and night
@@ -3427,8 +3662,12 @@ for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){
     if(((x%176)+176)%176<HS||((y%128)+128)%128<HS)c=packC(60,92,44);}
   else if(n>0.5&&side!==2){t=4;c=packC(42,72,40);}
   else{t=3;c=packC(78+n*20,108+n*22,54+n*10);}
+  // dirt roads out to the farms: east along three of the city's streets, joined by a lane running north-south
+  if(side===1&&e>=30&&e<1100&&h<170){const ys=[3,9,15].map(iy=>(iy*P+2)*T),onE=ys.some(yy=>Math.abs(y-yy)<26),onNS=Math.abs(x-(WPX+640))<22&&y>ys[0]-20&&y<ys[2]+20;
+    if(onE||onNS){t=9;const rut=onE?Math.abs(Math.abs(y-ys.reduce((p2,q)=>Math.abs(y-q)<Math.abs(y-p2)?q:p2))-10)<3:Math.abs(Math.abs(x-(WPX+640))-10)<3;c=rut?packC(118,96,66):packC(150+n*20,124+n*16,86+n*10);}}
   TTYPE[k]=t;TCOL[k]=c;
 }
+window.__terrainReady=true;
 for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-HM+i*HS,y=-HM+j*HS;if(y<WPX)continue;const k=j*HN+i;
   if(x>HX0-48&&x<HX1+48&&y>HY0-48&&y<HY1+48){TTYPE[k]=0;TCOL[k]=y>HY0+T*3?packC(58,52,48):packC(150,148,142);continue;}
   for(const r of ROOMLIST)if(x>r.x0-48&&x<r.x1+48&&y>r.y0-48&&y<r.y1+48){HMAP[k]=0;TTYPE[k]=0;const ch=((i+j)&1)&&r.id!=='safe';TCOL[k]=packC(r.floor[0]+(ch?14:0),r.floor[1]+(ch?14:0),r.floor[2]+(ch?14:0));}}
@@ -3440,19 +3679,19 @@ for(let y=-HM+200;y<WPX+HM-200;y+=56)for(let x=-HM+200;x<WPX+HM-200;x+=56){
   const gi=(((jy+HM)/HS)|0)*HN+(((jx+HM)/HS)|0),t=TTYPE[gi],r=(hash(jx*3,jy*7)%1000)/1000;
   if((t===4&&r<0.7)||(t===3&&r<0.08)||(t===8&&r<0.05))addTree(jx,jy,side===1?(r<0.03?'round':'pine'):(r<0.25?'round':'pine'),rr(1,1.5));
 }
-for(let s=20;s<WPX;s+=40){props.push({x:s,y:-5,k:'rail',a:0},{x:s,y:WPX+5,k:'seawall',a:0},{x:-5,y:s,k:'rail',a:PI/2},{x:WPX+5,y:s,k:'rail',a:PI/2});}
+for(let s=20;s<WPX;s+=40){const gap=[3,9,15].some(iy=>Math.abs(s-(iy*P+2)*T)<70);props.push({x:s,y:-5,k:'rail',a:0},{x:s,y:WPX+5,k:'seawall',a:0},{x:-5,y:s,k:'rail',a:PI/2});if(!gap)props.push({x:WPX+5,y:s,k:'rail',a:PI/2});}
 for(let i=0;i<9;i++){const y=rr(300,WPX-300),x=WPX+rr(160,700);if(GH(x,y)>150)continue;
   buildings.push({x,y,w:rr(70,100),h:rr(60,80),hg:0.95,col:pick(['#a8322a','#c9b79c','#8a5a3a']),st:'house',roof:pick(['#5a2a22','#3e4652']),rx:true,chim:R()<0.5,door:0,ac:[],outside:true});}
 
+for(const b of buildings)if(b.outside)OUTB.push(b);
 for(const b of buildings){b.id=++uid;b.base=Math.min(GH(b.x,b.y),GH(b.x+b.w,b.y),GH(b.x,b.y+b.h),GH(b.x+b.w,b.y+b.h))-1;if(!b.st)b.st='conc';b.ws=b.ws||22;b.wf=b.wf||.5;b.wh=b.wh||.55;b.rgb=rgbOf(b.col);if(b.roof)b.rrgb=rgbOf(b.roof);if(b.awn)b.argb=rgbOf(b.awn);if(b.nc)b.nrgb=rgbOf(b.nc);}
 // facade details picked per building from its id (no effect on the city's random stream): cornices on old brick and
 // plaster, fire escapes on brick walk-ups, stair bulkheads and vents on flat roofs
 for(const b of buildings){const h=hash(b.id*7+3,b.id*13+11);
   b.corn=b.st==='brick'||(b.st==='plaster'&&(h&1))||(b.st==='conc'&&(h&6)===0);
-  b.fe=b.st==='brick'&&b.hg>=2&&(h&12)!==0;b.feAx=(h>>4)&1;
+  b.fe=(b.st==='brick'||b.st==='conc'||b.st==='ware'||b.st==='plaster')&&b.hg>=1.5&&!b.outside&&(b.st==='brick'?(h&12)!==0:(h&3)===0);b.feAx=(h>>4)&1; // has a roof ladder
   b.bulk=(b.st==='brick'||b.st==='conc'||b.st==='ware')&&!b.ant&&((h>>6)&3)!==0?{u:0.2+((h>>8)&7)*0.08,v:0.2+((h>>11)&7)*0.08,vent:(h>>14)&1}:null;}
-// ---- a climbable city: fire escapes run from the sidewalk up to the roof, and every flat roof can be walked on ----
-// (the fire escape's walk surfaces are built from the same numbers fireEscape() draws with: keep them in step)
+// ---- a climbable city: roof ladders run from the sidewalk up to the roof, and every flat roof can be walked on ----
 const BMAP=new Int32Array(W*W).fill(-1);
 buildings.forEach((b,i)=>{for(let ty=Math.floor(b.y/T);ty<Math.ceil((b.y+b.h)/T);ty++)for(let tx=Math.floor(b.x/T);tx<Math.ceil((b.x+b.w)/T);tx++)if(tx>=0&&ty>=0&&tx<W&&ty<W)BMAP[ty*W+tx]=i;});
 function bldAt(x,y){const tx=Math.floor(x/T),ty=Math.floor(y/T);if(tx<0||ty<0||tx>=W||ty>=W)return null;const i=BMAP[ty*W+tx];if(i<0)return null;const b=buildings[i];return x>=b.x&&x<b.x+b.w&&y>=b.y&&y<b.y+b.h?b:null;}
@@ -3462,36 +3701,23 @@ function faceWall(b,f){const x0=b.x,y0=b.y,x1=b.x+b.w,y1=b.y+b.h;return f===0?[x
 const faceOf=(nx,ny)=>ny<-0.5?0:nx>0.5?1:ny>0.5?2:3;
 function feGeom(b){const[ax,ay,bx,by]=faceWall(b,b.feFace),len=hyp(bx-ax,by-ay),dx=(bx-ax)/len,dy=(by-ay)/len,nx=dy,ny=-dx,H=b.hg*BH,nf=Math.max(1,Math.round(H/(BH/2))),fh=H/nf,nf2=Math.min(nf,14);
   const s0=len*0.3,s1=Math.min(len-8,s0+Math.max(34,len*0.3));return{ax,ay,dx,dy,nx,ny,len,H,fh,nf2,s0,s1,first:1};}
-// Like a real New York fire escape: an iron landing at every floor, 14 deep. Its inner half is a walkway the full width
-// of the escape; its outer half holds the stairs, every flight running the same way and stacked one above the other,
-// each coming up through an opening in the landing above and stepping off onto the outer half of that landing.
-// A drop ladder leans from the first landing down to the sidewalk, and a ladder on the wall goes from the top landing
-// onto the roof. Stairs and landings never share a footprint within 8 of each other's height (rendering rule 8),
-// so walking down works as well as walking up.
-const FE_IN=3.55,FE_OUT=10.65,FE_HW=3.55,FE_D=14.2; // inner walkway lane, outer stair lane, lane half-width, total depth
-function feLayout(b){const g=feGeom(b),L=g.s1-g.s0,lv=b.feLv||[0],sa=g.s0+2,sb=g.s0+0.55*L;
-  const land=[],fl=[];for(let j=1;j<lv.length;j++)land.push({z:lv[j]});
-  for(let k=1;k+1<lv.length;k++)fl.push({z0:lv[k],z1:lv[k+1],lo:sa,hi:sb});
-  return{g,L,land,fl,sb,drop:g.s0+0.8*L,lad:g.s0+0.8*L,top:lv[lv.length-1]||0,first:lv[1]||0};}
+// Roof ladders: a caged service ladder up one street-facing wall of the building (feGeom picks the wall).
+const LADDERS=[];
 for(const b of buildings){if(!b.fe)continue;b.fe=false;const h=hash(b.id*5+1,b.id*3+7);
-  for(let k=0;k<4;k++){const f=((h>>2)+k)&3;b.feFace=f;const g=feGeom(b);if(g.len<=70||g.H<=BH*1.6)continue;
-    const mx=g.ax+g.dx*(g.s0+g.s1)/2+g.nx*20,my=g.ay+g.dy*(g.s0+g.s1)/2+g.ny*20,t=tileAt(Math.floor(mx/T),Math.floor(my/T));if(t===BLD||t===WATER||t===TREE)continue;
+  for(let k=0;k<4;k++){const f=((h>>2)+k)&3;b.feFace=f;const g=feGeom(b);if(g.len<=40||g.H<=BH*1.2)continue;
+    const mx=g.ax+g.dx*(g.s0+g.s1)/2+g.nx*14,my=g.ay+g.dy*(g.s0+g.s1)/2+g.ny*14,t=tileAt(Math.floor(mx/T),Math.floor(my/T));if(t===BLD||t===WATER||t===TREE)continue;
     b.fe=true;break;}
   if(!b.fe)continue;
-  const g=feGeom(b),a=Math.atan2(g.dy,g.dx),lv=[0];for(let fl=g.first;fl<g.nf2;fl++)lv.push(fl*g.fh);b.feLv=lv;
-  const Lo=feLayout(b),at=(sx,o)=>[g.ax+g.dx*sx+g.nx*o,g.ay+g.dy*sx+g.ny*o],[cx0,cy0]=at((g.s0+g.s1)/2,4),off=b.base-GH(cx0,cy0),L=Lo.L;
-  for(const d of Lo.land){let[x,y]=at((g.s0+g.s1)/2,FE_IN);WALKS.push({x,y,a,hl:L/2,hw:FE_HW+0.1,h0:d.z+off,h1:d.z+off,fe:true});
-    [x,y]=at((Lo.sb+g.s1)/2,FE_OUT);WALKS.push({x,y,a,hl:(g.s1-Lo.sb)/2,hw:FE_HW+0.1,h0:d.z+off,h1:d.z+off,fe:true});}
-  for(const f of Lo.fl){const[x,y]=at((f.lo+f.hi)/2,FE_OUT);WALKS.push({x,y,a,hl:(f.hi-f.lo)/2,hw:FE_HW,h0:f.z0+off,h1:f.z1+off,fe:true});}
-  // drop ladder: leans out from the first landing's edge to the sidewalk
-  {const[x,y]=at(Lo.drop,FE_D+7);WALKS.push({x,y,a:Math.atan2(-g.ny,-g.nx),hl:7,hw:4,h0:off,h1:Lo.first+off,fe:true});}
-  // wall ladder from the top landing over the parapet onto the roof
-  {const[x,y]=at(Lo.lad,1.5);WALKS.push({x,y,a:Math.atan2(-g.ny,-g.nx),hl:7.5,hw:4,h0:Lo.top+off,h1:g.H+off+1,ladder:true});}}
+  // a caged service ladder up the middle of the chosen wall, from the sidewalk to the roof (see climbPre/climbPost)
+  const g=feGeom(b),sm=(g.s0+g.s1)/2,bx=g.ax+g.dx*sm,by=g.ay+g.dy*sm;
+  LADDERS.push({b,x:bx,y:by,nx:g.nx,ny:g.ny,dx:g.dx,dy:g.dy,px:bx+g.nx*7,py:by+g.ny*7,top:b.base+g.H});b.lad=LADDERS[LADDERS.length-1];}
 // rooftop stashes: one on the roof of each of up to 16 fire-escape buildings spread around town (picked by id, so the
 // city's random stream is untouched), set a little in from the top of the ladder
-const STASH=[];{const fe=buildings.filter(b=>b.fe&&b.feLv&&b.feLv.length>=3).sort((p,q)=>hash(p.id,91)-hash(q.id,91));
-  for(const b of fe){if(STASH.length>=16)break;const Lo=feLayout(b),g=Lo.g;if(Lo.lad==null)continue;const x=g.ax+g.dx*Lo.lad-g.nx*Math.min(36,(g.nx?b.w:b.h)*0.45),y=g.ay+g.dy*Lo.lad-g.ny*Math.min(36,(g.nx?b.w:b.h)*0.45);
+const STASH=[];{const fe=buildings.filter(b=>b.lad&&b.hg>=2).sort((p,q)=>hash(p.id,91)-hash(q.id,91));
+  for(const b of fe){if(STASH.length>=16)break;const L=b.lad;if(!L)continue;const dd=Math.min(36,(L.nx?b.w:b.h)*0.45),x=L.x-L.nx*dd,y=L.y-L.ny*dd;
     if(STASH.some(k=>hyp(k.x-x,k.y-y)<700))continue;if(bldAt(x,y)!==b)continue;STASH.push({x,y,z:roofAbs(b,x,y)-GH(x,y)+0.5,got:false});}}
+// v4.12 world features that need building heights, ladders and stashes
+initPlanksRuns();initGold();initTags();initCountry();
 const TLIGHTS=[];
 for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++){if(nodeDeg(ix,iy)<3)continue;
   for(const[x,y,a,ew]of[[(ix*P-0.5)*T+8,(iy*P+4.5)*T-8,PI,1],[(ix*P+4.5)*T-8,(iy*P-0.5)*T+8,0,1],[(ix*P-0.5)*T+8,(iy*P-0.5)*T+8,-PI/2,0],[(ix*P+4.5)*T-8,(iy*P+4.5)*T-8,PI/2,0]]){
@@ -3785,7 +4011,7 @@ function wall(ax,ay,bx,by,z0,z1,b,k,fg,det,gr){
         const s0=i*cw+cw*(1-wf)/2,s1=s0+cw*wf;quadP(ax+dx*s0,ay+dy*s0,z0w,ax+dx*s1,ay+dy*s1,z0w,ax+dx*s1,ay+dy*s1,z1w,ax+dx*s0,ay+dy*s0,z1w);any=true;}}
     if(any){L3.fillStyle=pass===0?lit(GLASS,k*1.1,fg):pass===1?lit(WARM,0.55+0.45*LIGHTK,fg,true):pass===2?lit(COOLW,0.5+0.4*LIGHTK,fg,true):lit(TVB,(0.45+0.25*Math.sin(game.t*9+b.id))*(0.5+0.5*LIGHTK),fg,true);L3.fill();}
   }
-  if(b.fe&&gr&&det&&faceOf(nx,ny)===b.feFace)fireEscape(b,fg);
+  if(b.lad&&gr&&det&&faceOf(nx,ny)===b.feFace)drawLadder(b.lad,fg);
   if(st==='brick'){L3.beginPath();for(let fl=Math.max(1,fl0);fl<nf2;fl++){const zz=z0+fl*fh;quadP(ax,ay,zz,bx,by,zz,bx,by,zz+1,ax,ay,zz+1);}L3.fillStyle=lit(b.rgb,k*1.25,fg);L3.fill();}
   if(gr&&b.neon&&len>40){const sx=len*0.18,pa=ax+dx*sx,pb=ay+dy*sx,za=fh*1.1,zb=fh*2.7,on=LIGHTK>0.1&&!neonOff(b);quad(pa,pb,za,pa+nx*8,pb+ny*8,za,pa+nx*8,pb+ny*8,zb,pa,pb,zb,lit(on||LIGHTK<=0.1?b.nrgb:mixA(b.nrgb,[30,30,34],0.7),LIGHTK>0.1?1:0.85,fg,on));
     if(on&&proj(pa+nx*4,pb+ny*4,(za+zb)/2))glow(PX,PY,4*PK,b.nc,0.6*LIGHTK);}
@@ -3800,32 +4026,14 @@ function drawDents(c,t,hl,hw,ca,sa,fg){const lat=(CX-c.x)*-sa+(CY-c.y)*ca;if(Mat
   NOTOP=false;}
 // a black iron fire escape: a landing at every floor, railings, zigzag stairs from the sidewalk and a ladder to the
 // roof. Its walk surfaces (feGeom, after the buildings are set up) use the same numbers, so what you see is what you climb.
-function fireEscape(b,fg){const Lo=feLayout(b),g=Lo.g,{ax,ay,dx,dy,nx,ny,s0,s1}=g,a=Math.atan2(dy,dx),IR=[38,36,36],GR=[64,60,58],L=Lo.L;
-  const at=(sx,o)=>[ax+dx*sx+nx*o,ay+dy*sx+ny*o],B=(sx,o,hl,hw,z0,z1,c,t)=>{const[x,y]=at(sx,o);obox(x,y,a,hl,hw,z0,z1,c,t,fg);};
-  const camZ=CZ-ZOFF,camO=(CX-ax)*nx+(CY-ay)*ny;
-  // floors far from the camera's height first, so nearer ironwork covers farther
-  const items=[];for(const d of Lo.land)items.push({z:d.z,d});for(const f of Lo.fl)items.push({z:(f.z0+f.z1)/2,f});
-  items.sort((p,q)=>Math.abs(q.z-camZ)-Math.abs(p.z-camZ));
-  for(const it of items){
-    if(it.d){const z=it.d.z,sm=(s0+s1)/2;
-      // brackets under the outer edge, then the grating (inner walkway full width, outer half beside the stair opening)
-      for(const t of[s0+3,s1-3])B(t,FE_D-1,0.5,0.5,z-7,z-0.8,IR,null);
-      B(sm,FE_IN,L/2,FE_HW,z-0.8,z,IR,GR);B((Lo.sb+s1)/2,FE_OUT,(s1-Lo.sb)/2,FE_HW,z-0.8,z,IR,GR);
-      // railing: posts, a mid rail and a top rail round the outer edge and both ends
-      for(let t=s0;t<=s1+0.1;t+=Math.max(8,L/6))B(t,FE_D-0.4,0.35,0.35,z,z+7,IR,null);
-      for(const zz of[z+3.2,z+6.6]){B(sm,FE_D-0.4,L/2,0.3,zz,zz+0.5,IR,null);for(const t of[s0,s1])B(t,FE_D/2,0.3,FE_D/2,zz,zz+0.5,IR,null);}}
-    else{const f=it.f,n=7,run=f.hi-f.lo;
-      // a flight: treads with stepped stringers, drawn from the end farther from the camera
-      const camS=(CX-ax)*dx+(CY-ay)*dy,order=[...Array(n).keys()];if(camS>(f.lo+f.hi)/2)order.reverse();
-      for(const i of order){const t=(i+0.5)/n,sx=f.lo+run*t,z=f.z0+(f.z1-f.z0)*(i+1)/n,hl=run/n/2;
-        B(sx,FE_OUT,hl,FE_HW-0.3,z-0.7,z,IR,GR);for(const o of[FE_OUT-FE_HW,FE_OUT+FE_HW])B(sx,o,hl+0.3,0.3,z-2.6,z+0.3,IR,null);}
-      // handrail on the outside
-      if(proj(...at(f.lo,FE_D-0.4),f.z0+7)){const p1=[PX,PY];if(proj(...at(f.hi,FE_D-0.4),f.z1+7)){L3.strokeStyle=lit(IR,1,fg);L3.lineWidth=Math.max(1,PK*1.1);L3.beginPath();L3.moveTo(p1[0],p1[1]);L3.lineTo(PX,PY);L3.stroke();}}}}
-  // drop ladder from the first landing down to the sidewalk, and the wall ladder to the roof
-  {const z1=Lo.first;L3.strokeStyle=lit(IR,1,fg);L3.lineWidth=Math.max(1,PK*1.1);L3.beginPath();
-    for(const t of[-3.5,3.5]){if(proj(...at(Lo.drop+t,FE_D),z1)){const p1=[PX,PY];if(proj(...at(Lo.drop+t,FE_D+14),0)){L3.moveTo(p1[0],p1[1]);L3.lineTo(PX,PY);}}}
-    for(let k=1;k<7;k++){const u=k/7,o=FE_D+14*u,z=z1*(1-u);if(proj(...at(Lo.drop-3.5,o),z)){const p1=[PX,PY];if(proj(...at(Lo.drop+3.5,o),z)){L3.moveTo(p1[0],p1[1]);L3.lineTo(PX,PY);}}}L3.stroke();}
-  {const z0=Lo.top,z1=g.H+3;for(const t of[-3.5,3.5])B(Lo.lad+t,1.2,0.5,0.5,z0,z1,IR,null);for(let z=z0+3;z<z1;z+=4)B(Lo.lad,1.2,3.5,0.4,z,z+0.7,IR,null);}}
+// a steel service ladder with a safety cage, bolted to the wall from the sidewalk to just over the roof edge
+function drawLadder(L,fg){const IR=[44,44,48],a=Math.atan2(L.dy,L.dx),top=L.top-ZOFF+5,at=(s2,o)=>[L.x+L.dx*s2+L.nx*o,L.y+L.dy*s2+L.ny*o];
+  const B=(s2,o,hl,hw,z0,z1,c)=>{const[x,y]=at(s2,o);obox(x,y,a,hl,hw,z0,z1,c,null,fg);};
+  for(const t of[-4,4])B(t,2,0.6,0.6,2,top,IR);                       // rails
+  for(let z=5;z<top-1;z+=4.5)B(0,2,4,0.35,z,z+0.7,[70,70,76]);           // rungs
+  for(const t of[-4,4])B(t,1,0.5,1,top-2,top,IR);                       // brackets over the parapet
+  for(let z=Math.min(30,top-10);z<top-2;z+=11){B(0,9,5.2,0.35,z,z+0.8,IR);for(const t of[-5,5])B(t,5.5,0.35,3.5,z,z+0.8,IR);} // cage hoops
+  if(top>36)for(const t of[-3,3])B(t,9,0.3,0.3,Math.min(30,top-10),top-2,IR);}                      // cage straps
 function storefront(ax,ay,dx,dy,nx,ny,len,fh,b,k,fg,litOn){
   const zt=fh*0.74,s0=3,s1=len-3,late=clock>0.96||clock<0.24,closed=litOn&&late&&(hash(b.id,(ax|0)+(ay|0))%5<2);
   if(closed){quad(ax+dx*s0,ay+dy*s0,1.5,ax+dx*s1,ay+dy*s1,1.5,ax+dx*s1,ay+dy*s1,zt,ax+dx*s0,ay+dy*s0,zt,lit([96,98,102],k*0.8,fg));
@@ -3942,7 +4150,7 @@ function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return
   if(!c.wreck&&!t.tank&&c.hp<t.hp*0.75)drawDents(c,t,hl,hw,ca,sa,fg);
   // lamps (one headlight goes out once the front end is smashed)
   if(!c.wreck){const fz=8+(PIT?hl*Math.sin(PIT)*(fv?1:-1):0),rx=-sa*hw*0.7,ry=ca*hw*0.7,night=LIGHTK>0.1||c.driver==='player';
-    if(fv){for(const sd of[-1,1])if(!(sd<0&&c.hp<t.hp*0.45)&&proj(c.x+ca*(hl+0.5)+rx*sd,c.y+sa*(hl+0.5)+ry*sd,fz)){const s=Math.max(1,2.2*PK);L3.fillStyle=lit([255,246,200],1,fg,true);L3.fillRect(R2(PX-s/2),R2(PY-s/2),Math.max(1,R2(s)),Math.max(1,R2(s*0.7)));if(night&&c.driver)glow(PX,PY,3*PK,'#fff2c0',0.55*Math.max(LIGHTK,0.25));}}
+    if(fv){for(const sd of[-1,1])if(!(sd<0&&c.hp<t.hp*0.45)&&proj(c.x+ca*(hl+0.5)+rx*sd,c.y+sa*(hl+0.5)+ry*sd,fz)){const s=Math.max(1,2.2*PK);L3.fillStyle=lit([255,246,200],1,fg,true);L3.fillRect(R2(PX-s/2),R2(PY-s/2),Math.max(1,R2(s)),Math.max(1,R2(s*0.7)));if(night&&c.driver){glow(PX,PY,3*PK,'#fff2c0',0.55*Math.max(LIGHTK,0.25));if(rain>0.3&&c.driver){const ly=PY;if(proj(c.x+ca*(hl+0.5)+rx*sd,c.y+sa*(hl+0.5)+ry*sd,0))wetGlint(PX,PY,ly,'#fff2c0',0.8);}}}}
     else{for(const sd of[-1,1])if(proj(c.x-ca*(hl+0.5)+rx*sd,c.y-sa*(hl+0.5)+ry*sd,fz)){const s=Math.max(1,2.2*PK);L3.fillStyle=lit(TAIL,1,fg,LIGHTK>0.1);L3.fillRect(R2(PX-s/2),R2(PY-s/2),Math.max(1,R2(s)),Math.max(1,R2(s*0.7)));if(LIGHTK>0.1&&c.driver)glow(PX,PY,2.6*PK,'#ff3030',0.6*LIGHTK);}}}
   if(c.vip&&!c.wreck&&proj(c.x,c.y,34+Math.sin(game.t*5)*3)){const s=Math.max(2,5*PK);L3.fillStyle='#ffd700';L3.beginPath();L3.moveTo(PX,PY+s);L3.lineTo(PX-s*0.8,PY-s*0.4);L3.lineTo(PX+s*0.8,PY-s*0.4);L3.closePath();L3.fill();}
 }
@@ -4113,6 +4321,13 @@ function drawProp3(o,fg){
       obox(o.x,o.y,a,8,5,3,13,[200,200,204],[170,170,176],fg);obox(o.x+ca*9,o.y+sa*9,a,1.5,0.6,8,10,[90,90,96],null,fg);
       obox(o.x,o.y,0,0.5,0.5,13,27,[220,220,220],null,fg);obox(o.x,o.y,PI/4,10,10,26,28,c,mixA(c,[255,255,255],0.3),fg);
       if(LIGHTK>0.1&&proj(o.x,o.y,15))glow(PX,PY,4*PK,'#ffd890',0.5*LIGHTK);return;}
+    case 'plank':{const z=o.z;obox(o.x,o.y,a,o.hl,5,z-1.6,z,[118,88,56],[140,106,68],fg);for(const sd of[-1,1])obox(o.x-Math.sin(a)*sd*4.2,o.y+Math.cos(a)*sd*4.2,a,o.hl,0.5,z,z+0.6,[96,72,46],null,fg);return;}
+    case 'tag':{const t=o.tag,ca=Math.cos(a),sa=Math.sin(a),cols=t.done?[[150,80,220],[240,240,240],[150,80,220]]:[rgbOf(GANGS[t.g].col),[30,30,30],rgbOf(GANGS[t.g].col)];
+      NOTOP=true;for(let k=0;k<3;k++){const f=(k-1)*5.5,z0=7+(k%2)*3,z1=z0+(k===1?10:7);obox(o.x+ca*f,o.y+sa*f,a,k===1?2.2:2.8,0.2,z0,z1,cols[k],null,fg);}
+      obox(o.x,o.y,a,9,0.15,6,7.2,cols[0],null,fg);NOTOP=false;return;}
+    case 'hay':obox(o.x,o.y,a,7,5,0,9,[206,176,92],[222,194,108],fg);obox(o.x,o.y,a,7.2,1,1,8,[176,148,70],null,fg);return;
+    case 'windmill':{obox(o.x,o.y,0,5,5,0,90,[200,196,186],[150,60,50],fg);obox(o.x,o.y,0,7,7,86,92,[150,60,50],null,fg);
+      if(proj(o.x,o.y,96)){const cx=PX,cy=PY,r=34*PK,rot=game.t*1.2;L3.strokeStyle=lit([230,226,214],1,fg);L3.lineWidth=Math.max(1,PK*2);L3.beginPath();for(let k=0;k<4;k++){const an=rot+k*PI/2;L3.moveTo(cx,cy);L3.lineTo(cx+Math.cos(an)*r,cy+Math.sin(an)*r);}L3.stroke();}return;}
     case 'hydrant':obox(o.x,o.y,0,2,2,0,7,[200,40,36],[220,60,50],fg);obox(o.x,o.y,0,3,1,3.5,5,[170,30,30],null,fg);return;
     case 'bin':obox(o.x,o.y,0,3,3,0,9,[40,70,50],[30,50,36],fg);return;
     case 'mail':obox(o.x,o.y,0,0.8,0.8,0,6,[40,40,44],null,fg);obox(o.x,o.y,0,3,2.5,6,13,[40,80,170],[50,90,180],fg);return;
@@ -4163,7 +4378,8 @@ function drawLamp3(s,fg){
   const hx=s.x+s.ax*12,hy=s.y+s.ay*12,a=Math.atan2(s.ay,s.ax);
   obox(s.x,s.y,0,1.1,1.1,0,62,[44,46,50],null,fg);obox((s.x+hx)/2,(s.y+hy)/2,a,6.5,0.8,60,62,[44,46,50],null,fg);
   obox(hx,hy,a,3.2,2.2,58,61,[60,62,66],[60,62,66],fg);
-  if(!inBlackout(s.x,s.y)&&proj(hx,hy,57.8)){const s2=Math.max(1,2.6*PK);L3.fillStyle=lit([240,228,190],1,fg,LIGHTK>0.1);L3.fillRect(R2(PX-s2),R2(PY-s2*0.3),R2(s2*2),Math.max(1,R2(s2*0.5)));if(LIGHTK>0.05)glow(PX,PY,5*PK,'#ffb050',0.75*LIGHTK);}}
+  if(!inBlackout(s.x,s.y)&&proj(hx,hy,57.8)){const s2=Math.max(1,2.6*PK);L3.fillStyle=lit([240,228,190],1,fg,LIGHTK>0.1);L3.fillRect(R2(PX-s2),R2(PY-s2*0.3),R2(s2*2),Math.max(1,R2(s2*0.5)));if(LIGHTK>0.05)glow(PX,PY,5*PK,'#ffb050',0.75*LIGHTK);
+    if(rain>0.3){const ly=PY;if(proj(hx,hy,0))wetGlint(PX,PY,ly,'#ffb050',1);}}}
 const PK_LAB={smg:'SMG',rocket:'RKT',health:'+',cash:'$',shotgun:'SG',flame:'FLM',molotov:'MOL',frenzy:'X',bribe:'-*',dual:'x2'};
 const PK_COL={smg:'#7a5a2e',rocket:'#4d6b2e',health:'#e4e4e4',cash:'#2e7b3a',shotgun:'#6a4a2a',flame:'#a8401c',molotov:'#5c7a2e',frenzy:'#151515',bribe:'#1f3f9f',dual:'#7a5a2e'};
 function drawPickup3(k,fg){const bob=Math.sin(game.t*4+k.x)*2.5;if(!proj(k.x,k.y,0))return;BX=PX;BY=PY;BK=PK;
@@ -4191,7 +4407,7 @@ function drawBullet3(b){
   L3.strokeStyle='rgba(255,240,170,.95)';L3.lineWidth=1;L3.beginPath();L3.moveTo(x1,y1);L3.lineTo(PX,PY);L3.stroke();}
 
 // raised things the player can stand on or climb: drawn before the player whenever the player is up on them
-const UNDERFOOT=new Set(['elstair','elplat','eltrack','elcorner','elgap','hplat','hstair','hrail','ladder']);
+const UNDERFOOT=new Set(['plank','elstair','elplat','eltrack','elcorner','elgap','hplat','hstair','hrail','ladder']);
 // ---------- spatial index of everything that doesn't move (keeps the bigger city fast) ----------
 const GC=512,GOFF=HM,GN=Math.ceil((WPX+2*HM)/GC)+1;let SGRID=null;
 function buildGrid(){SGRID=Array.from({length:GN*GN},()=>({b:[],s:[]}));
@@ -4374,6 +4590,8 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
   if(fare&&fare.stage==='ride')add(18,fare,fare.x,fare.y,40,null,40);
   for(const k of pickups)if(!k.taken)add(4,k,k.x,k.y,8);
   for(const k of STASH)if(!k.got)add(25,k,k.x,k.y,10,null,12,k.z);
+  for(const g of GOLDG)if(!GOLDGOT[g.w])add(27,g,g.x,g.y,10,null,14,g.z);
+  if(roofRun){const c=roofRun.cps[roofRun.i];add(26,c,c.x,c.y,30,null,60,c.z);}
   phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8,null,27));
   if(mission&&mission.items)for(const it of mission.items)if(!it.got)add(6,it,it.x,it.y,8);
   for(const sg of SIGNS){if(sg.sh)sg.text=sg.sh.owned?'SAFEHOUSE':'FOR SALE $'+sg.sh.price.toLocaleString();add(20,sg,sg.x,sg.y,40,null,sg.h+12);}
@@ -4444,6 +4662,8 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
     case 4:drawPickup3(o,fg);break;
     case 5:drawPhone3(o,phones.indexOf(o)===ringing&&!mission,fg);break;
     case 6:drawCase3(o,fg);break;
+    case 26:{ZOFF+=o.z;ring3(o.x,o.y,22,1,'rgba(200,130,255,.9)',2);ring3(o.x,o.y,14+Math.sin(game.t*5)*3,1,'rgba(255,255,255,.7)',1.5);if(proj(o.x,o.y,30))glow(PX,PY,10*PK,'#c07cff',0.6);break;}
+    case 27:{ZOFF+=o.z;const bob=Math.sin(game.t*3+o.x)*1.5;obox(o.x,o.y,game.t*1.5,6,2,6+bob,9+bob,[212,175,55],[255,220,100],fg,null,null,true);obox(o.x+Math.cos(game.t*1.5)*4,o.y+Math.sin(game.t*1.5)*4,game.t*1.5,1.5,1.5,2+bob,7+bob,[190,150,40],null,fg);if(proj(o.x,o.y,10+bob))glow(PX,PY,6*PK,'#ffd650',0.7);break;}
     case 25:{ZOFF+=o.z;const bob=Math.sin(game.t*3+o.x)*0.8;obox(o.x,o.y,0.5,7,3.6,0.5+bob,6+bob,[58,84,48],[74,104,60],fg);obox(o.x,o.y,0.5,2,3.8,6+bob,7+bob,[40,40,40],null,fg);if(proj(o.x,o.y,9+bob))glow(PX,PY,4*PK,'#fff2a0',0.35+0.25*Math.sin(game.t*4));break;}
     case 7:drawPart3(o,fg);break;
     case 8:drawBullet3(o);break;
@@ -4494,7 +4714,8 @@ function objectiveTarget(){
   if(fare&&!mission)return fare.stage==='pickup'?fare.ped:fare;
   if(delivery&&!mission)return delivery.c;
   if(fireJob&&!mission){let b=null,bd=1e18;for(const f of fireJob.fires)if(f.hp>0){const d=dist2(f.x,f.y,player.x,player.y);if(d<bd){bd=d;b=f;}}return b;}
-  if(!mission)return null;
+  if(roofRun&&!mission)return roofRun.cps[roofRun.i];
+  if(!mission)return WAYPOINT;
   if(mission.type==='story')return mission.tgt;
   if(mission.type==='deliver')return mission;
   if(mission.type==='hit')return mission.car;
@@ -4517,12 +4738,12 @@ function drawHUD(){
   // health & weapon
   const hy=100*sc+(moneyPop?14*sc:0),bw=130*sc;
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw,hy,bw,10*sc);
-  ctx.fillStyle=player.hp>35?'#ff4d5e':(Math.floor(game.t*6)%2?'#ff4d5e':'#7a0010');ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.hp/100,10*sc-4);if(player.armor>0){ctx.fillStyle='#4da3ff';ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.armor/100,3*sc);}
+  ctx.fillStyle=player.hp>35?'#ff4d5e':(Math.floor(game.t*6)%2?'#ff4d5e':'#7a0010');ctx.fillRect(mx-bw+2,hy+2,(bw-4)*Math.min(1,player.hp/PMAX()),10*sc-4);if(player.armor>0){ctx.fillStyle='#4da3ff';ctx.fillRect(mx-bw+2,hy+2,(bw-4)*player.armor/100,3*sc);}
   if(player.car){const c=player.car;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw,hy+14*sc,bw,7*sc);ctx.fillStyle='#ffb02e';ctx.fillRect(mx-bw+2,hy+14*sc+2,(bw-4)*clamp(c.hp/c.t.hp,0,1),7*sc-4);
     hudText(c.t.name.toUpperCase()+'  '+Math.round(hyp(c.vx,c.vy)*0.22)+' MPH  G'+carGear(c),mx,hy+36*sc,Math.round(13*sc),'#ddd','right');
     const w=WEAPONS[player.w];if(w.kind==='b'||w.kind==='f')hudText(w.name.toUpperCase()+(player.ammo[player.w]===Infinity?'':'  '+player.ammo[player.w]),mx,hy+54*sc,Math.round(12*sc),'#aaa','right');}
   else{const w=WEAPONS[player.w];hudText(w.name.toUpperCase()+(player.ammo[player.w]===Infinity?'':'  '+player.ammo[player.w]),mx,hy+28*sc,Math.round(15*sc),'#ddd','right');}
-  if(FOLLOW.length){const inC=FOLLOW.filter(q=>q.seated).length;hudText('CREW '+FOLLOW.length+'/3'+(player.car?'  ·  '+inC+' in car':''),mx,hy+(player.car?122:96)*sc,Math.round(12*sc),'#c9a0ff','right');} // below the respect bars
+  if(FOLLOW.length){const inC=FOLLOW.filter(q=>q.seated).length;hudText('CREW '+FOLLOW.length+'/'+crewMax()+(player.car?'  ·  '+inC+' in car':''),mx,hy+(player.car?122:96)*sc,Math.round(12*sc),'#c9a0ff','right');} // below the respect bars
   // gang respect
   {const ry=hy+(player.car?70:44)*sc,bw2=96*sc;
   for(let g=0;g<3;g++){const y=ry+g*14*sc,mid=mx-bw2/2;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw2,y,bw2,8*sc);
@@ -4539,7 +4760,7 @@ function drawHUD(){
     let extra=mission.desc;if(mission.type==='cases')extra=mission.items.filter(i=>i.got).length+' / 4 briefcases';
     ctx.strokeStyle='rgba(0,0,0,.8)';ctx.lineWidth=3;
     {const maxW=touchMode?VW*0.58:440;const words=extra.split(' ');let line='',yy=ly+64*sc;for(const wd of words){const tst=line?line+' '+wd:wd;if(ctx.measureText(tst).width>maxW&&line){ctx.strokeText(line,18*sc,yy);ctx.fillText(line,18*sc,yy);line=wd;yy+=17*sc;}else line=tst;}if(line){ctx.strokeText(line,18*sc,yy);ctx.fillText(line,18*sc,yy);}}
-  }else if(job){hudText(job.kind==='vig'?'VIGILANTE: WRECK THE SUSPECT':job.stage==='pickup'?'AMBULANCE: PICK UP THE PATIENT':'AMBULANCE: GET TO THE HOSPITAL',18*sc,ly+12*sc,Math.round(16*sc),job.kind==='vig'?'#4da3ff':'#7dff8a','left');{const tm=Math.max(0,Math.ceil(job.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'   level '+(jobLevel+1),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(sideJob){sideJobHUD(sc,ly);}else if(fare){hudText(fare.stage==='pickup'?'TAXI: PICK UP THE FARE':'TAXI: DRIVE TO THE MARKER',18*sc,ly+12*sc,Math.round(16*sc),'#ffd600','left');{const tm=Math.max(0,Math.ceil(fare.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0'),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(ringing>=0){hudText('☎ PAYPHONE RINGING',18*sc,ly+12*sc,Math.round(15*sc),Math.floor(game.t*2)%2?'#ffd600':'#fff','left');}
+  }else if(job){hudText(job.kind==='vig'?'VIGILANTE: WRECK THE SUSPECT':job.stage==='pickup'?'AMBULANCE: PICK UP THE PATIENT':'AMBULANCE: GET TO THE HOSPITAL',18*sc,ly+12*sc,Math.round(16*sc),job.kind==='vig'?'#4da3ff':'#7dff8a','left');{const tm=Math.max(0,Math.ceil(job.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'   level '+(jobLevel+1),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(roofRun){roofRunHUD(sc,ly);}else if(sideJob){sideJobHUD(sc,ly);}else if(fare){hudText(fare.stage==='pickup'?'TAXI: PICK UP THE FARE':'TAXI: DRIVE TO THE MARKER',18*sc,ly+12*sc,Math.round(16*sc),'#ffd600','left');{const tm=Math.max(0,Math.ceil(fare.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0'),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(ringing>=0){hudText('☎ PAYPHONE RINGING',18*sc,ly+12*sc,Math.round(15*sc),Math.floor(game.t*2)%2?'#ffd600':'#fff','left');}
   // objective arrow: hovers over the target when you can see it, otherwise a compass arrow at the top
   const tg=objectiveTarget();
   if(tg&&game.state==='play'){
@@ -4658,6 +4879,7 @@ function startGame(){
   player.body=0;player.a=0;cam.yaw=0;cam.dist=96;cam.h=40;cam.x=player.x-96;cam.y=player.y;setCam();
   for(const s of parkedSpots){const t=parkedType(s.x,s.y);const c=makeCar(t,s.x,s.y,s.a);}
   for(const d of DRIVEWAYS)if(d.t)makeCar(d.t,d.x,d.y,d.a);
+  spawnSecret();
   // a guaranteed car near the start
   makeCar('sedan',hospitalSpawn.x+3*T,hospitalSpawn.y+1.5*T,0,'#4a352c');
   makeCar('ambulance',hospitalSpawn.x-4*T,hospitalSpawn.y+1.5*T,0);
@@ -4710,7 +4932,7 @@ function applySave(s){money=s.money||0;saveMoney();player.ammo=(s.ammo||[]).map(
 const fmtPlay=t=>{t=Math.floor(t/60);return Math.floor(t/60)+'h '+String(t%60).padStart(2,'0')+'m'};
 const slotSummary=s=>s?`$${(s.money||0).toLocaleString()} · ${(s.pkg||[]).filter(Boolean).length}/${PACKAGES.length} packages · ${fmtPlay(s.play||0)} played<br><small>${new Date(s.ts).toLocaleString()}</small>`:'<i>Empty</i>';
 function menuItems(){
-  if(menuMode==='pause')return[['RESUME',()=>togglePause()],['SAVE GAME',()=>openPanel('save')],['LOAD GAME',()=>openPanel('load')],['STATS',()=>openPanel('stats')],['CHEATS',()=>openPanel('cheats')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')],['QUIT TO TITLE',()=>quitTitle()]];
+  if(menuMode==='pause')return[['RESUME',()=>togglePause()],['MISSIONS',()=>openPanel('missions')],['SAVE GAME',()=>openPanel('save')],['LOAD GAME',()=>openPanel('load')],['STATS',()=>openPanel('stats')],['CHEATS',()=>openPanel('cheats')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')],['QUIT TO TITLE',()=>quitTitle()]];
   const any=latestSave();
   return[...(any?[['CONTINUE',()=>loadFrom(any.s)]]:[]),['NEW GAME',()=>newGame()],['LOAD GAME',()=>openPanel('load')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')]];
 }
@@ -4747,10 +4969,12 @@ function openPanel(kind){
     <div class="opt"><span>New city layout</span><button data-opt="city">GENERATE</button></div><p class="note">A new layout moves the hidden packages, so package progress in old saves won't carry over.</p>`;}
   else if(kind==='controls'){h='<h2>CONTROLS</h2>'+document.getElementById('ctlSrc').innerHTML;}
   else if(kind==='stats'){h=statsHTML();}
+  else if(kind==='missions'){h=missionsHTML();}
   else if(kind==='cheats'){h='<h2>CHEATS</h2><p>Type a code while playing, or enter it here.</p><div class="opt"><input id="cheatIn" style="flex:1;padding:8px;font:16px system-ui;background:#111;color:#fff;border:1px solid #555;border-radius:4px" placeholder="code"><button id="cheatGo">ENTER</button></div><p class="note" id="cheatMsg"></p>';}
   else if(kind==='newcity'){h='<h2>NEW CITY?</h2><p>The page will reload with a freshly generated city. Your saves are kept, but their hidden-package progress belongs to the old city.</p><div class="opt"><button data-yes="city">GENERATE</button><button data-back="options">CANCEL</button></div>';}
   h+='<button class="back" data-back="1">BACK</button>';p.innerHTML=h;
   {const ci=p.querySelector('#cheatGo');if(ci)ci.onclick=()=>{const v=p.querySelector('#cheatIn').value;const ok=tryCheat(v);p.querySelector('#cheatMsg').textContent=ok?'Activated!':'Nothing happened.';};}
+  p.querySelectorAll('[data-rep]').forEach(b=>b.onclick=()=>{closePanel();replayMission(b.dataset.rep);});
   p.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=readSave(b.dataset.load);if(s)loadFrom(s);});
   p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
   p.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{const k=b.dataset.opt;

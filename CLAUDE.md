@@ -9,7 +9,7 @@ windshield glass showing through the bus and SWAT van roofs, the player vanishin
 
 ## Climbable things
 Everything the player can stand on is a walk surface in `WALKS` (plus building roofs via `bldAt`/`roofAbs`, car roofs
-and the El train in `footFloor`). Rules 8 and 9 of the RENDERING RULES cover keeping walk surfaces and visuals in step.
+and the El train in `footFloor`). Roof ladders are a climbing state (`climbPre`/`climbPost`, `LADDERS`), not walk surfaces. Rules 8 and 9 of the RENDERING RULES cover keeping walk surfaces and visuals in step.
 To test climbing, set keys (`keys.KeyW=true`) and step the game with `update(1/60)` in a loop while logging `player.jz`.
 
 ## Checking visuals
