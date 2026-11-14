@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.6.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.6.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.6.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.6.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1161,7 +1161,11 @@ function aiLane(c,dt){
   if(blocked&&ai.bo&&hyp(ai.bo.vx,ai.bo.vy)<15&&!(ai.bo.ai&&ai.bo.ai.mode==='lane'&&tlStopDist(ai.bo)!=null)){ai.staticT=(ai.staticT||0)+dt;if(ai.staticT>1.4){ai.pass=3.2;ai.staticT=0;ai.revT=0.7;}}else if(!blocked)ai.staticT=0;
   if(ai.pass>0&&blocked&&ai.bo&&hyp(ai.bo.vx,ai.bo.vy)<15)blocked=false;
   if(!blocked)for(const p of peds){if(p.gone)continue;const rx=p.x-c.x,ry=p.y-c.y;if(rx*rx+ry*ry>(D+20)*(D+20))continue;const f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+9){blocked=true;break;}}
-  if(!blocked&&!player.car&&game.state==='play'){const rx=player.x-c.x,ry=player.y-c.y;const f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+10)blocked=true;}
+  let byP=false;if(blocked&&ai.bo===player.car&&player.car)byP=true;
+  if(!blocked&&!player.car&&game.state==='play'){const rx=player.x-c.x,ry=player.y-c.y;const f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+10){blocked=true;byP=true;ai.bo=null;}}
+  if(c.driver==='ai')aiHonk(c,ai,dt,byP&&blocked);
+  if(c.t.bus&&c.driver==='ai'){if(ai.stopT>0){ai.stopT-=dt;target=0;if(ai.stopT<=0&&ai.stopAt){ai.stopAt.cool=25;for(const p of peds)if(p.atStop===ai.stopAt&&!p.gone)p.gone=true;if(R()<0.6){const q=makePed(ai.stopAt.x+rr(-10,10),ai.stopAt.y-8,false);pedPickNext(q);}}}
+    else{const st=busNearStop(c);if(st){const f=(st.rx-c.x)*Math.cos(c.a);const sp=hyp(c.vx,c.vy);target=Math.min(target,Math.max(45,(f-40)*1.5));if(f<60||(f<120&&sp<25)){ai.stopT=4;ai.stopAt=st;}}}}
   if(blocked){ai.blockT+=dt;if(ai.blockT<3.5)target=0;if(ai.blockT>5.5)ai.blockT=0;}else ai.blockT=Math.max(0,ai.blockT-dt*2);
   const vf=c.vx*fx+c.vy*fy;
   let thr=vf<target-10?1:vf>target+15?-1:0.15;
@@ -2384,7 +2388,7 @@ function updateFireworks(dt){const night=darkness>0.45;
     if(f.life<=0){if(f.shell){for(let k=0;k<26;k++){const a=R()*TAU,e=rr(-1,1),s=rr(80,140);FW.push({x:f.x,y:f.y,z:f.z,vx:Math.cos(a)*s*Math.sqrt(1-e*e),vy:Math.sin(a)*s*Math.sqrt(1-e*e),vz:e*s,life:rr(1,1.6),col:f.col});}if(dist2(f.x,f.y,player.x,player.y)<2000*2000)sfx('boom',0.25);}FW.splice(i,1);}}
   if(FW.length>600)FW.splice(0,FW.length-600);}
 
-function extTick5(dt){extTick6(dt);extTick7(dt);extTick8(dt);extTick9(dt);updateRooms(dt);updateWeather(dt);updateResponders(dt);updateFireworks(dt);}
+function extTick5(dt){extTick6(dt);extTick7(dt);extTick8(dt);extTick9(dt);extTick10(dt);updateRooms(dt);updateWeather(dt);updateResponders(dt);updateFireworks(dt);}
 
 function raceAI(c,dt){const m=mission;if(!m||!m.opts.race||!c.race){c.driver=null;c.traffic=true;c.vip=false;return;}
   const r=m.opts.race,R2=c.race;if(m.cd>0||R2.done){driveCar(c,0,0,true,dt);return;}
@@ -2573,6 +2577,22 @@ function extTick9(dt){updateShouts(dt);updateAlarm(dt);}
 // ---------- landmarks: the stadium and the statue on the Westside beach ----------
 if(STADIUM)SIGNS.push({x:STADIUM.x,y:STADIUM.y+150,text:'GRIDLOCK STADIUM',bg:'#1f3f9f',fg:'#ffffff',h:60,on:()=>true});
 {let sx=null;for(let bx=0;bx<6;bx++)if(BLOCKK[(NB-1)*NB+bx]==='beach'){sx=bx;break;}const x=((sx==null?2:sx)*P+9)*T,y=((NB-1)*P+7)*T;props.push({x,y,k:'statue',rad:30,ht:130});SIGNS.push({x,y:y-60,text:'STATUE OF GRIDLOCK',bg:'#3a6a5a',fg:'#ffffff',h:24,on:()=>true});}
+// ---------- AI horns: drivers honk when you block them ----------
+function hornBeep(x,y,pitch){if(!AC||muted)return;const d=hyp(x-player.x,y-player.y);if(d>700)return;try{const g=AC.createGain(),o1=AC.createOscillator(),o2=AC.createOscillator(),t=AC.currentTime,v=0.08*(1-d/700);
+  o1.type=o2.type='square';o1.frequency.value=pitch;o2.frequency.value=pitch*1.26;o1.connect(g);o2.connect(g);g.connect(AC.destination);g.gain.setValueAtTime(v,t);g.gain.setTargetAtTime(0,t+0.22,0.03);o1.start(t);o2.start(t);o1.stop(t+0.35);o2.stop(t+0.35);}catch(_){}}
+function aiHonk(c,ai,dt,byPlayer){if(!byPlayer){ai.honkW=0;return;}ai.honkW=(ai.honkW||0)+dt;if(ai.honkW>1.2){ai.honkW=-rr(1,2.5);hornBeep(c.x,c.y,c.t.truck||c.t.bus?260:c.t.bike?520:380);if(!player.car)shoutCar(c);}}
+function shoutCar(c){if(dist2(c.x,c.y,player.x,player.y)<300*300){c.say={t:1.6,text:pick(['Move it!','Get outta the road!','Come on!','Hey, buddy!'])};}}
+// ---------- bus stops: shelters on the sidewalks; buses pull in, people get on and off ----------
+const BUSSTOPS=[];
+for(let iy=1;iy<NB;iy+=3)for(let ix=0;ix<NB;ix+=2){const ty=iy*P+4,tx=ix*P+8;if(tx>=RIVX0-2&&tx<RIVX1+2)continue;const t=tileAt(tx,ty);if(t!==WALK||nearDiag((tx+.5)*T,(ty+.5)*T,140))continue;
+  const s={x:(tx+.5)*T,y:(ty+.5)*T-6,rx:(tx+.5)*T,ry:(iy*P+3.3)*T,wait:0,cool:0};BUSSTOPS.push(s);props.push({x:s.x,y:s.y+4,k:'busstop',a:0,rad:24,ht:30});}
+function busNearStop(c){const fx=Math.cos(c.a),fy=Math.sin(c.a);if(Math.abs(fx)<0.9||fx<0)return null;for(const s of BUSSTOPS){const dx=s.rx-c.x,dy=s.ry-c.y,f=dx*fx+dy*fy;if(f>-20&&f<120&&Math.abs(dy)<44&&s.cool<=0)return s;}return null;}
+let busT=0;
+function updateBusStops(dt){for(const s of BUSSTOPS)s.cool-=dt;busT-=dt;if(busT>0)return;busT=2;
+  // a few people waiting at stops near you
+  for(const s of BUSSTOPS){if(dist2(s.x,s.y,player.x,player.y)>900*900||camSees(s.x,s.y))continue;const n=peds.filter(p=>p.atStop===s&&!p.gone).length;if(n<2&&R()<0.3){const p=makePed(s.x+rr(-20,20),s.y-rr(6,14),false);p.atStop=s;p.onPhone=999;p.a=PI/2;}}}
+function extTick10(dt){updateBusStops(dt);}
+
 window.__roomsReady=true;
 
 // ================= CAMERA =================
@@ -3479,6 +3499,7 @@ function drawProp3(o,fg){
       obox(o.x+sa*20,o.y-ca*20,a,62,1,EL_H,EL_H+0.4,[230,200,40],null,fg);return;}
     case 'elstair':{const ca=Math.cos(a),sa=Math.sin(a);for(let i=0;i<8;i++){const f=-60+(i+.5)*15;obox(o.x+ca*f,o.y+sa*f,a,7.5,12,0,(i+1)*EL_H/8,[110,104,96],[134,128,118],fg);}
       for(const s2 of[-1,1])obox(o.x-sa*s2*12,o.y+ca*s2*12,a,60,0.8,EL_H*0.5,EL_H*0.5+12,[70,76,84],null,fg);return;}
+    case 'busstop':obox(o.x,o.y,0,18,6,0,24,[70,110,150],null,fg);obox(o.x,o.y,0,20,8,24,26,[200,200,206],[220,220,226],fg);obox(o.x-14,o.y,0,1,1,26,36,[60,60,64],null,fg);sign3(o.x-14,o.y,38,'BUS','#2a6ad8','#ffffff',6,fg);return;
     case 'flood':{obox(o.x,o.y,0,2,2,0,130,[80,84,90],null,fg);obox(o.x,o.y,0,9,3,124,136,[60,64,70],[60,64,70],fg);if(LIGHTK>0.1&&proj(o.x,o.y,130)){glow(PX,PY,12*PK,'#fff6d8',0.6+0.4*LIGHTK);}return;}
     case 'goal':obox(o.x,o.y,a,14,1,0,12,[240,240,240],null,fg);return;
     case 'statue':{const t=game.t;obox(o.x,o.y,0,18,18,0,24,[150,146,138],[170,166,156],fg);obox(o.x,o.y,0,10,10,24,44,[160,156,148],null,fg);
@@ -3835,7 +3856,7 @@ function drawItem(it){let cl=false;{const o=it.o,ox=it.kind===9?o.b.x:o.x,oy=it.
   drawItem2(it);if(cl){L3.restore();L3.beginPath();}}
 function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o.x,oy=it.kind===9?o.b.y:o.y;ZOFF=GH(ox,oy);}
   switch(it.kind){
-    case 0:if(o.t.boat){const ti=((o.y|0)>>5)*W+((o.x|0)>>5);if(BRT[ti]&&CZ>GH(o.x,o.y))break;}drawCar3(o,fg);if(!MIRROR&&proj(o.x,o.y,0)){const k=PK,w=Math.max(o.t.L,o.t.Wd)*k*0.75;o._b=[PX-w,PY-24*k,PX+w,PY+4*k];o._f=PF;o._fr=frameNo;}break;
+    case 0:if(o.say&&o.say.t>0){o.say.t-=0.016;qSign(o.x,o.y,40,o.say.text,'#ffffff','#111111');}if(o.t.boat){const ti=((o.y|0)>>5)*W+((o.x|0)>>5);if(BRT[ti]&&CZ>GH(o.x,o.y))break;}drawCar3(o,fg);if(!MIRROR&&proj(o.x,o.y,0)){const k=PK,w=Math.max(o.t.L,o.t.Wd)*k*0.75;o._b=[PX-w,PY-24*k,PX+w,PY+4*k];o._f=PF;o._fr=frameNo;}break;
     case 1:drawPed3(o,false,fg);if(o.say&&o.say.t>0)qSign(o.x,o.y,36,o.say.text,'#ffffff','#111111');if(rain>0.3&&o.umb&&!o.cop&&o.gang==null&&o.state!=='flee'){ZOFF=GH(o.x,o.y);obox(o.x,o.y,0,0.5,0.5,14,30,[40,40,40],null,fg);obox(o.x,o.y,0.6,9,9,30,32,rgbOf(o.col),rgbOf(o.col),fg);}if(o.onPhone>0){ZOFF=GH(o.x,o.y);obox(o.x+Math.cos(o.a+1.2)*4,o.y+Math.sin(o.a+1.2)*4,o.a,1,0.6,21,24,[20,20,20],null,fg);}break;
     case 2:drawTree3(o,fg);break;
     case 3:drawLamp3(o,fg);break;
