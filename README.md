@@ -2,11 +2,11 @@
 
 An open-city crime game in the spirit of the original GTA games, for PC and mobile browsers, played from a pseudo-3D chase camera in a low-res pixel style. Steal cars, answer ringing payphones for jobs, cause chaos and try to lose the cops.
 
-**Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/Aether-Isles/
+**Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/Gridlock-City/
 
-**Top-down 2D version:** the original top-down game is kept as `2d.html` (https://kefirman9000.github.io/Aether-Isles/2d.html).
+**Top-down 2D version:** the original top-down game is kept as `2d.html` (https://kefirman9000.github.io/Gridlock-City/2d.html).
 
-> This repo used to hold *Aether Isles: Swarm of the Warden*. It's been replaced for now; the old game is still in the git history (commit `85a66b8`).
+> This repo used to be called **Aether-Isles** and held *Aether Isles: Swarm of the Warden*. It was renamed to Gridlock-City; the old game is still in the git history (commit `85a66b8`).
 
 ## Controls
 | PC | Phone | Action |
