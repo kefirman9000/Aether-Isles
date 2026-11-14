@@ -29,6 +29,10 @@ vehicles and props from the front, back, both sides, from above, and at night (`
 The city seed is random per browser profile, so place things relative to `hospitalSpawn` or a block index.
 
 ## City generation
+v5.0 layout steps live just above `genMap()` in `js/01-core-map.js`: `joinBlocks` (streets built over, listed in `BUILT` and also in `CUT`
+so traffic and GPS skip them), `sideStreets` (`LANEB`; ROAD tiles with `PARKT` 10/11, not on the traffic grid), `culBlock` (BLOCKK 'cul'),
+`railYard` (`YARDB`, `PARKT` 12/13), `riverShape` (`BANKW`/`BANKE`, `ISLE`, `BAY`; the heightmap follows in `08-render.js`), `skyline`,
+and the avenue medians (`AVX`/`AVY`). The street grid itself never moves: `laneCoord`, `linkOK` and every story location depend on it.
 Generation uses the seeded `R()` stream. Adding calls to `R()`/`pick()`/`rr()` inside generation changes the
 whole city for every saved seed and moves the hidden packages in old saves. New generation steps use their own
 seeded stream (see `livedIn()` after `genMap()`).

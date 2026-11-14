@@ -145,6 +145,7 @@ function actEnd(){const a=ACT;ACT=null;actCool=5;if(!a)return;
 CT.rc={name:'RC Wrecker',L:17,Wd:10,max:520,acc:560,grip:12,turn:3.6,hp:5000,mass:0.25,cols:['#e02a2a','#f0c020','#2a7ae0'],rc:true};
 const RCPAD=(()=>{const used=SIGNS.map(s=>[s.x,s.y]),tx=(3*P+9)*T,ty=(10*P+9)*T;let best=null,bd=1e18;
   for(const l of lotBlocks){if(l.x>RIVX0*T)continue;if(used.some(u=>hyp(u[0]-l.x,u[1]-l.y)<220))continue;const d=dist2(l.x,l.y,tx,ty);if(d<bd){bd=d;best=l;}}
+  if(!best){for(const[wx,wy]of walkTiles){const x=(wx+.5)*T,y=(wy+.5)*T;if(x>(RIVX0-3)*T||used.some(u=>hyp(u[0]-x,u[1]-y)<220))continue;const d=dist2(x,y,tx,ty);if(d<bd){bd=d;best={x,y};}}} // no free lot over here: a sidewalk will do
   if(!best)return null;const s={x:best.x,y:best.y};SIGNS.push({x:s.x,y:s.y,text:'RC WRECKERS',bg:'#e02a2a',fg:'#ffffff',h:34,on:()=>true});return s;})();
 // toy-car handling: quick, grippy and light, nothing like the full car physics
 function rcDrive(c,thr,steer,hb,dt){const ca=Math.cos(c.a),sa=Math.sin(c.a);let vf=c.vx*ca+c.vy*sa;const want=thr*(thr>0?c.t.max:c.t.max*0.5);vf=hb?vf*Math.exp(-5*dt):lerp(vf,want,Math.min(1,dt*(thr?2.2:1.2)));

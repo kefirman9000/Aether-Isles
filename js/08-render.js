@@ -134,6 +134,9 @@ for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-HM+i*HS,y=-HM+j*HS;if(x<HX0-
 const RIVL=-12;
 for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-HM+i*HS,y=-HM+j*HS;if(x<RIVX0*T+12||x>RIVX1*T-12||y<0||y>WPX)continue;HMAP[j*HN+i]=RIVL;}
 {const hAt=(x,y)=>HMAP[Math.round((y+HM)/HS)*HN+Math.round((x+HM)/HS)],x0=RIVX0*T,x1=RIVX1*T;
+ // v5: the river banks, the island and the bay are shaped in the tile map; the ground follows (land at bank height, water at river level)
+ for(let j=0;j<HN;j++)for(let i=0;i<HN;i++){const x=-HM+i*HS,y=-HM+j*HS;if(x<0||y<0||x>=WPX||y>=WPX)continue;const ti=Math.floor(y/T)*W+Math.floor(x/T);
+   if(RIV[ti]){HMAP[j*HN+i]=RIVL;continue;}if(x>=x0+12&&x<=x1-12&&!BRT[ti]){const t=map[ti];if(t!==WATER)HMAP[j*HN+i]=Math.max(2,x<(x0+x1)/2?hAt(x0-60,y):hAt(x1+60,y));}}
  for(const iy of BRIDGES){const yn=iy*P*T,ys=yn+4*T,yc=(yn+ys)/2,hA=hAt(x0-40,yc),hB=hAt(x1+40,yc);
    for(let j=Math.floor((yn-20+HM)/HS);j<=Math.ceil((ys+20+HM)/HS);j++)for(let i=Math.floor((x0-8+HM)/HS);i<=Math.ceil((x1+8+HM)/HS);i++){
      const x=-HM+i*HS,t=clamp((x-x0)/(x1-x0),0,1);HMAP[j*HN+i]=lerp(hA,hB,t)+bridgeLift(x,iy);}}}
@@ -181,7 +184,7 @@ for(const b of buildings){b.id=++uid;b.base=Math.min(GH(b.x,b.y),GH(b.x+b.w,b.y)
 for(const b of buildings){const h=hash(b.id*7+3,b.id*13+11);
   b.corn=b.st==='brick'||(b.st==='plaster'&&(h&1))||(b.st==='conc'&&(h&6)===0);
   b.fe=(b.st==='brick'||b.st==='conc'||b.st==='ware'||b.st==='plaster')&&b.hg>=1.5&&!b.outside&&(b.st==='brick'?(h&12)!==0:(h&3)===0);b.feAx=(h>>4)&1; // has a roof ladder
-  b.bulk=(b.st==='brick'||b.st==='conc'||b.st==='ware')&&!b.ant&&((h>>6)&3)!==0?{u:0.2+((h>>8)&7)*0.08,v:0.2+((h>>11)&7)*0.08,vent:(h>>14)&1}:null;}
+  b.bulk=b.kind!=='boxcar'&&(b.st==='brick'||b.st==='conc'||b.st==='ware')&&!b.ant&&((h>>6)&3)!==0?{u:0.2+((h>>8)&7)*0.08,v:0.2+((h>>11)&7)*0.08,vent:(h>>14)&1}:null;}
 // ---- a climbable city: roof ladders run from the sidewalk up to the roof, and every flat roof can be walked on ----
 const BMAP=new Int32Array(W*W).fill(-1);
 buildings.forEach((b,i)=>{for(let ty=Math.floor(b.y/T);ty<Math.ceil((b.y+b.h)/T);ty++)for(let tx=Math.floor(b.x/T);tx<Math.ceil((b.x+b.w)/T);tx++)if(tx>=0&&ty>=0&&tx<W&&ty<W)BMAP[ty*W+tx]=i;});
@@ -321,6 +324,11 @@ function renderGround(heads){
               if((mx===4||mx===13)&&u>4&&u<28&&(v&7)>=3&&(v&7)<7){r=147;g=146;b=140;}
               if((mx===12&&my>=2&&u>=27&&u<30)||(mx===5&&my<2&&u>=2&&u<5)){r=214;g=214;b=208;}
             }
+            // v5 avenues: a planted median down the middle between the crossings
+            if(AVX[tx]&&mx<4&&my>=5&&my<=12&&((mx===1&&u>=25)||(mx===2&&u<7))){const e=mx===1?u-25:6-u;if(e<1){r=172;g=170;b=162;}else{r=62+nz;g=98+nz*2;b=48+nz;if(e>2&&((v*7+ty*13+h)&63)===0){r=226;g=196;b=86;}}}
+            else if(AVY[ty]&&my<4&&mx>=5&&mx<=12&&((my===1&&v>=25)||(my===2&&v<7))){const e=my===1?v-25:6-v;if(e<1){r=172;g=170;b=162;}else{r=62+nz;g=98+nz*2;b=48+nz;if(e>2&&((u*7+tx*13+h)&63)===0){r=226;g=196;b=86;}}}
+            // side streets: a gutter along each edge
+            if(PARKT[ti]===10&&((my===8&&v<2)||(my===9&&v>29))){r=112;g=110;b=104;}else if(PARKT[ti]===11&&((mx===8&&u<2)||(mx===9&&u>29))){r=112;g=110;b=104;}
             if(h%11===0){const ex=u-((h>>4&15)+8),ey=v-((h>>8&15)+8);if(ex*ex*0.5+ey*ey*1.4<38){r-=13;g-=13;b-=12;}}
             if(h%13===0&&u>4&&u<28&&v>6&&v<22){r+=7;g+=7;b+=6;}
             if(h%29===0){const ex=u-16,ey=v-16,dd=ex*ex+ey*ey;if(dd<20&&dd>8){r=66;g=66;b=68;}}
@@ -344,12 +352,14 @@ function renderGround(heads){
             if(t===4){r*=0.78;g*=0.8;b*=0.78;}
             if(pk){const n2=(((xi>>1)*7919)^((yi>>1)*104729))>>>0;if(n2%151===0){const fc=(n2>>9)%4;if(fc===0){r=236;g=236;b=228;}else if(fc===1){r=240;g=210;b=60;}else if(fc===2){r=230;g=120;b=170;}else{r=150;g=120;b=220;}}}
             break;}
-          case 5:if(PARKT[ti]===9){r=150+nz*2;g=148+nz*2;b=140+nz*2;if((u+v*3+h)%97===0){r-=22;g-=22;b-=20;}if(MXT[tx]===9&&u>=14&&u<17&&(v&15)<10||MXT[ty]===9&&v>=14&&v<17&&(u&15)<10){r=214;g=176;b=40;}}
+          case 5:if(PARKT[ti]===12||PARKT[ti]===13){r=104+nz*3;g=98+nz*3;b=88+nz*2;if(((u*5+v*11+h)&31)===0){r-=24;g-=22;b-=20;}
+              if(PARKT[ti]===12){if(v>=6&&v<=26&&((u+((tx&1)<<4))%10)<3){r=88;g=66;b=46;}if((v>=10&&v<=11)||(v>=21&&v<=22)){r=150;g=150;b=156;}}}
+            else if(PARKT[ti]===9){r=150+nz*2;g=148+nz*2;b=140+nz*2;if((u+v*3+h)%97===0){r-=22;g-=22;b-=20;}if(MXT[tx]===9&&u>=14&&u<17&&(v&15)<10||MXT[ty]===9&&v>=14&&v<17&&(u&15)<10){r=214;g=176;b=40;}}
             else if(PARKT[ti]===4){r=128+nz*3;g=102+nz*3;b=72+nz*2;if((u+((h>>3)&7))%13<2){r-=18;g-=16;b-=12;}if(((u*5+v*3+h)&47)===0){r=150;g=150;b=150;}}
             else if(PARKT[ti]===3){if((u&15)===0||(v&15)===0){r=138;g=132;b=122;}else{r=168+nz;g=160+nz;b=148+nz;}}
             else if((tx&1)===0&&u<2&&(MXT[ty]===6||MXT[ty]===11)){r=138;g=138;b=130;}else{r=55+nz;g=56+nz;b=59+nz;}break;
           case 8:{r=38+nz*2;g=86+nz*2;b=116+nz*2;if(((u*3+v*5+gt)%29)===0){r+=55;g+=65;b+=60;}
-            if(RIV[ti]){if((u<4&&map[ti-1]!==8)||(u>27&&map[ti+1]!==8)){r=118;g=116;b=110;}break;}
+            if(RIV[ti]){if((u<4&&map[ti-1]!==8)||(u>27&&map[ti+1]!==8)||(v<4&&map[ti-W]!==8&&!BRT[ti-W])||(v>27&&map[ti+W]!==8&&!BRT[ti+W])){r=118;g=116;b=110;}break;}
             if((u<3&&map[ti-1]!==8)||(u>28&&map[ti+1]!==8)||(v<3&&map[ti-W]!==8)||(v>28&&map[ti+W]!==8)){if(PARKT[ti]===3){r=170;g=166;b=158;}else{r=150+nz*3;g=140+nz*3;b=108+nz*2;}}
             break;}
           case 6:if((tx+ty)&1){r=142;g=42;b=32;}else{r=168;g=132;b=0;}break;

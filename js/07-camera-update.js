@@ -265,7 +265,9 @@ function update(dt){
   // ---- spawn / despawn ----
   viewR=760;
   let nTraffic=0;for(const c of cars)if(c.traffic&&c.driver)nTraffic++;
-  const wantTraffic=Math.round(clamp(viewR/30,18,34));
+  // v5 rush hour: the streets fill up around 8 am and 5 pm and empty out after midnight
+  const hr24=clock*24,bump=(c,w)=>Math.exp(-(((hr24-c)/w)**2)),rush=1+0.38*bump(8.2,1.4)+0.42*bump(17.3,1.6)-0.42*(hr24<5||hr24>23.5?1:hr24<6.5?(6.5-hr24)/1.5:0);
+  const wantTraffic=Math.round(clamp(viewR/30,18,34)*rush);
   if(nTraffic<wantTraffic)spawnTraffic(false,false);
   const despR=viewR+800;
   cars=cars.filter(c=>{

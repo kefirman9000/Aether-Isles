@@ -32,6 +32,10 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **A reshaped city (v5.0):** about twenty cross streets are built over, so uptown and midtown have long east-west blocks and downtown long north-south ones. Old Town and the Lotus Quarter have narrow cobbled side streets through the middle of many blocks (only you drive them; traffic stays on the main streets). The suburbs have cul-de-sacs with houses round a turning circle. A rail yard of sidings and boxcars takes up two blocks. Two north-south and two east-west avenues have a planted median.
+- **The river:** its banks swell in and out with a riverside park, Gull Island sits mid-river between the Gridlock and south bridges, and the block east of the river mouth is now the South Harbor.
+- **Skyline and traffic:** towers climb toward downtown and drop away at the edges of town. Traffic thickens around 8 am and 5 pm and thins out after midnight.
+- The new layout restarts hidden packages, roof stashes and gang tags in older saves; money, story, safehouses and stats carry over.
 - **The PS2 look (v4.20):** a warm colour grade by day and a cold one at night, light trails at speed, a soft vignette, raindrops on the lens, and a thin rim of light on people at night. One switch in Options turns it all off.
 - **Your own controls:** Options → Remap keys lets you bind every keyboard action (click it, press a key; keys in use swap). Remap buttons does the same for a controller, on either layout.
 - **Debug menu:** the ` key opens it: set the time and weather, add or clear stars, heal, cash, ammo, spawn any vehicle, teleport to your map waypoint, show FPS, and fly a free camera (WASD, Q/E, R/F, T/G) with the HUD hidden for screenshots. Using it counts against your criminal rating like a cheat.

@@ -1,5 +1,5 @@
 'use strict';
-const VERSION='4.20.1',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='5.0.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -16,7 +16,7 @@ let CITY_SEED=0;try{CITY_SEED=+(localStorage.getItem('gc_city_seed')||0)}catch(_
 if(!CITY_SEED){CITY_SEED=((Math.random()*2**31)|0)||7;try{localStorage.setItem('gc_city_seed',String(CITY_SEED))}catch(_){}}
 R=(a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296})(CITY_SEED);
 // v4.15 reshaped the city (the docks, a third avenue), so collectibles saved against an older layout no longer line up
-const SAVE_SEED=CITY_SEED+'/L3';
+const SAVE_SEED=CITY_SEED+'/L5'; // v5.0 rebuilt the layout
 const rr=(a,b)=>a+R()*(b-a);
 const pick=a=>a[Math.floor(R()*a.length)];
 const angDiff=(a,b)=>{let d=(a-b)%TAU;if(d>PI)d-=TAU;if(d<-PI)d+=TAU;return d};
@@ -108,7 +108,7 @@ function diagAvenues(){const sp=new Set();for(const k in SPECIAL)sp.add(k);
   for(const d of DIAGS)for(let t=60;t<d.L-60;t+=110)for(const s2 of[-1,1]){const x=d.ax+d.ux*t+d.nx*s2*(DHW+14),y=d.ay+d.uy*t+d.ny*s2*(DHW+14),tx=Math.floor(x/T),ty=Math.floor(y/T);
     if(map[ty*W+tx]===WALK&&tx%P>=4&&ty%P>=4&&R()<0.7)addTree(x,y,'round',0.6);}}
 // ---- alleys: narrow service lanes cut through some downtown and old-town blocks (dumpsters, the odd jump) ----
-function alleys(){for(let by=0;by<NB;by++)for(let bx=0;bx<NB;bx++){const k=BLOCKK[by*NB+bx];if(k!=='bld'||R()>0.32)continue;
+function alleys(){for(let by=0;by<NB;by++)for(let bx=0;bx<NB;bx++){const k=BLOCKK[by*NB+bx];if(k!=='bld'||LANEB.has(by*NB+bx)||R()>0.32)continue;
     const x0=bx*P,y0=by*P;if(nearDiag((x0+9)*T,(y0+9)*T,9*T))continue;const hz=R()<0.5,m=pick([7,8,9]);
     const inA=(tx,ty)=>hz?(ty-y0===m||ty-y0===m+1)&&tx-x0>=4&&tx-x0<=13:(tx-x0===m||tx-x0===m+1)&&ty-y0>=4&&ty-y0<=13;
     const ax0=hz?(x0+4)*T:(x0+m)*T,ay0=hz?(y0+m)*T:(y0+4)*T,aw=hz?10*T:2*T,ah=hz?2*T:10*T;
@@ -147,7 +147,7 @@ function cutStreets(){
   for(const[ix,iy,d]of cands){if(want<=0)break;const nx=ix+DX[d],ny=iy+DY[d];if(nodeDeg(ix,iy)<=2||nodeDeg(nx,ny)<=2)continue;
     const k=segKey(ix,iy,d);CUT.add(k);if(reach()<base){CUT.delete(k);continue;}want--;}}
 // turn each closed segment into a pedestrian plaza, or a lawn with trees where it runs between parks
-function fillCuts(){for(const k of CUT){const h=k[0]==='h',[a,b]=k.slice(1).split(',').map(Number);
+function fillCuts(){for(const k of CUT){if(BUILT.has(k))continue;const h=k[0]==='h',[a,b]=k.slice(1).split(',').map(Number);
   const x0=h?a*P+4:a*P,x1=h?(a+1)*P-1:a*P+3,y0=h?b*P:b*P+4,y1=h?b*P+3:(b+1)*P-1;
   const bk1=h?BLOCKK[(b-1)*NB+a]:BLOCKK[b*NB+a-1],bk2=h?BLOCKK[b*NB+a]:BLOCKK[b*NB+a],green=(bk1==='park'||bk1==='cpark'||bk1==='res')&&(bk2==='park'||bk2==='cpark'||bk2==='res');
   for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){if(x<0||y<0||x>=W||y>=W)continue;map[y*W+x]=green?GRASS:WALK;PARKT[y*W+x]=green?1:3;}
@@ -159,7 +159,8 @@ const RIVER_BX=6,CPARK={x0:11,x1:13,y0:2,y1:5},TSQ={ix:13,iy:12};
 const isTS=(bx,by)=>(bx===TSQ.ix-1||bx===TSQ.ix)&&(by===TSQ.iy-1||by===TSQ.iy);
 const inCP=(bx,by)=>bx>=CPARK.x0&&bx<=CPARK.x1&&by>=CPARK.y0&&by<=CPARK.y1;
 function districtAt(x,y){const tx=Math.floor(x/T),ty=Math.floor(y/T),bx=Math.floor(tx/P),by=Math.floor(ty/P),mx=tx%P,my=ty%P;
-  if(tx>=RIVX0&&tx<RIVX1)return bridgeRow(ty)?(by===BIGB?'GRIDLOCK BRIDGE':'RIVER BRIDGE'):'EAST RIVER';
+  if(tx>=RIVX0&&tx<RIVX1){if(bridgeRow(ty))return by===BIGB?'GRIDLOCK BRIDGE':'RIVER BRIDGE';if(ty>=ISLE.y0&&ty<=ISLE.y1&&Math.abs(tx-ISLE.cx)<5&&map[ty*W+tx]!==WATER)return 'GULL ISLAND';if(map[ty*W+tx]!==WATER)return 'RIVERSIDE PARK';return 'EAST RIVER';}
+  if(BAY&&tx>=BAY.x0-1&&tx<=BAY.x1&&ty>=BAY.y0)return 'SOUTH HARBOR';if(YARDB.has(by*NB+bx))return 'RAIL YARD';
   if(inCP(bx,by)&&mx>=4&&my>=4)return 'CENTRAL PARK';
   if(Math.abs(tx-(TSQ.ix*P+2))<16&&Math.abs(ty-(TSQ.iy*P+2))<16)return 'TIMES SQUARE';
   if(by===NB-1&&my>=4)return 'SOUTH BEACH';
@@ -302,6 +303,108 @@ const SHIP={x:(RIVX1-2.5)*T,y:(9.5*P*T+5.5*P*T)/2,hl:15*T,hw:44};
 function shipDock(){const tx0=RIVX1-4,tx1=RIVX1-1,ty0=Math.floor((SHIP.y-SHIP.hl)/T),ty1=Math.floor((SHIP.y+SHIP.hl)/T);
   for(let ty=ty0;ty<=ty1;ty++)for(let tx=tx0;tx<tx1;tx++)if(!bridgeRow(ty))map[ty*W+tx]=BLD;
   props.push({x:SHIP.x,y:SHIP.y,k:'ship',rad:SHIP.hl+40,ht:150});}
+// ================= v5.0 LAYOUT: long blocks, side streets, cul-de-sacs, a rail yard, avenues, river banks, an island, a bay, a skyline =================
+// The street grid stays (traffic, the cops, GPS and every mission run on it); these steps change what sits on it.
+const BUILT=new Set(),LANEB=new Set(),YARDB=new Set();      // streets built over · blocks with a side street · rail yard blocks
+const AVX=new Uint8Array(W),AVY=new Uint8Array(W);            // tile columns / rows that carry an avenue's planted median
+const AVES={v:[3,12],h:[7,11]};
+for(const ix of AVES.v)if(ix*P+2<W){AVX[ix*P+1]=1;AVX[ix*P+2]=1;}for(const iy of AVES.h)if(iy*P+2<W){AVY[iy*P+1]=1;AVY[iy*P+2]=1;}
+const BANKW=new Uint8Array(W),BANKE=new Uint8Array(W),ISLE={y0:146,y1:190,cx:100};let BAY=null;
+function reachAll(){const seen=new Set(['0,0']),q=[[0,0]];while(q.length){const[x,y]=q.pop();for(let d=0;d<4;d++)if(linkOK(x,y,d)){const nx=x+DX[d],ny=y+DY[d],k=nx+','+ny;if(!seen.has(k)){seen.add(k);q.push([nx,ny]);}}}return seen.size;}
+const segProtected=(h,a,b)=>h?(b===0||b===NB||((b===5||b===14)&&a>=9&&a<=15)||(BRIDGES.includes(b)&&a>=3&&a<=10)||AVES.h.includes(b))
+                            :(a<=0||a>=NB||a===6||a===7||a===8||((a===9||a===16)&&b>=5&&b<=13)||AVES.v.includes(a));
+function stripTiles(h,a,b){return h?{x0:a*P+5,x1:a*P+12,y0:b*P-1,y1:b*P+4}:{x0:a*P-1,x1:a*P+4,y0:b*P+5,y1:b*P+12};}
+function clearArea(x0,y0,x1,y1){const X0=x0*T,Y0=y0*T,X1=(x1+1)*T,Y1=(y1+1)*T,inA=o=>o.x>=X0&&o.x<X1&&o.y>=Y0&&o.y<Y1;
+  for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];if(b.x<X1&&b.x+b.w>X0&&b.y<Y1&&b.y+b.h>Y0)buildings.splice(i,1);}
+  for(const arr of[trees,props,lotBlocks,parkedSpots,RAMPS]){const keep=arr.filter(o=>!inA(o));arr.length=0;arr.push(...keep);}}
+// 1. two built blocks joined over the street between them: long east-west blocks uptown and midtown, long north-south ones downtown
+function joinBlocks(){const base=reachAll(),cands=[];
+  for(let by=0;by<NB;by++)for(let bx=0;bx<NB;bx++){const z=zoneOf((bx*P+8)*T,(by*P+8)*T);
+    if(z===1&&bx+1<NB)cands.push([false,bx+1,by]);       // vertical street between (bx,by) and (bx+1,by)
+    if(z===-1&&by+1<NB)cands.push([true,bx,by+1]);}     // horizontal street between (bx,by) and (bx,by+1)
+  for(let i=cands.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[cands[i],cands[j]]=[cands[j],cands[i]];}
+  let want=22;
+  for(const[h,a,b]of cands){if(want<=0)break;const A=h?BLOCKK[(b-1)*NB+a]:BLOCKK[b*NB+a-1],B=BLOCKK[b*NB+a];if(A!=='bld'||B!=='bld'||segProtected(h,a,b))continue;
+    const key=h?'h'+a+','+b:'v'+a+','+b;if(CUT.has(key))continue;
+    const s=stripTiles(h,a,b);let bad=false;for(let ty=s.y0-1;ty<=s.y1+1&&!bad;ty++)for(let tx=s.x0-1;tx<=s.x1+1;tx++)if(DIAGT[ty*W+tx]||BRT[ty*W+tx])bad=true;if(bad)continue;
+    const n0=h?[a,b]:[a,b],n1=h?[a+1,b]:[a,b+1];if(nodeDeg(n0[0],n0[1])<=2||nodeDeg(n1[0],n1[1])<=2)continue;
+    CUT.add(key);if(reachAll()<base){CUT.delete(key);continue;}BUILT.add(key);want--;
+    clearArea(s.x0,s.y0,s.x1,s.y1);
+    // the sidewalks run straight across where the street was; the middle fills with buildings
+    const sw=h?[s.x0-1,s.x1+1]:[s.y0-1,s.y1+1];
+    for(let ty=s.y0;ty<=s.y1;ty++)for(let tx=s.x0;tx<=s.x1;tx++){map[ty*W+tx]=BLD;PARKT[ty*W+tx]=0;}
+    if(h){for(let ty=s.y0;ty<=s.y1;ty++)for(const tx of sw){map[ty*W+tx]=WALK;PARKT[ty*W+tx]=0;}}else{for(let tx=s.x0;tx<=s.x1;tx++)for(const ty of sw){map[ty*W+tx]=WALK;PARKT[ty*W+tx]=0;}}
+    subdivide(s.x0,s.y0,s.x1-s.x0+1,s.y1-s.y0+1,0,zoneOf((s.x0+3)*T,(s.y0+3)*T));}}
+// 2. Old Town and the Lotus Quarter: narrow cobbled side streets cut through the middle of some blocks
+function sideStreets(){for(let by=0;by<NB;by++)for(let bx=0;bx<NB;bx++){const z=zoneOf((bx*P+8)*T,(by*P+8)*T);if((z!==0&&z!==2)||BLOCKK[by*NB+bx]!=='bld'||R()>0.45)continue;
+    const x0=bx*P,y0=by*P;if(nearDiag((x0+9)*T,(y0+9)*T,10*T))continue;
+    const hz=R()<0.5,m=8,r0=(hz?y0:x0)+m,r1=r0+1;
+    // which ends reach a street that is still open: a lane needs at least one
+    const endA=hz?!CUT.has('v'+bx+','+by):!CUT.has('h'+bx+','+by),endB=hz?!CUT.has('v'+(bx+1)+','+by):!CUT.has('h'+bx+','+(by+1));if(!endA&&!endB)continue;
+    LANEB.add(by*NB+bx);
+    // buildings across the lane are cut back to one side; a piece left on the other side becomes its own building
+    for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];const p0=hz?b.y/T:b.x/T,p1=hz?(b.y+b.h)/T:(b.x+b.w)/T,q0=hz?b.x/T:b.y/T;
+      if(hz?(q0<x0+4||q0>x0+13):(q0<y0+4||q0>y0+13))continue;if(p1<=r0||p0>r1)continue;
+      const before=r0-p0,after=p1-(r1+1);
+      const piece=(s0,s1)=>{const o=Object.assign({},b,{ac:[]});if(hz){o.y=s0*T;o.h=(s1-s0)*T;}else{o.x=s0*T;o.w=(s1-s0)*T;}return o;};
+      buildings.splice(i,1);if(before>=2)buildings.push(piece(p0,r0));if(after>=2)buildings.push(piece(r1+1,p1));
+      for(let s=p0;s<p1;s++){if(s>=r0&&s<=r1)continue;if((s<r0&&before>=2)||(s>r1&&after>=2))continue;
+        for(let q=q0;q<q0+(hz?b.w:b.h)/T;q++){const tx=hz?q:s,ty=hz?s:q;if(map[ty*W+tx]===BLD){map[ty*W+tx]=LOT;PARKT[ty*W+tx]=0;}}}}
+    for(let k=4;k<=13;k++)for(const r of[r0,r1]){const tx=hz?x0+k:r,ty=hz?r:y0+k;if((k===4&&!endA)||(k===13&&!endB)){map[ty*W+tx]=WALK;continue;}map[ty*W+tx]=ROAD;PARKT[ty*W+tx]=hz?10:11;}
+    clearArea(hz?x0+4:r0,hz?r0:y0+4,hz?x0+13:r1,hz?r1:y0+13);
+    // a car or two parked along one side
+    for(let k=6;k<=11;k+=3)if(R()<0.4)parkedSpots.push(hz?{x:(x0+k+.5)*T,y:(r1+.62)*T,a:0}:{x:(r0+.38)*T,y:(y0+k+.5)*T,a:PI/2});}}
+// 3. suburban cul-de-sacs: a short dead-end street from one side, a turning circle, seven houses around it
+function culBlock(x0,y0,z,bx,by){
+  const sides=[];if(!CUT.has('h'+bx+','+(by+1)))sides.push(2);if(!CUT.has('h'+bx+','+by))sides.push(0);if(!CUT.has('v'+bx+','+by))sides.push(3);if(!CUT.has('v'+(bx+1)+','+by))sides.push(1);
+  if(!sides.length){resBlock(x0,y0,z);return false;}const sd=pick(sides);
+  // local coordinates (lx,ly) with the stub coming in from the bottom, turned to face side sd
+  const tf=(lx,ly)=>sd===2?[lx,ly]:sd===0?[7-lx,7-ly]:sd===1?[ly,7-lx]:[7-ly,lx];
+  for(let y=0;y<8;y++)for(let x=0;x<8;x++){setT(x0+x,y0+y,GRASS);PARKT[(y0+y)*W+x0+x]=2;}
+  const road=(lx,ly)=>{const[a,b]=tf(lx,ly);setT(x0+a,y0+b,ROAD);PARKT[(y0+b)*W+x0+a]=0;};
+  for(let ly=0;ly<8;ly++)for(let lx=0;lx<8;lx++){const d=hyp(lx+.5-4,ly+.5-3.6);if(d<2.1)road(lx,ly);}
+  for(let ly=5;ly<=8;ly++)for(const lx of[3,4])road(lx,ly); // ly 8 is the sidewalk: the stub cuts through it to the street
+  for(const[hx,hy]of[[0,0],[3,0],[6,0],[0,3],[6,3],[0,6],[6,6]]){const c=[tf(hx,hy),tf(hx+1,hy),tf(hx,hy+1),tf(hx+1,hy+1)],ax=Math.min(...c.map(q=>q[0])),ay=Math.min(...c.map(q=>q[1]));
+    for(const[a,b]of c)setT(x0+a,y0+b,BLD);
+    const cx=x0+ax+1,cy=y0+ay+1,[bxc,byc]=tf(4,3.6),dx=x0+bxc-cx,dy=y0+byc-cy,door=Math.abs(dx)>Math.abs(dy)?(dx>0?1:3):(dy>0?2:0);
+    addBuilding(x0+ax,y0+ay,2,2,0.8,pick(PAL.house),null,{st:'house',roof:pick(PAL.roof),rx:R()<0.5,chim:R()<0.45,door});}
+  // a tree or two in the yards, a car on the circle
+  for(let i=0;i<5;i++){const tx=x0+Math.floor(R()*8),ty=y0+Math.floor(R()*8);if(map[ty*W+tx]===GRASS&&R()<0.6){setT(tx,ty,TREE);addTree((tx+.5)*T,(ty+.5)*T,treeSp(z),0.9);}}
+  {const[a,b]=tf(4,1.6);if(R()<0.6)parkedSpots.push({x:(x0+a+.5)*T,y:(y0+b+.5)*T,a:sd===0||sd===2?0:PI/2});}
+  return true;}
+// 4. a rail yard: two blocks and the street between them become sidings full of boxcars
+function railYard(){const base=reachAll(),cands=[];
+  for(let by=1;by<NB-2;by++)for(let bx=0;bx<NB-1;bx++){const z=zoneOf((bx*P+8)*T,(by*P+8)*T);if(z!==0&&z!==-1)continue;
+    const A=BLOCKK[by*NB+bx],B=BLOCKK[by*NB+bx+1];if(!['bld','lot'].includes(A)||!['bld','lot'].includes(B)||LANEB.has(by*NB+bx)||LANEB.has(by*NB+bx+1))continue;
+    if(segProtected(false,bx+1,by)||CUT.has('v'+(bx+1)+','+by))continue;if(nearDiag((bx*P+14)*T,(by*P+9)*T,16*T))continue;cands.push([bx,by]);}
+  if(!cands.length)return;const order=cands.map(c=>[hash(c[0]*31+5,c[1]*17+3),c]).sort((p,q)=>p[0]-q[0]).map(q=>q[1]);
+  for(const[bx,by]of order){const key='v'+(bx+1)+','+by;if(nodeDeg(bx+1,by)<=2||nodeDeg(bx+1,by+1)<=2)continue;CUT.add(key);if(reachAll()<base){CUT.delete(key);continue;}BUILT.add(key);
+    const x0=bx*P+5,x1=(bx+1)*P+12,y0=by*P+5,y1=by*P+12;clearArea(x0,y0,x1,y1);YARDB.add(by*NB+bx);YARDB.add(by*NB+bx+1);BLOCKK[by*NB+bx]=BLOCKK[by*NB+bx+1]='yard';
+    for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++){map[ty*W+tx]=LOT;PARKT[ty*W+tx]=((ty-y0)%3===1)?12:13;}
+    for(const ty of[y0-1,y1+1])for(let tx=x0;tx<=x1;tx++){map[ty*W+tx]=WALK;PARKT[ty*W+tx]=0;}
+    const cols=['#8a3a22','#5a5a52','#7a5a2a','#2a4a6a','#6a2a2a','#3a5a3a'];
+    for(let k=0;k<3;k++){const ty=y0+1+k*3;let tx=x0+Math.floor(R()*3);while(tx+3<=x1){if(R()<0.62){for(let i=0;i<3;i++)setT(tx+i,ty,BLD);addBuilding(tx,ty,3,1,0.55,pick(cols),'boxcar',{st:'ware',ws:40,wf:.2,wh:.2,ac:[]});}tx+=3+Math.floor(R()*2);}}
+    props.push({x:(x0+1)*T,y:(y0-0.5)*T,k:'cone'},{x:(x1)*T,y:(y1+1.5)*T,k:'cone'});
+    break;}}
+// 5. the river: banks that swell in and out with a riverside park, an island, and a bay at the mouth
+function riverShape(){const docks=[2,6,13,4,12,16].map(by=>by*P+9),near=y=>docks.some(d=>Math.abs(y-d)<6),noE=y=>{const by=Math.floor(y/P);return by>=5&&by<=12;};
+  for(let y=0;y<W;y++){if(bridgeRow(y)||near(y)){BANKW[y]=BANKE[y]=0;continue;}
+    const w=Math.round(2.4+2.2*Math.sin(y*0.052+1.3)+1.1*Math.sin(y*0.14+0.4)),e=noE(y)?0:Math.round(2.2+2.2*Math.sin(y*0.047+4.1)+1.1*Math.sin(y*0.12+2.2));
+    // ease to nothing next to bridges and boat docks so they keep their water
+    let k=1;for(let d=1;d<=4;d++)if(bridgeRow(y-d)||bridgeRow(y+d)||near(y-d)||near(y+d)){k=Math.min(k,(d-1)/4);}
+    BANKW[y]=clamp(Math.round(w*k),0,5);BANKE[y]=clamp(Math.round(e*k),0,5);}
+  const land=(tx,ty,tr)=>{map[ty*W+tx]=GRASS;RIV[ty*W+tx]=0;PARKT[ty*W+tx]=1;if(tr&&R()<0.16){setT(tx,ty,TREE);addTree((tx+.5)*T,(ty+.5)*T,R()<0.6?'round':'pine',rr(0.8,1.1));}};
+  for(let y=0;y<W;y++){for(let i=0;i<BANKW[y];i++)land(RIVX0+i,y,i>0);for(let i=0;i<BANKE[y];i++)land(RIVX1-1-i,y,i>0);}
+  for(let y=ISLE.y0;y<=ISLE.y1;y++){const hw=Math.round(3.4*Math.sin(PI*(y-ISLE.y0)/(ISLE.y1-ISLE.y0)));for(let x=ISLE.cx-hw;x<ISLE.cx+hw;x++)land(x,y,Math.abs(x-ISLE.cx+0.5)<hw-1);}
+  props.push({x:ISLE.cx*T,y:(ISLE.y0+4)*T,k:'statue',rad:30,ht:130});
+  // the bay: the beach block east of the river mouth floods into a little harbour
+  {const bx=8,by=NB-1;if(BLOCKK[by*NB+bx]==='beach'){const x0=bx*P+4,x1=bx*P+13,y0=by*P+4,y1=by*P+13;clearArea(x0,y0,x1,y1);BLOCKK[by*NB+bx]='bay';
+    for(let ty=y0;ty<=y1;ty++)for(let tx=x0;tx<=x1;tx++){const edge=tx===x1||ty===y0;map[ty*W+tx]=edge?GRASS:WATER;RIV[ty*W+tx]=edge?0:1;PARKT[ty*W+tx]=edge?6:0;}
+    BAY={x0,x1,y0,y1};}}}
+// 6. the skyline climbs toward downtown and falls away toward the edges of town
+function skyline(){const cx=(12.5*P)*T,cy=(11.5*P)*T;for(const b of buildings){if(b.st==='house'||b.kind||b.outside)continue;
+  const d=hyp(b.x+b.w/2-cx,b.y+b.h/2-cy),k=0.78+0.62*Math.exp(-((d/2600)**2));if(b.st==='glass'||b.st==='conc'){b.hg=Math.round(b.hg*k*2)/2;if(b.tier&&b.tier.hg2)b.tier.hg2=Math.max(b.hg+0.5,Math.round(b.tier.hg2*k*2)/2);}
+  else if(d>5200&&b.hg>3)b.hg-=0.5;b.hg=Math.max(1,b.hg);}}
 function genMap(){
   for(let y=0;y<W;y++)for(let x=0;x<W;x++){
     const mx=x%P,my=y%P;let t;
@@ -334,7 +437,7 @@ function genMap(){
     else if(kind==='cpark'){parkBlock(x0,y0,z,(bx===CPARK.x0+1&&(by===CPARK.y0+1||by===CPARK.y0+2))?2.6:0);if(bx===CPARK.x0&&by===CPARK.y1)addRamp((x0+4)*T,(y0+1.5)*T,0,'dirt');}
     else if(kind==='ts'){subdivide(x0,y0,8,8,0,-1,true);for(let y=-1;y<9;y++)for(let x=-1;x<9;x++){const tx=x0+x,ty=y0+y;if(map[ty*W+tx]===WALK)PARKT[ty*W+tx]=5;}}
     else if(kind==='park')parkBlock(x0,y0,z);
-    else if(kind==='res')resBlock(x0,y0,z);
+    else if(kind==='res'){if(!edgeB&&R()<0.42){if(culBlock(x0,y0,z,bx,by))BLOCKK[by*NB+bx]='cul';}else resBlock(x0,y0,z);}
     else if(kind==='plaza')plazaBlock(x0,y0);
     else if(kind==='lot'||kind==='spray'||kind==='crusher'){
       for(let y=0;y<8;y++)for(let x=0;x<8;x++)setT(x0+x,y0+y,LOT);
@@ -358,7 +461,7 @@ function genMap(){
   shipDock();
   fillCuts();
   for(const iy of BRIDGES){for(let y=iy*P;y<iy*P+4;y++)for(let x=RIVX0;x<RIVX1;x++)BRT[y*W+x]=1;for(let x=RIVX0*T+16;x<RIVX1*T;x+=32)DECKS.push({x,y:(iy*P+2)*T,big:iy===BIGB,dash:((x>>5)&1)===0});}
-  diagAvenues();alleys();
+  diagAvenues();joinBlocks();sideStreets();alleys();railYard();riverShape();skyline();
   for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(map[y*W+x]===WALK)walkTiles.push([x,y]);
   {const x0=RIVX0*T,x1=RIVX1*T;
    for(const iy of BRIDGES){const yn=iy*P*T,ys=(iy*P+4)*T,big=iy===BIGB;
@@ -368,7 +471,7 @@ function genMap(){
      for(const tx of[tA,tB]){const yc=(yn+ys)/2;props.push({x:tx,y:yc,yc,k:'bcrown',rad:96,ht:240});for(const sd of[-1,1])props.push({x:tx,y:yc+sd*82,yc,k:'bleg',rad:18,ht:230});}
      for(const cy of[yn-9,ys+9]){for(const ax of[x0+8,x1-8])props.push({x:ax,y:cy,k:'anchor'});}
      for(const cy of[yn-9,ys+9])for(let x=x0+8;x<x1-8;x+=24)props.push({x:x+12,y:cy,k:'cable',x0:x,x1:x+24,tA,tB,rad:22,ht:200});}
-   for(let y=0;y<WPX;y+=40){const ty=Math.floor(y/T);if(bridgeRow(ty))continue;props.push({x:x0-3,y:y+20,k:'brail',a:PI/2},{x:x1+3,y:y+20,k:'brail',a:PI/2});}}
+   for(let y=0;y<WPX;y+=40){const ty=Math.floor(y/T);if(bridgeRow(ty))continue;if(BAY&&ty>=BAY.y0)continue;props.push({x:x0-3+BANKW[ty]*T,y:y+20,k:'brail',a:PI/2},{x:x1+3-BANKE[ty]*T,y:y+20,k:'brail',a:PI/2});}}
   // street furniture and street trees along the sidewalks
   for(let y=0;y<W;y++)for(let x=0;x<W;x++){
     if(map[y*W+x]!==WALK||PARKT[y*W+x])continue;const mx=x%P,my=y%P;
