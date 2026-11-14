@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.5.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.6.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.5.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.6.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -222,7 +222,7 @@ function districtAt(x,y){const tx=Math.floor(x/T),ty=Math.floor(y/T),bx=Math.flo
   if(by===NB-1&&my>=4)return 'SOUTH BEACH';
   if(BLOCKK[by*NB+bx]==='construct'&&mx>=4&&my>=4)return 'CONSTRUCTION SITE';
   return null;}
-const BLOCKK=[];
+const BLOCKK=[];let STADIUM=null;
 const props=[];
 const PAL={
   brick:['#8a4a3a','#7a3e30','#9a5a42','#6e4a3c','#a0644a','#84523c','#6a3a32','#94604a'],
@@ -337,6 +337,7 @@ function genMap(){
     const x0=bx*P+5,y0=by*P+5,z=zoneOf((bx*P+8)*T,(by*P+8)*T),edgeB=bx===0||by===0||bx===NB-1||by===NB-1;
     if(bx===RIVER_BX||bx===RIVER_BX+1){BLOCKK[by*NB+bx]='river';continue;}
     let kind=SPECIAL[bx+','+by];
+    if(!kind&&bx===11&&by===16)kind='stadium';
     if(!kind&&by===NB-1)kind='beach';
     if(!kind&&inCP(bx,by))kind='cpark';
     if(!kind&&isTS(bx,by))kind='ts';
@@ -345,7 +346,13 @@ function genMap(){
       if(z===-1)kind=r<0.07?'park':r<0.17?'plaza':r<0.23?'lot':'bld';
       else kind=r<0.13?'park':r<0.2?'lot':r<(edgeB?0.55:0.3)?'res':'bld';}
     BLOCKK[by*NB+bx]=kind;
-    if(kind==='beach')beachBlock(x0,y0);
+    if(kind==='stadium'){for(let y=0;y<8;y++)for(let x=0;x<8;x++){setT(x0+x,y0+y,GRASS);PARKT[(y0+y)*W+x0+x]=2;}
+      const wall=(x,y,w,h)=>{for(let j=0;j<h;j++)for(let i=0;i<w;i++)setT(x0+x+i,y0+y+j,BLD);addBuilding(x0+x,y0+y,w,h,1.6,'#b8b4aa','stadium',{st:'conc',ws:30,wf:.3,wh:.3});};
+      wall(0,0,8,1);wall(0,7,3,1);wall(5,7,3,1);wall(0,1,1,2);wall(0,5,1,2);wall(7,1,1,6);
+      for(const[cx,cy]of[[1,1],[7,1],[1,7],[7,7]])props.push({x:(x0+cx)*T,y:(y0+cy)*T,k:'flood',rad:20,ht:150});
+      for(const gx of[1.6,6.4])props.push({x:(x0+gx)*T,y:(y0+4)*T,k:'goal',a:PI/2});
+      STADIUM={x:(x0+4)*T,y:(y0+4)*T};}
+    else if(kind==='beach')beachBlock(x0,y0);
     else if(kind==='construct')constructBlock(x0,y0);
     else if(kind==='cpark'){parkBlock(x0,y0,z,(bx===CPARK.x0+1&&(by===CPARK.y0+1||by===CPARK.y0+2))?2.6:0);if(bx===CPARK.x0&&by===CPARK.y1)addRamp((x0+4)*T,(y0+1.5)*T,0,'dirt');}
     else if(kind==='ts'){subdivide(x0,y0,8,8,0,-1,true);for(let y=-1;y<9;y++)for(let x=-1;x<9;x++){const tx=x0+x,ty=y0+y;if(map[ty*W+tx]===WALK)PARKT[ty*W+tx]=5;}}
@@ -1131,8 +1138,8 @@ function aiLane(c,dt){
     const passed=(d===0||d===1)?along>=ai.sw-4:along<=ai.sw+4;
     if(passed){ai.dir=ai.turn;ai.k=(ai.turn===0||ai.turn===2)?ai.tj:ai.ti;ai.turn=-1;}
   }
-  const d=ai.dir,lc=laneCoord(d,ai.k);
-  const spd=hyp(c.vx,c.vy),look=50+spd*0.35;
+  const d=ai.dir,lc=laneCoord(d,ai.k)+(ai.pass>0?[-32,32,32,-32][d]:0);
+  const spd=hyp(c.vx,c.vy),look=50+spd*0.35;if(ai.pass>0)ai.pass-=dt;
   let gx,gy;
   if(d===0||d===2){gx=c.x+DX[d]*look;gy=lc}else{gx=lc;gy=c.y+DY[d]*look}
   const diff=angDiff(Math.atan2(gy-c.y,gx-c.x),c.a);
@@ -1149,8 +1156,10 @@ function aiLane(c,dt){
     if(rx*rx+ry*ry>(D+80)*(D+80))continue;
     const f=rx*fx+ry*fy;if(f<=0)continue;
     const l=Math.abs(-rx*fy+ry*fx);
-    if(f<D+o.t.L/2&&l<hw+o.t.Wd/2+2){blocked=true;break;}
+    if(f<D+o.t.L/2&&l<hw+o.t.Wd/2+2){blocked=true;ai.bo=o;break;}
   }
+  if(blocked&&ai.bo&&hyp(ai.bo.vx,ai.bo.vy)<15&&!(ai.bo.ai&&ai.bo.ai.mode==='lane'&&tlStopDist(ai.bo)!=null)){ai.staticT=(ai.staticT||0)+dt;if(ai.staticT>1.4){ai.pass=3.2;ai.staticT=0;ai.revT=0.7;}}else if(!blocked)ai.staticT=0;
+  if(ai.pass>0&&blocked&&ai.bo&&hyp(ai.bo.vx,ai.bo.vy)<15)blocked=false;
   if(!blocked)for(const p of peds){if(p.gone)continue;const rx=p.x-c.x,ry=p.y-c.y;if(rx*rx+ry*ry>(D+20)*(D+20))continue;const f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+9){blocked=true;break;}}
   if(!blocked&&!player.car&&game.state==='play'){const rx=player.x-c.x,ry=player.y-c.y;const f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+10)blocked=true;}
   if(blocked){ai.blockT+=dt;if(ai.blockT<3.5)target=0;if(ai.blockT>5.5)ai.blockT=0;}else ai.blockT=Math.max(0,ai.blockT-dt*2);
@@ -2561,6 +2570,9 @@ function carAlarm(c){if(c.driver||c.t.boat||c.t.heli||R()>0.3)return;alarm={c,t:
 function updateAlarm(dt){if(!alarm)return;alarm.t-=dt;if(Math.floor(alarm.t*4)!==Math.floor((alarm.t+dt)*4))sfx('ring',0.25);if(alarm.t<=0||player.car!==alarm.c)alarm=null;}
 function extTick9(dt){updateShouts(dt);updateAlarm(dt);}
 
+// ---------- landmarks: the stadium and the statue on the Westside beach ----------
+if(STADIUM)SIGNS.push({x:STADIUM.x,y:STADIUM.y+150,text:'GRIDLOCK STADIUM',bg:'#1f3f9f',fg:'#ffffff',h:60,on:()=>true});
+{let sx=null;for(let bx=0;bx<6;bx++)if(BLOCKK[(NB-1)*NB+bx]==='beach'){sx=bx;break;}const x=((sx==null?2:sx)*P+9)*T,y=((NB-1)*P+7)*T;props.push({x,y,k:'statue',rad:30,ht:130});SIGNS.push({x,y:y-60,text:'STATUE OF GRIDLOCK',bg:'#3a6a5a',fg:'#ffffff',h:24,on:()=>true});}
 window.__roomsReady=true;
 
 // ================= CAMERA =================
@@ -2847,7 +2859,7 @@ function update(dt){
   for(const h of hitMarks)h.t-=dt;hitMarks=hitMarks.filter(h=>h.t>0);
   {const z=zoneOf(player.x,player.y),dn=districtAt(player.x,player.y),key=z+'|'+dn;if(key!==curZone){const zc=z!==Math.floor((curZone+'').split('|')[0]);curZone=key;
     if(dn&&dn!=='RIVER BRIDGE')zoneBanner={text:dn,sub:z>=0?GANGS[z].name+' turf':'Downtown',col:'#ffe9a8',t:2.6};else if(zc||dn==='RIVER BRIDGE')zoneBanner={text:dn||(z>=0?GANGS[z].name.toUpperCase()+' TURF':'DOWNTOWN'),sub:z>=0?respectLabel(z):'Police HQ district',col:dn?'#ffe9a8':z>=0?GANGS[z].col:'#cfd6e0',t:2.6};}}
-  if(zoneBanner){zoneBanner.t-=dt;if(zoneBanner.t<=0)zoneBanner=null;}
+  if(zoneBanner&&!big){zoneBanner.t-=dt;if(zoneBanner.t<=0)zoneBanner=null;}
   if(radioBanner){radioBanner.t-=dt;if(radioBanner.t<=0)radioBanner=null;}
   clock=(clock+dt/420)%1;
   {const lightLvl=0.5-0.5*Math.cos(clock*TAU);
@@ -3467,6 +3479,11 @@ function drawProp3(o,fg){
       obox(o.x+sa*20,o.y-ca*20,a,62,1,EL_H,EL_H+0.4,[230,200,40],null,fg);return;}
     case 'elstair':{const ca=Math.cos(a),sa=Math.sin(a);for(let i=0;i<8;i++){const f=-60+(i+.5)*15;obox(o.x+ca*f,o.y+sa*f,a,7.5,12,0,(i+1)*EL_H/8,[110,104,96],[134,128,118],fg);}
       for(const s2 of[-1,1])obox(o.x-sa*s2*12,o.y+ca*s2*12,a,60,0.8,EL_H*0.5,EL_H*0.5+12,[70,76,84],null,fg);return;}
+    case 'flood':{obox(o.x,o.y,0,2,2,0,130,[80,84,90],null,fg);obox(o.x,o.y,0,9,3,124,136,[60,64,70],[60,64,70],fg);if(LIGHTK>0.1&&proj(o.x,o.y,130)){glow(PX,PY,12*PK,'#fff6d8',0.6+0.4*LIGHTK);}return;}
+    case 'goal':obox(o.x,o.y,a,14,1,0,12,[240,240,240],null,fg);return;
+    case 'statue':{const t=game.t;obox(o.x,o.y,0,18,18,0,24,[150,146,138],[170,166,156],fg);obox(o.x,o.y,0,10,10,24,44,[160,156,148],null,fg);
+      obox(o.x,o.y,0,6,5,44,96,[96,160,140],[110,176,156],fg);obox(o.x,o.y,0,3.5,3.5,96,106,[96,160,140],null,fg);for(let i=0;i<5;i++){const a2=i/5*TAU;obox(o.x+Math.cos(a2)*3,o.y+Math.sin(a2)*3,a2,2,0.6,106,112,[96,160,140],null,fg);}
+      obox(o.x+4,o.y-2,0,1.2,1.2,78,122,[96,160,140],null,fg);obox(o.x+4,o.y-2,0,2.4,2.4,122,128,[220,180,60],null,fg,0,0,true);if(proj(o.x+4,o.y-2,130))glow(PX,PY,8*PK,'#ffcc55',0.5+0.5*LIGHTK);return;}
     case 'rwall':obox(o.x,o.y,0,o.hl,o.hw,0,68,o.c,[60,60,64],fg);return;
     case 'rdoor':obox(o.x,o.y,0,14,2,0,40,[90,60,40],null,fg);sign3(o.x,o.y,48,'EXIT','#1d7a3a','#ffffff',8,fg);return;
     case 'rbox':obox(o.x,o.y,0,o.hl,o.hw,o.z0,o.z1,o.c,o.c,fg);return;
@@ -3968,8 +3985,8 @@ function drawHUD(){
   // frenzy / chaos / banners
   if(frenzy){const tm=Math.max(0,Math.ceil(frenzy.timer));hudText('KILL FRENZY '+frenzy.count+'/'+frenzy.goal+'  0:'+String(tm).padStart(2,'0'),VW/2,touchMode?VH*0.47:60*sc,Math.round(19*sc),Math.floor(game.t*3)%2?'#ff3b3b':'#ffd0d0','center');}
   if(combo.n>=2)hudText('CHAOS x'+combo.n,VW/2,touchMode?VH*0.51:90*sc,Math.round(17*sc),'#ff9a2e','center');
-  if(zoneBanner){ctx.globalAlpha=Math.min(1,zoneBanner.t*1.5);hudText(zoneBanner.text,VW/2,VH*0.2,Math.round(24*sc),zoneBanner.col,'center');hudText(zoneBanner.sub,VW/2,VH*0.2+24*sc,Math.round(13*sc),'#ddd','center',`600 ${Math.round(13*sc)}px system-ui`);ctx.globalAlpha=1;}
-  if(radioBanner&&player.car){ctx.globalAlpha=Math.min(1,radioBanner.t*1.5);hudText('📻 '+radioBanner.text,VW/2,VH*0.28,Math.round(19*sc),'#9fe0ff','center');if(radioBanner.sub)hudText(radioBanner.sub,VW/2,VH*0.28+22*sc,Math.round(12*sc),'#ccc','center',`600 ${Math.round(12*sc)}px system-ui`);ctx.globalAlpha=1;}
+  if(zoneBanner&&!big){ctx.globalAlpha=Math.min(1,zoneBanner.t*1.5);hudText(zoneBanner.text,VW/2,VH*0.2,Math.round(24*sc),zoneBanner.col,'center');hudText(zoneBanner.sub,VW/2,VH*0.2+24*sc,Math.round(13*sc),'#ddd','center',`600 ${Math.round(13*sc)}px system-ui`);ctx.globalAlpha=1;}
+  if(radioBanner&&player.car){ctx.globalAlpha=Math.min(1,radioBanner.t*1.5);const rx=touchMode?VW/2:(16*sc+msz+16*sc),ry=touchMode?VH*0.3:VH-34*sc,al=touchMode?'center':'left';hudText('📻 '+radioBanner.text+(radioBanner.sub?'  ·  '+radioBanner.sub:''),rx,ry,Math.round(14*sc),'#9fe0ff',al,`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
   // ticker
   let ty=touchMode?VH*0.62:VH-40*sc;
   for(let i=ticker.length-1;i>=0;i--){const t=ticker[i];ctx.globalAlpha=Math.min(1,t.t);hudText(t.text,VW/2,ty,Math.round(14*sc),'#fff','center',`600 ${Math.round(14*sc)}px system-ui`);ty-=22*sc;}

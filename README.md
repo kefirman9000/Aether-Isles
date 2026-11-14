@@ -60,6 +60,9 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Retry:** fail a story mission or race and you're offered a retry as soon as you're back on your feet.
 - **Baseball bat:** buy one at Ammu-Nation ($100) for close-up fights (Q to switch to it).
 - **More traffic:** city buses, stretch limos and Mr. Whippy ice cream vans join the traffic, and drivers slow down and let sirens through.
+- **Smarter traffic:** drivers pull out and go around wrecks, stalled cars and anything else stopped in their lane instead of waiting behind it forever (they still wait at red lights).
+- **New landmarks:** Gridlock Stadium downtown, with floodlights at night, and the Statue of Gridlock on the Westside beach.
+- **Tidier HUD:** the radio station name now shows small at the bottom of the screen, and area names wait until big messages have cleared.
 - **People talk back:** speech bubbles when you bump into people, honk at them, nearly run them over or fire a gun nearby.
 - **Car alarms:** some parked cars go off when you take them, and a cop nearby will notice.
 - **Boss calls:** when a boss has new work, they phone you over the radio feed.
