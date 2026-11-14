@@ -12,27 +12,28 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="icon-192.png">
 <title>Gridlock City</title>
-<link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Bungee&family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Archivo+Black&family=Pixelify+Sans:wght@400;700&display=swap" rel="stylesheet">
 <style>
+@font-face{font-family:'Pricedown';src:local('Pricedown'),local('Pricedown Bl'),url('pricedown.otf') format('opentype');font-display:swap}
 html,body{margin:0;height:100%;height:100dvh;background:#111;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
 canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height:100dvh;cursor:none;image-rendering:pixelated}
 #menu{position:fixed;inset:0;display:flex;color:#eee;z-index:5;background:linear-gradient(90deg,rgba(4,4,8,.94) 0%,rgba(4,4,8,.78) 34%,rgba(4,4,8,.15) 72%,rgba(4,4,8,0) 100%)}
 #menu .mm{display:flex;width:100%;height:100%;align-items:stretch}
 #menu .mmLeft{width:min(460px,94vw);padding:7vh 5vw 3vh;display:flex;flex-direction:column;box-sizing:border-box}
-#menu .logo{font-family:Black Ops One,Impact,sans-serif;font-size:clamp(44px,8vw,76px);line-height:.95;color:#e9dfc4;text-shadow:3px 3px 0 #8a0f14,6px 6px 0 #000}
+#menu .logo{font-family:Pricedown,Anton,Impact,sans-serif;font-size:clamp(44px,8vw,76px);line-height:.95;color:#e9dfc4;text-shadow:3px 3px 0 #8a0f14,6px 6px 0 #000}
 #menu .logo span{display:block;color:#ffc21a}
 #menu .tag{margin:12px 0 4vh;color:#bbb;font-size:14px;letter-spacing:1px}
 #menu nav{display:flex;flex-direction:column;gap:2px}
-#menu nav button{all:unset;cursor:pointer;font-family:Black Ops One,Impact,sans-serif;font-size:clamp(22px,3.4vw,30px);color:#cfcfcf;padding:6px 0 6px 26px;position:relative;letter-spacing:1px;text-shadow:2px 2px 0 #000}
+#menu nav button{all:unset;cursor:pointer;font-family:Pricedown,Anton,Impact,sans-serif;font-size:clamp(22px,3.4vw,30px);color:#cfcfcf;padding:6px 0 6px 26px;position:relative;letter-spacing:1px;text-shadow:2px 2px 0 #000}
 #menu nav button.sel{color:#ffc21a}
 #menu nav button.sel::before{content:'\25B6';position:absolute;left:0;top:50%;transform:translateY(-50%);font-size:.6em;color:#ffc21a}
 #menu .foot{margin-top:auto;font:12px system-ui;color:#888;line-height:1.8}
 #menu .foot button{all:unset;cursor:pointer;color:#bbb;text-decoration:underline}
 #menu .foot a{color:#c9a0ff;text-decoration:none}
 #menu .mmPanel{display:none;align-self:center;margin-left:2vw;width:min(520px,92vw);max-height:84vh;overflow:auto;background:rgba(8,8,12,.9);border:2px solid #ffc21a;border-radius:6px;padding:22px 24px;box-sizing:border-box;font:14px system-ui;color:#ddd}
-#menu .mmPanel h2{font-family:Black Ops One,Impact,sans-serif;font-weight:400;color:#ffc21a;margin:0 0 14px;font-size:26px}
+#menu .mmPanel h2{font-family:Pricedown,Anton,Impact,sans-serif;font-weight:400;color:#ffc21a;margin:0 0 14px;font-size:26px}
 #menu .mmPanel .slot,#menu .mmPanel .opt{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #2a2a33}
-#menu .mmPanel button{all:unset;cursor:pointer;font-family:Black Ops One,Impact,sans-serif;font-size:15px;background:#c9a23a;color:#111;padding:7px 14px;border-radius:4px;white-space:nowrap}
+#menu .mmPanel button{all:unset;cursor:pointer;font-family:Pricedown,Anton,Impact,sans-serif;font-size:15px;background:#c9a23a;color:#111;padding:7px 14px;border-radius:4px;white-space:nowrap}
 #menu .mmPanel button:disabled{opacity:.35;cursor:default}
 #menu .mmPanel button.back{margin-top:16px;background:#33333d;color:#ddd}
 #menu .mmPanel .warn{color:#ff7070}#menu .mmPanel .note{color:#888;font-size:12px}
@@ -48,7 +49,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.17.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.18.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -85,7 +86,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.17.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.18.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -1217,10 +1218,16 @@ function spawnPed(){
     const a=R()*TAU,d=viewR+rr(40,300);
     const x=player.x+Math.cos(a)*d,y=player.y+Math.sin(a)*d;
     const t=tileAt(Math.floor(x/T),Math.floor(y/T));
-    if(t!==WALK&&t!==GRASS)continue;if(y>=WPX||x<0||y<0||x>=WPX)continue;
+    if(t!==WALK&&t!==GRASS&&!(t===LOT&&PARKT[Math.floor(y/T)*W+Math.floor(x/T)]===9))continue;if(y>=WPX||x<0||y<0||x>=WPX)continue;
     if(camSees(x,y))continue;
     const p=makePed(x,y,R()<0.04);if(p.cop)p.state='walk';else{const z=zoneOf(x,y);if(z>=0&&R()<0.28)makeGang(p,z);}
     if(!p.cop&&p.gang==null&&PARKT[Math.floor(y/T)*W+Math.floor(x/T)]===1&&R()<0.45){p.jog=true;p.col=pick(['#ff5a8a','#5ad1ff','#ffe25a','#7cff6a']);}
+    // people dress for their part of town: hard hats and hi-vis at the docks, suits uptown, tourists in Times Square
+    if(!p.cop&&p.gang==null&&!p.jog){const dn=districtAt(x,y);
+      if(dn==='THE DOCKS'&&R()<0.7){p.col=pick(['#e8701a','#e8c81a','#3a5a8a']);p.hat=pick(['#f0c020','#f0f0ea','#e8701a']);}
+      else if((dn==='UPTOWN'||dn==='MILLIONAIRE\'S ROW'||dn==='MIDTOWN')&&R()<0.4){p.col=pick(['#2a2c34','#3a3c44','#22283a','#4a4038']);}
+      else if(dn==='TIMES SQUARE'&&R()<0.5){p.col=pick(['#ff5a8a','#5ad1ff','#ffe25a','#ffffff','#7cff6a']);if(R()<0.5)p.hat=pick(['#f0e6c8','#d8302a','#2a6ad8']);}
+      else if((dn==='LOTUS QUARTER'||dn==='LOTUS BAY')&&R()<0.25)p.hat='#2a2a2a';}
     pedPickNext(p);return;
   }
 }
@@ -1658,7 +1665,7 @@ function initAudio(){
     radioG=AC.createGain();radioG.gain.value=0;radioG.connect(master);
   }catch(e){AC=null}
 }
-const RADIO=[{name:'KRUD 88.6',tag:'gutter punk',bpm:172,kind:'punk'},{name:'NEON 101',tag:'night-drive synth',bpm:114,kind:'synth'},{name:'BASSLINE 104.5',tag:'street beats',bpm:88,kind:'hiphop'},{name:'RADIO OFF',tag:'',kind:'off',bpm:100}];
+const RADIO=[{name:'KRUD 88.6',tag:'gutter punk',bpm:172,kind:'punk'},{name:'NEON 101',tag:'night-drive synth',bpm:114,kind:'synth'},{name:'BASSLINE 104.5',tag:'street beats',bpm:88,kind:'hiphop'},{name:'CHATTER 96.1',tag:'talk radio',bpm:100,kind:'talk'},{name:'RADIO OFF',tag:'',kind:'off',bpm:100}];
 const radio={st:0,step:0,next:0,bar:0};
 function setStation(i){radio.st=((i%RADIO.length)+RADIO.length)%RADIO.length;if(player.car)player.car.radio=radio.st;radio.step=0;radio.bar=0;if(AC)radio.next=AC.currentTime+0.05;const st=RADIO[radio.st];radioBanner={text:st.name,sub:st.tag,t:2.6};}
 function rv(t,dur,freq,type,vol,slide,lp){const o=AC.createOscillator();o.type=type;o.frequency.setValueAtTime(freq,t);if(slide)o.frequency.exponentialRampToValueAtTime(slide,t+dur);const g=AC.createGain();g.gain.setValueAtTime(0.0001,t);g.gain.linearRampToValueAtTime(vol,t+0.005);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);let n=o;if(lp){const f=AC.createBiquadFilter();f.type='lowpass';f.frequency.value=lp;o.connect(f);n=f;}n.connect(g);g.connect(radioG);o.start(t);o.stop(t+dur+0.02);}
@@ -1674,6 +1681,7 @@ function radioTick(){
   const S=RADIO[radio.st],sd=60/S.bpm/4;
   while(radio.next<AC.currentTime+0.15){
     const t=radio.next,s=radio.step%16;
+    if(S.kind==='talk'){radio.next+=sd;radio.step++;continue;}
     if(s===0)radio.bar++;
     const root=PROG[radio.st%PROG.length][Math.floor(radio.bar/2)%4];
     if(S.kind==='punk'){
@@ -1710,7 +1718,10 @@ function sfx(n,vol){vol=vol==null?1:vol;switch(n){
   case 'fail':[392,330,262,196].forEach((f,i)=>setTimeout(()=>tone(f,0.25,'sawtooth',0.11),i*170));break;
   case 'door':noise(0.09,1100,'lowpass',0.35);break;
   case 'splat':noise(0.16,450,'lowpass',0.45*vol);break;
-  case 'hit':noise(0.05,3200,'highpass',0.2);break;
+  case 'hit':noise(0.05,3200,'highpass',0.2);noise(0.08,500,'lowpass',0.25*vol);tone(110,0.06,'sine',0.18*vol,60);break;
+  case 'step':noise(0.035,900+Math.random()*500,'bandpass',0.07*vol,0.9);break;
+  case 'sniper':noise(0.3,1400,'bandpass',0.9*vol,0.6);tone(120,0.25,'sine',0.35*vol,40);break;
+  case 'pager':tone(2200,0.05,'square',0.08);setTimeout(()=>tone(2200,0.05,'square',0.08),110);setTimeout(()=>tone(2600,0.07,'square',0.08),220);break;
   case 'spray':noise(1.1,5000,'highpass',0.25);break;
   case 'deny':tone(180,0.25,'square',0.12);break;
   case 'shotgun':noise(0.3,1300,'lowpass',0.9*vol);tone(90,0.15,'square',0.2*vol,40);break;
@@ -1820,7 +1831,7 @@ function playerFire(){
   if(w.kick){if(w.kick>=7)shake=Math.max(shake,w.kick*0.6);}
   if(w.kind==='b'){const ca2=Math.cos(a+PI/2),sa2=Math.sin(a+PI/2);puff(ox,oy,ca2*rr(60,110)+rr(-20,20),sa2*rr(60,110)+rr(-20,20),rr(.25,.4),2,'#d9b24a','debris');}
   if(w.kind!=='f'&&w.kind!=='m')puff(ox,oy,0,0,0.05,w.kind==='r'||n>1?14:9,'#fff2a8','flash');
-  sfx(w.kind==='r'?'rocket':w.kind==='f'?'flame':w.kind==='m'?'throw':n>1?'shotgun':player.w===1?'smg':'shot');
+  sfx(w.kind==='r'?'rocket':w.kind==='f'?'flame':w.kind==='m'?'throw':w.sniper?'sniper':n>1?'shotgun':(player.w===1||w.scope)?'smg':'shot');
   if(w.kind==='b'||w.kind==='r')panicAround(player.x,player.y,260);
   let copNear=false;for(const c of cars)if(c.driver==='cop'&&dist2(c.x,c.y,player.x,player.y)<420*420)copNear=true;
   for(const p of peds)if(p.cop&&!p.gone&&dist2(p.x,p.y,player.x,player.y)<380*380)copNear=true;
@@ -1882,7 +1893,7 @@ function updateHeli(dt){
   if(s>=6&&game.state==='play'&&pd<420){h.shootT-=dt;if(h.shootT<=0){h.shootT=rr(1.1,1.8);for(let i=0;i<4;i++)setTimeout(()=>{if(!heli||heli.fall>0)return;const aa=npcAim(Math.atan2(tg.y-heli.y,tg.x-heli.x),true);fireBullet(heli.x,heli.y,aa,900,'cop',6,'b',5);sfx('smg',0.35);},i*90);}}
   // your bullets and rockets can bring it down
   for(const b of bullets){if(b.own!=='player'||b.life<=0)continue;if(dist2(b.x,b.y,h.x,h.y)<(b.dz!=null?54:44)**2&&(b.dz==null||Math.abs(b.z-(h.z+7))<(b.kind==='r'?60:42))){h.hp-=b.kind==='r'?220:b.kind==='f'?3:(b.dmg||20);b.life=0;puff(h.x,h.y,0,0,0.08,14,'#fff2a8','flash');hitMarks.push({x:h.x,y:h.y,t:0.12,kill:h.hp<=0});
-    if(h.hp<=0){h.fall=1.6;crime(1500,0);showBig('CHOPPER DOWN','','#ff9a2e',2);chaos();break;}}}
+    if(h.hp<=0){h.fall=1.6;crime(1500,0);showBig('CHOPPER DOWN','','#ff9a2e',2);chaos();slowT=Math.max(slowT,1.4);shake=Math.max(shake,10);break;}}}
 }
 function heliSees(){if(!heli||heli.fall>0)return false;const tg=player.car||player;return hyp(tg.x-heli.x,tg.y-heli.y)<380;}
 // ---- taxi fares: drive a cab and passengers hail you ----
@@ -1980,12 +1991,12 @@ const LM={
 const DLG={open:false,lines:null,i:0,done:null,choice:null};
 (function(){const d=document.createElement('div');d.id='dlg';d.innerHTML='<div class="who"></div><div class="txt"></div><div class="btns"></div><div class="hint">tap / Enter ▸</div>';document.body.appendChild(d);
   const st=document.createElement('style');st.textContent=`#dlg{position:fixed;left:50%;bottom:7vh;transform:translateX(-50%);width:min(720px,92vw);background:rgba(8,8,12,.92);border:2px solid #ffc21a;border-radius:6px;padding:14px 18px 10px;color:#eee;font:16px system-ui;z-index:4;display:none;box-sizing:border-box;cursor:pointer;user-select:none}
-#dlg .who{font-family:Black Ops One,Impact,sans-serif;color:#ffc21a;font-size:18px;margin-bottom:4px}#dlg .txt{line-height:1.45;min-height:2.6em}#dlg .hint{text-align:right;color:#888;font-size:12px}
-#dlg .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}#dlg .btns button.sel{outline:3px solid #fff;outline-offset:2px}#dlg .btns button{all:unset;cursor:pointer;font-family:Black Ops One,Impact,sans-serif;background:#c9a23a;color:#111;padding:8px 16px;border-radius:4px}#dlg .btns button.no{background:#33333d;color:#ddd}
+#dlg .who{font-family:Pricedown,Anton,Impact,sans-serif;color:#ffc21a;font-size:18px;margin-bottom:4px}#dlg .txt{line-height:1.45;min-height:2.6em}#dlg .hint{text-align:right;color:#888;font-size:12px}
+#dlg .btns{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}#dlg .btns button.sel{outline:3px solid #fff;outline-offset:2px}#dlg .btns button{all:unset;cursor:pointer;font-family:Pricedown,Anton,Impact,sans-serif;background:#c9a23a;color:#111;padding:8px 16px;border-radius:4px}#dlg .btns button.no{background:#33333d;color:#ddd}
 #shop{position:fixed;right:3vw;top:14vh;width:min(330px,88vw);background:rgba(8,8,12,.92);border:2px solid #3ee07a;border-radius:6px;padding:14px 16px;color:#ddd;font:14px system-ui;z-index:4;display:none}
-#shop h3{margin:0 0 8px;font-family:Black Ops One,Impact,sans-serif;font-weight:400;color:#3ee07a;font-size:20px}#shop .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2a33}
-#shop button{all:unset;cursor:pointer;font-family:Black Ops One,Impact,sans-serif;background:#3ee07a;color:#111;padding:6px 12px;border-radius:4px;white-space:nowrap}#shop button:disabled{opacity:.35;cursor:default}#shop small{color:#999}
-#rotate{position:fixed;inset:0;background:#08080c;color:#ffc21a;display:none;align-items:center;justify-content:center;text-align:center;font:22px Black Ops One,Impact,sans-serif;z-index:9;padding:20px}`;document.head.appendChild(st);
+#shop h3{margin:0 0 8px;font-family:Pricedown,Anton,Impact,sans-serif;font-weight:400;color:#3ee07a;font-size:20px}#shop .row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #2a2a33}
+#shop button{all:unset;cursor:pointer;font-family:Pricedown,Anton,Impact,sans-serif;background:#3ee07a;color:#111;padding:6px 12px;border-radius:4px;white-space:nowrap}#shop button:disabled{opacity:.35;cursor:default}#shop small{color:#999}
+#rotate{position:fixed;inset:0;background:#08080c;color:#ffc21a;display:none;align-items:center;justify-content:center;text-align:center;font:22px Pricedown,Anton,Impact,sans-serif;z-index:9;padding:20px}`;document.head.appendChild(st);
   d.addEventListener('click',e=>{if(e.target.tagName==='BUTTON')return;dlgNext();});
   const s=document.createElement('div');s.id='shop';document.body.appendChild(s);
   const r=document.createElement('div');r.id='rotate';r.innerHTML='<div>⟳<br>Turn your phone sideways to play</div>';document.body.appendChild(r);})();
@@ -2037,7 +2048,7 @@ const BARRIERS=[];
 var barriersUp=false;
 function syncBarriers(){const want=!cityOpen();if(want===barriersUp)return;barriersUp=want;
   for(const b of BARRIERS)map[b.ty*W+b.tx]=want?BLD:b.orig;
-  if(!want&&game.started){showBig('THE CITY IS OPEN','The bridges are open. The east side is yours to explore','#ffd24a',4);radioMsg('NEWS: All three East River bridges reopen to traffic.');}}
+  if(!want&&game.started){showBig('THE CITY IS OPEN','The bridges are open. The east side is yours to explore','#ffd24a',4);radioMsg('NEWS: All three East River bridges reopen to traffic.');pager('Vince: bridges are open. Dex Calloway uptown and Mother Lin want to meet you.');}}
 const VINCE=BOSSES[0].name,DEX=BOSSES[1].name,LIN=BOSSES[2].name,YOU='You';
 // step kinds: talk, steal, drive, wreck, kill, collect, heat, lose, boat
 const CHAPTERS=[
@@ -2812,6 +2823,24 @@ let ROOM_FROM=null;
 
 // ---------- police radio and the news ----------
 const RADIOLOG=[];let lastStars=0,wasSeen=true,newsT=50;
+// GTA III's pager: a little LCD box, top left, that scrolls a message across
+let PAGER=null;function pager(t){PAGER={t,at:performance.now()};sfx('pager');}
+function drawPager(sc){if(!PAGER)return;const age=(performance.now()-PAGER.at)/1000;if(age>12){PAGER=null;return;}
+  const w=Math.round(230*sc),h=Math.round(30*sc),x=touchMode?VW/2-w/2:Math.round(16*sc),y=touchMode?Math.round(56*sc):Math.round((mission||job||fare||sideJob||roofRun?150:14)*sc);
+  ctx.save();ctx.fillStyle='#1a1e1a';rrect(x-4,y-4,w+8,h+8,6);ctx.fill();ctx.fillStyle='#8fb87a';ctx.fillRect(x,y,w,h);ctx.beginPath();ctx.rect(x+4,y,w-8,h);ctx.clip();
+  ctx.font=`bold ${Math.round(15*sc)}px "Pixelify Sans",monospace`;ctx.textBaseline='middle';ctx.fillStyle='#1d2a18';const tw=ctx.measureText(PAGER.t).width;
+  const span=w+tw+30*sc,off=w-((age*70*sc)%span);ctx.fillText(PAGER.t,x+4+off,y+h/2+1);ctx.restore();}
+// the talk station and the ads: lines appear under the station name while you listen
+const TALK=['MARTY VANCE: You\'re on Chatter 96.1. Caller, go ahead.','CALLER: Marty, why does every car in this town honk at me?','MARTY: Because you\'re in the middle of the road, Doris.',
+  'MARTY: Today\'s topic: is the El train a train, or a very slow ceiling?','CALLER: I saw a man land a taxi on a hay bale. Is that legal?','MARTY: In Gridlock City? It\'s practically a sport.',
+  'CALLER: The cops chased me for six blocks for jaywalking.','MARTY: Six stars of jaywalking. Respect.','MARTY: Coming up: the mayor explains potholes, again.',
+  'CALLER: Marty, the Lotus Quarter lanterns are beautiful.','MARTY: Finally, a nice call. I don\'t know what to do with it.','MARTY: Stay off the bridges at rush hour. Stay off them always, really.'];
+const ADS=['AD: Gridlock Savings Bank. Now with 40% fewer robberies!','AD: Blue Plate Diner. Pie so good you\'ll forget the health inspection.','AD: Iron Works Gym. Lift heavy. Get heavier.',
+  'AD: Lucky Pawn. We buy anything. We ask nothing.','AD: Pizza Paolo\'s. Hot in thirty minutes or we stop answering the phone.','AD: Gridlock Motors. Cash only. No questions. Great financing.','AD: Pipsqueak. The car that parks in your pocket.'];
+let radioTextT=8,talkI=0;
+function updateRadioText(dt){if(!player.car||game.state!=='play')return;const st=RADIO[radio.st];if(!st||st.kind==='off')return;radioTextT-=dt;if(radioTextT>0)return;
+  if(st.kind==='talk'){radioBanner={text:st.name,sub:TALK[talkI++%TALK.length],t:5.5};radioTextT=6;}
+  else{radioBanner={text:st.name,sub:pick(ADS),t:5};radioTextT=rr(40,70);}}
 function radioMsg(t){RADIOLOG.push({t,life:6});if(RADIOLOG.length>3)RADIOLOG.shift();}
 function areaName(){const o=player.car||player,d=districtAt(o.x,o.y);if(d)return d.toLowerCase().replace(/\b\w/g,c=>c.toUpperCase());const z=zoneOf(o.x,o.y);return z>=0?GANGS[z].name+' turf':'downtown';}
 function updateRadioChatter(dt){for(let i=RADIOLOG.length-1;i>=0;i--){RADIOLOG[i].life-=dt;if(RADIOLOG[i].life<=0)RADIOLOG.splice(i,1);}
@@ -2821,7 +2850,7 @@ function updateRadioChatter(dt){for(let i=RADIOLOG.length-1;i>=0;i--){RADIOLOG[i
   if(s>0){const seen=seenT<1.2;if(seen&&!wasSeen)radioMsg('DISPATCH: Eyes on the suspect near '+areaName()+'!');if(!seen&&wasSeen)radioMsg('DISPATCH: We lost visual. Search the area.');wasSeen=seen;}
   newsT-=dt;if(newsT<=0&&s===0){newsT=rr(70,140);radioMsg(pick(['NEWS: Traffic is backed up on the Gridlock Bridge again.','NEWS: Mayor promises more cops downtown. Again.','NEWS: Gang tension rising between the Red Sabres and Chrome Saints.','NEWS: Times Square screens hacked to show cat videos.','NEWS: East River declared "mostly swimmable".','WEATHER: '+(rain>0.3?'Storms rolling through the city tonight.':'Clear skies over Gridlock City.')]));}}
 function drawRadioLog(sc){{const ms=Math.round((touchMode?118:150)*sc),x=(touchMode?12:16)*sc+ms/2,y=touchMode?12*sc+ms+14*sc:VH-ms-16*sc-12*sc,mins=Math.floor(((clock%1)+1)%1*1440),hh=Math.floor(mins/60),mm=mins%60;
-  if(!touchMode&&rain>0.3)hudText(SEASON()==='winter'?'❄ snow':'☂ rain',x,y,Math.round(13*sc),'#ddd','center',`600 ${Math.round(13*sc)}px system-ui`);}let y=(touchMode?150:56)*sc;for(const m of RADIOLOG){ctx.globalAlpha=Math.min(1,m.life);hudText(m.t,18*sc,y,Math.round(13*sc),m.t.startsWith('DISPATCH')?'#9fd0ff':'#ffe9a8','left',`600 ${Math.round(13*sc)}px system-ui`);y+=18*sc;}ctx.globalAlpha=1;
+  if(!touchMode&&rain>0.3)hudText(SEASON()==='winter'?'❄ snow':'☂ rain',x,y,Math.round(13*sc),'#ddd','center',`600 ${Math.round(13*sc)}px system-ui`);}let y=(touchMode?150:56)*sc+(PAGER&&!touchMode&&!(mission||job||fare||sideJob||roofRun)?34*sc:0);for(const m of RADIOLOG){ctx.globalAlpha=Math.min(1,m.life);hudText(m.t,18*sc,y,Math.round(13*sc),m.t.startsWith('DISPATCH')?'#9fd0ff':'#ffe9a8','left',`600 ${Math.round(13*sc)}px system-ui`);y+=18*sc;}ctx.globalAlpha=1;
   if(drill){const w=200*sc,x=VW/2-w/2,yy=VH*0.68;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x,yy,w,12*sc);ctx.fillStyle='#ffd600';ctx.fillRect(x+2,yy+2,(w-4)*clamp(drill.t/9,0,1),12*sc-4);hudText('CRACKING THE VAULT',VW/2,yy-12*sc,Math.round(14*sc),'#ffe9a8','center');}}
 function extTick6(dt){updateRobbery(dt);updateRadioChatter(dt);}
 
@@ -2981,7 +3010,7 @@ function sirenBehind(c){const fx=Math.cos(c.a),fy=Math.sin(c.a);for(const o of c
   if(!on)continue;const dx=o.x-c.x,dy=o.y-c.y,f=dx*fx+dy*fy;if(f>-15||f<-180)continue;if(Math.abs(-dx*fy+dy*fx)<40)return true;}return false;}
 // ---------- bosses call when they have work; the minimap zooms out with speed ----------
 let callT=30,MMZ=1;
-function updateCalls(dt){callT-=dt;if(callT<=0){callT=150;if(!mission&&stars()===0)for(const b of BOSSES)if(storyAvail(b.g)){radioMsg('PHONE: '+b.name+' has a job for you. Look for the '+b.ini+' on the map.');break;}}
+function updateCalls(dt){callT-=dt;if(callT<=0){callT=150;if(!mission&&stars()===0)for(const b of BOSSES)if(storyAvail(b.g)){pager(b.name.split(' ')[0].replace(/"/g,'')+': got work for you. Come see me ('+b.ini+' on the map).');break;}}
   const sp=player.car?hyp(player.car.vx,player.car.vy):0;MMZ=lerp(MMZ,1+clamp((sp-150)/650,0,0.75),0.03);}
 function extTick8(dt){updateRetry();updateCalls(dt);}
 
@@ -3393,7 +3422,13 @@ function initCountry(){{const ys=[3,9,15].map(iy=>(iy*P+2)*T);
   props.push({x:WPX+760,y:(9*P+2)*T-140,k:'windmill',rad:40,ht:120});}}
 function updateStages(dt){syncBarriers();if(cityOpen()||game.state!=='play'||SUB||ROOM)return;const o=player.car||player;
   if(o.x>RIVX1*T&&o.y>0&&o.y<WPX+400){if(stars()<4){crime(0,4);showBig('KEEP OUT','The east side is closed to you for now','#ff4040',2.4);}}}
-function extTick14(dt){updateStages(dt);updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
+// dock workers in hard hats and hi-vis keep the port busy while you're nearby
+let dockT=0;function updateDockers(dt){dockT-=dt;if(dockT>0||game.state!=='play')return;dockT=1.5;
+  const near=[...DOCKB].map(k=>k.split(',').map(Number)).filter(([bx,by])=>hyp((bx*P+9)*T-player.x,(by*P+9)*T-player.y)<1300);if(!near.length)return;
+  if(peds.filter(p=>!p.gone&&p.docker).length>=7)return;
+  for(let i=0;i<10;i++){const [bx,by]=pick(near),x=(bx*P+5+rr(0,8))*T,y=(by*P+5+rr(0,8))*T,ti=Math.floor(y/T)*W+Math.floor(x/T);
+    if(map[ti]!==LOT||camSees(x,y))continue;const q=makePed(x,y,false);q.docker=true;q.col=pick(['#e8701a','#e8c81a','#3a5a8a']);q.hat=pick(['#f0c020','#f0f0ea','#e8701a']);pedPickNext(q);return;}}
+function extTick14(dt){updateDockers(dt);updateRadioText(dt);updateStages(dt);updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
 function extTick13(dt){extTick14(dt);updateWaypoint();updateGangWar(dt);updateReputation(dt);updateTurfPressure(dt);updatePolice(dt);updateEscapes(dt);}
 function extTick12(dt){updateCrew(dt);extTick13(dt);}
 function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();extTick12(dt);}
@@ -3501,7 +3536,7 @@ function update(dt){
         else{if(fl>player.jz&&fl-player.jz<=8.5)player.jz=fl;player.peak=player.jz;}} // step up as far as footFloor looks (z+8)
       circleTiles(player,7,player.jz>4,player.jz);
       player.moving=m>0.1&&player.jz<=0;
-      if(player.moving)player.anim+=dt*m*13;
+      if(player.moving){const a0=player.anim;player.anim+=dt*m*13;if(Math.floor(a0/PI)!==Math.floor(player.anim/PI))sfx('step',run?1.3:1);}
       if(mouse.used&&!touchMode){const [wx,wy]=aimPoint();player.a=Math.atan2(wy-player.y,wx-player.x);}
       else player.a=lerpAng(player.a,player.body,Math.min(1,dt*14));
       if(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.3)player.a=joyAng(aimJoy);else if(pad.aim&&!GTA3MOVE())player.a=pad.aimA;
@@ -4729,7 +4764,7 @@ function drawPed3(p,isPl,fg){
       P(-sw*1.6,-4.9,1.1,1.1,10,17.5,mixA(body,[0,0,0],0.15));}
     else if(p.fare){P(0,-4.9,1.1,1.1,10,17.5,mixA(body,[0,0,0],0.15));const wv=Math.sin(game.t*8)*1.2;P(wv*0.4,4.9,1.1,1.1,17,26+wv,mixA(body,[0,0,0],0.15));}
     else{P(-sw*1.9,-4.9,1.1,1.1,10,17.5,mixA(body,[0,0,0],0.15));P(sw*1.9,4.9,1.1,1.1,10,17.5,mixA(body,[0,0,0],0.15));}
-    P(0,0,2.4,2.4,18,23,skin,hair);
+    P(0,0,2.4,2.4,18,23,skin,hair);if(p.hat&&!isPl)P(0,0,2.9,2.9,22.6,24.8,rgbOf(p.hat),mixA(rgbOf(p.hat),[255,255,255],0.15));
     if(p.cop){P(0.3,0,2.7,2.7,22.4,24.4,hair);P(2.8,0,0.9,2.4,22.4,23,hair);}
     else{P(-0.5,0,2.2,2.55,20,23.7,hair,hair);}
   }
@@ -5073,7 +5108,7 @@ const mmc=document.createElement('canvas');mmc.width=W;mmc.height=W;
   for(let i=0;i<W*W;i++){const c=C[map[i]];img.data[i*4]=c[0];img.data[i*4+1]=c[1];img.data[i*4+2]=c[2];img.data[i*4+3]=255;}
   m.putImageData(img,0,0);})();
 function starPath(cx,cy,r){ctx.beginPath();for(let i=0;i<10;i++){const a=-PI/2+i*PI/5,rr2=i%2?r*0.45:r;ctx.lineTo(cx+Math.cos(a)*rr2,cy+Math.sin(a)*rr2);}ctx.closePath();}
-const G3F='Bungee,Black Ops One,Impact,sans-serif';
+const G3F='Pricedown,Anton,Impact,sans-serif';
 function heartIcon(g,x,y,r,col){g.save();g.translate(x,y);g.beginPath();g.moveTo(0,r*0.95);g.bezierCurveTo(-r*1.6,-r*0.1,-r*0.8,-r*1.25,0,-r*0.45);g.bezierCurveTo(r*0.8,-r*1.25,r*1.6,-r*0.1,0,r*0.95);g.closePath();
   g.lineWidth=3;g.strokeStyle='rgba(0,0,0,.85)';g.stroke();g.fillStyle=col;g.fill();g.restore();}
 function shieldIcon(g,x,y,r,col){g.save();g.translate(x,y);g.beginPath();g.moveTo(0,-r);g.lineTo(r*0.9,-r*0.65);g.lineTo(r*0.8,r*0.2);g.quadraticCurveTo(r*0.4,r*0.8,0,r*1.05);g.quadraticCurveTo(-r*0.4,r*0.8,-r*0.8,r*0.2);g.lineTo(-r*0.9,-r*0.65);g.closePath();
@@ -5112,7 +5147,7 @@ function bigTextAl(txt,x,y,size,col,al){ctx.save();ctx.font=`${size}px ${G3F}`;c
 function bigText(txt,x,y,size,col){ctx.save();ctx.translate(x,y);ctx.scale(1.16,1);ctx.font=`${size}px ${G3F}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineJoin='round';
   ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillText(txt,size*0.05,size*0.07);ctx.lineWidth=Math.max(4,size/7);ctx.strokeStyle='#000';ctx.strokeText(txt,0,0);ctx.fillStyle=col;ctx.fillText(txt,0,0);ctx.restore();}
 function hudText(txt,x,y,size,col,align,font){
-  ctx.font=`${size}px ${font||'Black Ops One,Impact,sans-serif'}`;ctx.textAlign=align||'left';ctx.textBaseline='middle';
+  ctx.font=font&&/\dpx/.test(font)?font:`${size}px ${font||'Pricedown,Anton,Impact,sans-serif'}`;ctx.textAlign=align||'left';ctx.textBaseline='middle';
   ctx.lineWidth=Math.max(3,size/6);ctx.strokeStyle='rgba(0,0,0,.85)';ctx.lineJoin='round';ctx.strokeText(txt,x,y);ctx.fillStyle=col;ctx.fillText(txt,x,y);}
 function objectiveTarget(){
   if(sideJob&&!mission)return sideJob.tgt;
@@ -5237,10 +5272,10 @@ function drawHUD(){
     if(zoneBanner&&!big){ctx.globalAlpha=Math.min(1,zoneBanner.t*1.5);if(!touchMode)hudText(zoneBanner.sub,bx,by+24*sc,Math.round(13*sc),'#ddd',al,`600 ${Math.round(13*sc)}px system-ui`);
       bigTextAl(zoneBanner.text,bx,by,Math.round(26*sc),zoneBanner.col==='#ffe9a8'?'#a9c8ff':zoneBanner.col,al);if(touchMode)hudText(zoneBanner.sub,bx,by+24*sc,Math.round(13*sc),'#ddd',al,`600 ${Math.round(13*sc)}px system-ui`);ctx.globalAlpha=1;by+=touchMode?50*sc:-38*sc;}
     if(carBanner&&!big){const age=game.t-carBanner.at;if(age>3)carBanner=null;else{ctx.globalAlpha=clamp(Math.min(age*4,(3-age)*1.5),0,1);bigTextAl(carBanner.text,bx,by,Math.round(28*sc),'#8fe08a',al);ctx.globalAlpha=1;}}}
-  if(radioBanner&&player.car){ctx.globalAlpha=Math.min(1,radioBanner.t*1.5);const rx=touchMode?VW/2:(16*sc+msz+16*sc),ry=touchMode?VH*0.3:VH-34*sc,al=touchMode?'center':'left';hudText('📻 '+radioBanner.text+(radioBanner.sub?'  ·  '+radioBanner.sub:''),rx,ry,Math.round(14*sc),'#9fe0ff',al,`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
+  if(radioBanner&&player.car){ctx.globalAlpha=Math.min(1,radioBanner.t*1.5);const rx=touchMode?VW/2:(16*sc+msz+16*sc),ry=touchMode?VH*0.3:VH-34*sc,al=touchMode?'center':'left';hudText('📻 '+radioBanner.text+(radioBanner.sub?'  ·  '+radioBanner.sub:''),rx,ry,Math.round(14*sc),'#9fe0ff',al,`${Math.round(15*sc)}px 'Archivo Black',Arial,sans-serif`);ctx.globalAlpha=1;}
   // ticker
   let ty=touchMode?VH*0.62:VH-40*sc;
-  for(let i=ticker.length-1;i>=0;i--){const t=ticker[i];ctx.globalAlpha=Math.min(1,t.t);hudText(t.text,VW/2,ty,Math.round(14*sc),'#fff','center',`600 ${Math.round(14*sc)}px system-ui`);ty-=22*sc;}
+  for(let i=ticker.length-1;i>=0;i--){const t=ticker[i];ctx.globalAlpha=Math.min(1,t.t);hudText(t.text,VW/2,ty,Math.round(14*sc),'#fff','center',`${Math.round(15*sc)}px 'Archivo Black',Arial,sans-serif`);ty-=22*sc;}
   ctx.globalAlpha=1;
   // big message
   if(big){const f=big.t/big.max,a=Math.min(1,big.t*2,(big.max-big.t)*6);ctx.globalAlpha=a;
@@ -5248,7 +5283,7 @@ function drawHUD(){
     if(big.sub)hudText(big.sub,VW/2,by+sz*0.82,Math.round(22*sc),'#fff','center',G3F);
     ctx.globalAlpha=1;}
   // first-time hints
-  if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE handbrake · hold Q/E to look left/right and click for a drive-by · V camera view · F get out':(GTA3MOVE()?(mlLocked()?'WASD move · mouse to look · click to shoot · hold right mouse to lock on · SPACE jump · F steal a car':'Click the game to capture the mouse · WASD move · SPACE jump · F steal a car'):'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
+  if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE handbrake · hold Q/E to look left/right and click for a drive-by · V camera view · F get out':(GTA3MOVE()?(mlLocked()?'WASD move · mouse to look · click to shoot · hold right mouse to lock on · SPACE jump · F steal a car':'Click the game to capture the mouse · WASD move · SPACE jump · F steal a car'):'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`${Math.round(15*sc)}px 'Archivo Black',Arial,sans-serif`);ctx.globalAlpha=1;}
   // crosshair, hit markers, throw charge
   if(SCOPE.on){const cx=VW/2,cy=OY+HOR0*SCL,w=WEAPONS[player.w];
     if(w.sniper){const r=Math.min(VW,VH)*0.42;ctx.save();ctx.fillStyle='#000';ctx.beginPath();ctx.rect(0,0,VW,VH);ctx.arc(cx,cy,r,0,TAU,true);ctx.fill('evenodd');
@@ -5275,7 +5310,7 @@ function drawHUD(){
    if(player.car&&player.car.up&&player.car.up.nitro){const w=90*sc,x=VW-18*sc-w,y=touchMode?VH*0.45:VH*0.39;ctx.fillStyle='rgba(0,0,0,.5)';ctx.fillRect(x,y,w,7*sc);ctx.fillStyle='#6ab8ff';ctx.fillRect(x+1,y+1,(w-2)*nitroFuel,7*sc-2);}}
   if(player.car&&player.car.burn>=0&&game.state==='play'&&Math.floor(game.t*4)%2)bigTextAl('GET OUT!',VW/2,VH*0.62,Math.round(34*sc),'#ff5a2a','center');
   if(bustT>0.05&&game.state==='play'){const w=200*sc,x=VW/2-w/2,y=VH*0.68;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x,y,w,12*sc);ctx.fillStyle='#4da3ff';ctx.fillRect(x+2,y+2,(w-4)*clamp(bustT/1.3,0,1),12*sc-4);hudText('GETTING BUSTED',VW/2,y-12*sc,Math.round(14*sc),'#9fd0ff','center');}
-  drawRadioLog(sc);
+  drawRadioLog(sc);drawPager(sc);
   if(touchMode)drawTouch();
   if(BIGMAP&&game.state==='play')drawBigMap(sc);
 }
@@ -5284,7 +5319,7 @@ function drawTouch(){
   for(const k in L){const b=L[k],on=tbtn[k].on;
     ctx.globalAlpha=on?0.7:0.38;ctx.fillStyle=k==='fire'?'#c0302a':k==='car'?'#c9a23a':k==='radio'?'#2f7fa8':'#e0e0e0';ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,TAU);ctx.fill();
     ctx.globalAlpha=0.6;ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.stroke();
-    ctx.globalAlpha=0.95;ctx.fillStyle=k==='radio'||k==='fire'?'#fff':'#000';ctx.font=`bold ${Math.round(b.r*(k==='pause'?0.8:0.4))}px Black Ops One,Impact,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.globalAlpha=0.95;ctx.fillStyle=k==='radio'||k==='fire'?'#fff':'#000';ctx.font=`bold ${Math.round(b.r*(k==='pause'?0.8:0.4))}px Pricedown,Anton,Impact,sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';
     ctx.fillText(k==='car'?(player.car?'EXIT':'CAR'):k==='brake'&&!player.car?'JUMP':k==='brake'&&player.car&&player.car.t.heli?'UP':k==='nos'&&player.car&&player.car.t.heli?'DOWN':b.label,b.x,b.y+1);}
   ctx.globalAlpha=1;
   const bx=joy.active?joy.ox:JH.x,by=joy.active?joy.oy:JH.y;
