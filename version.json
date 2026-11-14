@@ -1,4 +1,4 @@
 {
-  "version": "3.3.3",
-  "notes": "Phone fix: the game now fits the visible screen, so the touch buttons are no longer cut off at the bottom and taps land where the buttons are drawn. New LOOK button to look behind."
+  "version": "3.4.0",
+  "notes": "Blocky 3D characters, ramp jumps with real arcs (cars tilt up the ramp, pitch in the air and land with a bounce), and police that tail you at a distance with only the odd bump instead of ramming and shoving you."
 }
