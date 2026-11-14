@@ -224,6 +224,11 @@ function updateBullets(dt){
         if(pointInCar(c,b.x,b.y,0)){
           if(b.kind==='r'){b.life=0;explode(b.x,b.y,b.own);break outer;}
           if(b.kind==='m'){b.life=0;break outer;}
+          // a rider on a motorbike takes the bullet, not the bike: they're knocked off (or killed) and the bike skids on riderless
+          if(c.t.bike&&c.driver&&c.driver!=='player'&&b.kind==='b'){const own=b.own==='player'?'player':null,vx=c.vx,vy=c.vy,rp=ejectDriver(c,true);if(rp){rp.x=c.x;rp.y=c.y;rp.hp-=b.dmg*1.5;
+              if(own==='player')hitMarks.push({x:rp.x,y:rp.y,t:0.18,kill:rp.hp<=0});if(rp.hp<=0)killPed(rp,own,vx*0.5,vy*0.5);else{rp.stagger=0.8;rp.vx=vx*0.3;rp.vy=vy*0.3;}}
+            c.va+=(R()-0.5)*4;if(nearPlayer(b.x,b.y,500))sfx('hit');b.life=0;break outer;}
+          if(c.t.bike&&c===player.car&&b.own!=='player'&&b.own!=='crew'&&b.kind==='b'&&game.state==='play'){exitCar(true);hurtPlayer(b.dmg);note('Shot off your bike!');b.life=0;break outer;}
           if(!(c.up&&c.up.bp))damageCar(c,b.cdmg,b.own==='player'?'player':null);
           if(b.own==='player'&&!(c.up&&c.up.bp)&&!c.t.tank&&!c.t.boat&&!c.t.heli&&!c.wreck){const ca2=Math.cos(c.a),sa2=Math.sin(c.a),lx=(b.x-c.x)*ca2+(b.y-c.y)*sa2,ly=-(b.x-c.x)*sa2+(b.y-c.y)*ca2;
             // a hit near a wheel can blow the tire (the car slews and slows); a hit low at the back can catch the fuel tank

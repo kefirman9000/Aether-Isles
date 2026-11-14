@@ -19,6 +19,11 @@ function makeCar(type,x,y,a,col){
   decorateCar(c);cars.push(c);return c;
 }
 function newAI(mode,dir,k,cruise){return{mode,dir,k,lastI:-1,turn:-1,sw:0,ti:0,tj:0,cruise:cruise||rr(130,200),blockT:0,stuckT:0,revT:0}}
+// leaving a diagonal avenue: join the grid at the nearest crossing, heading down a street that actually exists there
+// (rounding the heading alone could point a car into the river or a closed-off plaza, where it would sit stuck)
+function laneFromHere(c){const ix=clamp(Math.round((c.x/T-2)/P),0,NB),iy=clamp(Math.round((c.y/T-2)/P),0,NB);let best=-1,bs=-9;
+  for(let d=0;d<4;d++)if(linkOK(ix,iy,d)){const sc=Math.cos(angDiff(d*PI/2,c.a));if(sc>bs){bs=sc;best=d;}}
+  if(best<0){acquireLane(c);return;}const cr=c.ai&&c.ai.cruise;c.ai=newAI('lane',best,(best===0||best===2)?iy:ix,cr);c.ai.lastI=ix*100+iy;}
 function acquireLane(c){
   const d=((Math.round(c.a/(PI/2))%4)+4)%4;
   const k=(d===0||d===2)?clamp(Math.round((c.y/T-2)/P),0,NB):clamp(Math.round((c.x/T-2)/P),0,NB);

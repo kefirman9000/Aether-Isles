@@ -16,7 +16,7 @@ let CITY_SEED=0;try{CITY_SEED=+(localStorage.getItem('gc_city_seed')||0)}catch(_
 if(!CITY_SEED){CITY_SEED=((Math.random()*2**31)|0)||7;try{localStorage.setItem('gc_city_seed',String(CITY_SEED))}catch(_){}}
 R=(a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296})(CITY_SEED);
 // v4.15 reshaped the city (the docks, a third avenue), so collectibles saved against an older layout no longer line up
-const SAVE_SEED=CITY_SEED+'/L2';
+const SAVE_SEED=CITY_SEED+'/L3';
 const rr=(a,b)=>a+R()*(b-a);
 const pick=a=>a[Math.floor(R()*a.length)];
 const angDiff=(a,b)=>{let d=(a-b)%TAU;if(d>PI)d-=TAU;if(d<-PI)d+=TAU;return d};
@@ -66,12 +66,12 @@ const RIV=new Uint8Array(W*W);   // 1 river water
 const RAMPS=[];
 // landmark districts
 // the East River: a wide channel cutting Westside Island off from the city, crossed by three bridges
-const RIVX0=88,RIVX1=112,BRIDGES=[3,9,15],BIGB=9;
+const RIVX0=88,RIVX1=112,BRIDGES=[3,9,15,17],BIGB=9; // 17: the coast road crosses the river mouth by the beach
 const bridgeRow=ty=>ty%P<4&&BRIDGES.includes(Math.floor(ty/P));
 const BRT=new Uint8Array(W*W),DECKS=[],PIERS=[];
 // ---- diagonal avenues (a Broadway through Times Square, and one across Westside Island) ----
 const DIAGT=new Uint8Array(W*W);
-const DIAGS=[[114,30,218,238],[2,240,86,72],[120,236,250,150]].map(([ax,ay,bx,by])=>{ax*=T;ay*=T;bx*=T;by*=T;const L=hyp(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L;return{ax,ay,bx,by,L,ux,uy,nx:-uy,ny:ux};});
+const DIAGS=[[114,30,218,238],[2,240,86,72],[128,226,226,156]].map(([ax,ay,bx,by])=>{ax*=T;ay*=T;bx*=T;by*=T;const L=hyp(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L;return{ax,ay,bx,by,L,ux,uy,nx:-uy,ny:ux};});
 const DHW=56,DSW=84;
 function diagRel(d,x,y){const px=x-d.ax,py=y-d.ay;return[px*d.ux+py*d.uy,px*d.nx+py*d.ny];} // [along, signed side]
 function diagDist(d,x,y){const[t,sd]=diagRel(d,x,y);if(t<0)return hyp(x-d.ax,y-d.ay);if(t>d.L)return hyp(x-d.bx,y-d.by);return Math.abs(sd);}

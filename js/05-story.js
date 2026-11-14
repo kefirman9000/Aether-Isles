@@ -476,7 +476,7 @@ function extLoad(e){if(!e)return;GYM=e.gym||0;for(const k in GOLDGOT)delete GOLD
 
 // ---------- traffic on the diagonal avenues ----------
 function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir=ai.dir,ux=d.ux*dir,uy=d.uy*dir,lx=-uy,ly=ux;
-  if((dir>0&&t>d.L-70)||(dir<0&&t<70)||Math.abs(sd)>110){acquireLane(c);return;}
+  if((dir>0&&t>d.L-70)||(dir<0&&t<70)||Math.abs(sd)>110){laneFromHere(c);return;}
   const spd=hyp(c.vx,c.vy),look=50+spd*0.35,ta=t+dir*look,gx=d.ax+d.ux*ta+lx*26,gy=d.ay+d.uy*ta+ly*26;
   const diff=angDiff(Math.atan2(gy-c.y,gx-c.x),c.a);let steer=clamp(diff*2.2,-1,1),target=ai.cruise;if(Math.abs(diff)>0.5)target=Math.min(target,100);
   const fx=Math.cos(c.a),fy=Math.sin(c.a),D=c.t.L/2+22+spd*0.45,hw=c.t.Wd/2;let blocked=false;
