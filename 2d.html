@@ -44,7 +44,8 @@ canvas{display:block;width:100vw;height:100vh;cursor:none}
 </div></div>
 <script>
 'use strict';
-const VERSION='2.5.1',REPO='kefirman9000/Gridlock-City',PAGES_URL='https://kefirman9000.github.io/Gridlock-City/';
+const VERSION='2.5.1',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1955,7 +1956,7 @@ document.getElementById('play').addEventListener('click',()=>{
 const cmpVer=(a,b)=>{const x=String(a).split('.').map(Number),y=String(b).split('.').map(Number);for(let i=0;i<3;i++){if((x[i]||0)!==(y[i]||0))return(x[i]||0)-(y[i]||0)}return 0};
 document.getElementById('updBtn').addEventListener('click',async()=>{
   const out=document.getElementById('upd');out.textContent='Checking GitHub…';
-  try{const r=await fetch('https://raw.githubusercontent.com/'+REPO+'/main/version.json?t='+Date.now(),{cache:'no-store'});const j=await r.json();
+  try{const j=await fetchLatest();
     if(cmpVer(j.version,VERSION)>0){out.innerHTML='Version '+j.version+' is out'+(j.notes?': '+j.notes.replace(/</g,'&lt;'):'')+' <button id="updGo" style="font:600 13px system-ui;padding:5px 10px;margin-left:6px;cursor:pointer">Update now</button>';
       document.getElementById('updGo').onclick=()=>{location.href=PAGES_URL+'?v='+encodeURIComponent(j.version);};}
     else out.textContent='You have the latest version ('+VERSION+').';
