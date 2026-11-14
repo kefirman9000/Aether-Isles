@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.15.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.16.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -60,9 +60,13 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <b>F at a station</b><span>Board the El when the train is in · walk into a SUBWAY entrance to ride</span>
 <b>W A S D</b><span>On foot: run the way you press, relative to the camera (GTA III style; switch to tank controls in Options) · In a car: gas, brake/reverse, steer</span>
 <b>Mouse</b><span>Click the game to capture the mouse (Esc lets go) · Move it to look around and aim with the crosshair · Left click to shoot · Hold right button to lock on (move the mouse to switch target) · In a car the mouse moves a drive-by cursor</span>
-<b>F / E / Enter</b><span>Enter or exit / steal a car</span>
+<b>F / Enter</b><span>Enter or exit / steal a car</span>
+<b>V</b><span>Camera view: close, normal, far, high (like GTA III)</span>
+<b>Q / E</b><span>On foot: previous / next weapon · In a car: look left / right (both: look behind); click while looking for a drive-by</span>
+<b>C / middle mouse</b><span>Look behind</span>
+<b>N</b><span>Rear-view mirror on/off</span>
 <b>Space</b><span>Jump on foot · Handbrake in a car (drift!)</span>
-<b>Q / Wheel</b><span>Switch weapon (fists are always there)</span>
+<b>Mouse wheel</b><span>Switch weapon (fists are always there)</span>
 <b>B</b><span>Set off a car bomb fitted at a spray shop (or phone → Detonate)</span>
 <b>R</b><span>Change radio station (in a car)</span>
 <b>Click in a car</b><span>Drive-by shooting (tanks fire their cannon)</span>
@@ -81,7 +85,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.15.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.16.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -1503,12 +1507,15 @@ window.addEventListener('keydown',e=>{
   if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault();
   if(e.repeat){keys[e.code]=true;return;}
   keys[e.code]=true;
-  if(e.code==='KeyF'||e.code==='KeyE'||e.code==='Enter')pressed.enter=true;
-  if(e.code==='KeyQ')pressed.swap=true;
+  if(e.code==='KeyF'||e.code==='Enter')pressed.enter=true;
+  // GTA III PC: Q/E cycle weapons on foot; in a car they look left/right (both together: look behind)
+  if(e.code==='KeyQ'&&!player.car)pressed.swap=-1;
+  if(e.code==='KeyE'&&!player.car)pressed.swap=1;
   if(e.code==='KeyT'&&game.started&&!game.paused)recruitNear();
   if(e.code==='KeyB'&&game.started&&!game.paused&&game.state==='play')detonateBomb();
   if(e.code==='KeyM')toggleMute();
-  if(e.code==='KeyV'){mirrorOn=!mirrorOn;OPT.mirror=mirrorOn;saveOpts();note(mirrorOn?'Rear-view mirror on':'Rear-view mirror off');}
+  if(e.code==='KeyV'&&game.started&&!game.paused)cycleCam();
+  if(e.code==='KeyN'&&!DLG.open){mirrorOn=!mirrorOn;OPT.mirror=mirrorOn;saveOpts();note(mirrorOn?'Rear-view mirror on':'Rear-view mirror off');}
   if(e.code==='KeyR'&&player.car)setStation(radio.st+1);
   if((e.code==='KeyP'||e.code==='Escape')&&game.started)togglePause();
 });
@@ -1522,23 +1529,24 @@ function mlWanted(){return OPT.mouselook!==false&&!touchMode&&game.started&&!gam
 function mlTick(){if(!mlLocked())return;
   if(!mlWanted()){ML.exiting=true;try{document.exitPointerLock();}catch(_){}return;}
   mouse.used=true;
-  if(player.car){mouse.x=ML.cx=clamp(ML.cx||VW/2,8,VW-8);mouse.y=ML.cy=clamp(ML.cy||VH*0.42,8,VH-8);}
-  else{ML.cx=0;ML.cy=0;mouse.x=VW/2;mouse.y=clamp(VH*0.44+ML.dy,VH*0.3,VH*0.62);}}
+  if(player.car){mouse.x=VW/2;mouse.y=VH*0.4;}
+  else{mouse.x=VW/2;mouse.y=clamp(VH*0.44+ML.dy,VH*0.3,VH*0.62);}}
 document.addEventListener('pointerlockchange',()=>{if(mlLocked()){ML.exiting=false;return;}
   // the player pressed Esc to let go of the mouse: pause, so the game doesn't carry on without them
   if(!ML.exiting)setTimeout(()=>{if(!game.paused&&game.started&&game.state!=='menu')togglePause();},60);ML.exiting=false;});
 cv.addEventListener('mousemove',e=>{
   if(mlLocked()){const mx=e.movementX||0,my=e.movementY||0;
-    if(player.car){ML.cx=(ML.cx||VW/2)+mx;ML.cy=(ML.cy||VH*0.42)+my;}
-    else{mouse.look=(mouse.look||0)+mx;ML.dy=clamp(ML.dy+my*0.6,-VH*0.14,VH*0.18);}
+    mouse.look=(mouse.look||0)+mx;if(!player.car)ML.dy=clamp(ML.dy+my*0.6,-VH*0.14,VH*0.18);
     if(mouse.rdown)mouse.turn=(mouse.turn||0)+mx;mouse.used=true;return;}
   mouse.x=e.clientX;mouse.y=e.clientY;mouse.used=true;if(mouse.rdown)mouse.turn=(mouse.turn||0)+(e.movementX||0);});
-cv.addEventListener('mousedown',e=>{if(BIGMAP&&e.button===0){if(!bigMapTap(e.clientX,e.clientY))BIGMAP=false;return;}
+cv.addEventListener('mousedown',e=>{if(e.button===1){mouse.mdown=true;e.preventDefault();return;}if(BIGMAP&&e.button===0){if(!bigMapTap(e.clientX,e.clientY))BIGMAP=false;return;}
   initAudio();
   if(!mlLocked()&&mlWanted()&&!touchMode){try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(_){}ML.dy=0;mouse.used=true;return;} // this click only grabs the mouse
   if(e.button===0)mouse.down=true;if(e.button===2)mouse.rdown=true;mouse.used=true;});
-window.addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false;if(e.button===2)mouse.rdown=false;});
-cv.addEventListener('wheel',e=>{pressed.swap=true;e.preventDefault()},{passive:false});
+window.addEventListener('mouseup',e=>{if(e.button===1)mouse.mdown=false;if(e.button===0)mouse.down=false;if(e.button===2)mouse.rdown=false;});
+cv.addEventListener('wheel',e=>{pressed.swap=e.deltaY<0?-1:1;e.preventDefault()},{passive:false});
+// middle mouse = look behind (GTA III PC)
+cv.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault();});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 // touch
@@ -1601,12 +1609,20 @@ function pollPad(){let gp=null;try{const l=navigator.getGamepads?navigator.getGa
     const up=edge(12)||(pad.ly<-0.6&&pad.ly0>=-0.6),dn=edge(13)||(pad.ly>0.6&&pad.ly0<=0.6),lf=edge(14)||(pad.lx<-0.6&&pad.lx0>=-0.6),rt=edge(15)||(pad.lx>0.6&&pad.lx0<=0.6);
     if(up)send('ArrowUp');if(dn)send('ArrowDown');if(lf)send('ArrowLeft');if(rt)send('ArrowRight');
     if(edge(0))send('Enter');if(edge(1))send('Escape');if(edge(9)&&menuUp&&game.paused)togglePause();}
+  else if(game.started&&OPT.pad==='classic'){
+    // GTA III's PlayStation 2 layout: X gas / sprint, Square brake / jump, Circle fire, Triangle car, R1 handbrake / target,
+    // L1 horn, L2 / R2 look left / right in a car (both: look behind) or switch weapon on foot, Select camera view
+    const inCar=!!player.car;
+    PADK.Space=inCar?b[5]:b[2];PADK.KeyK=b[1];PADK.KeyH=inCar&&b[4];PADK.KeyQ=inCar&&b[6];PADK.KeyE=inCar&&b[7];PADK.KeyC=b[11];PADK.ShiftLeft=inCar&&b[10];
+    pad.run=!inCar&&b[0];pad.lock=!inCar&&b[5];pad.gas=inCar?(b[0]?1:0):0;pad.brake=inCar?(b[2]?1:0):0;
+    if(edge(3))pressed.enter=true;if(!inCar&&edge(6))pressed.swap=-1;if(!inCar&&edge(7))pressed.swap=1;if(edge(8))cycleCam();if(edge(9))togglePause();
+    if(edge(12)&&inCar)setStation(radio.st+1);if(edge(13))phoneMenu();if(edge(14))recruitNear();if(edge(15))BIGMAP=!BIGMAP;}
   else if(game.started){
-    PADK.Space=b[0];PADK.KeyC=b[1];PADK.KeyH=b[2];PADK.KeyK=b[5];PADK.ShiftLeft=b[10]&&!!player.car;pad.run=b[10];
-    if(edge(3))pressed.enter=true;if(edge(4))pressed.swap=true;if(edge(9))togglePause();if(edge(8))BIGMAP=!BIGMAP;
+    PADK.Space=b[0];PADK.KeyC=b[1];PADK.KeyH=b[2];PADK.KeyK=b[5];PADK.ShiftLeft=b[10]&&!!player.car;pad.run=b[10];PADK.KeyQ=false;PADK.KeyE=false;
+    if(edge(3))pressed.enter=true;if(edge(4))pressed.swap=true;if(edge(9))togglePause();if(edge(8))BIGMAP=!BIGMAP;if(edge(11))cycleCam();
     if(edge(12)&&player.car)setStation(radio.st+1);if(edge(13))phoneMenu();if(edge(14))recruitNear();if(edge(15)){mirrorOn=!mirrorOn;OPT.mirror=mirrorOn;saveOpts();}}
   // right stick aims relative to the camera (screen up = straight ahead)
-  pad.aim=hyp(pad.rx,pad.ry)>0.35;if(pad.aim)pad.aimA=cam.yaw+Math.atan2(pad.rx,-pad.ry);
+  pad.aim=OPT.pad!=='classic'&&hyp(pad.rx,pad.ry)>0.35;if(pad.aim)pad.aimA=cam.yaw+Math.atan2(pad.rx,-pad.ry);
   // rumble with crashes and explosions
   if(OPT.rumble!==false&&typeof shake!=='undefined'&&shake>pad.shake+2&&gp.vibrationActuator){try{gp.vibrationActuator.playEffect('dual-rumble',{duration:Math.min(400,60+shake*25),strongMagnitude:Math.min(1,shake/12),weakMagnitude:Math.min(1,shake/8)});}catch(_){}}
   pad.shake=typeof shake!=='undefined'?shake:0;pad.pb=b;pad.ly0=pad.ly;pad.lx0=pad.lx;}
@@ -1749,7 +1765,8 @@ function playerFire(){
   const hostile=p=>p.state==='cop'||p.angry>0||p.brawl>0||(p.gang!=null&&respect[p.gang]<=-2);
   if(inCar){
     const c=player.car;
-    if(aimJoy.active)a=joyAng(aimJoy);
+    if(!!kd.KeyQ!==!!kd.KeyE&&!c.t.tank)a=c.a+(kd.KeyQ?-PI/2:PI/2); // GTA III drive-by: look left or right and fire
+    else if(aimJoy.active)a=joyAng(aimJoy);
     else if(pad.aim)a=pad.aimA;
     else if(mouse.used&&!touchMode)a=Math.atan2(wy-c.y,wx-c.x);
     else{let best=null,bs=1e9;
@@ -1783,7 +1800,7 @@ function playerFire(){
   if(copNear&&copWitness(player.x,player.y))crime(0,1);
   if(player.ammo[player.w]<=0){player.w=0;note('Out of ammo');}
 }
-function swapWeapon(){for(let i=1;i<=WEAPONS.length;i++){const n=(player.w+i)%WEAPONS.length;if(player.ammo[n]>0||WEAPONS[n].fist){if(n!==player.w){player.w=n;note(WEAPONS[n].name);}return;}}}
+function swapWeapon(dir){dir=dir||1;for(let i=1;i<=WEAPONS.length;i++){const n=((player.w+i*dir)%WEAPONS.length+WEAPONS.length)%WEAPONS.length;if(player.ammo[n]>0||WEAPONS[n].fist){if(n!==player.w){player.w=n;note(WEAPONS[n].name);}return;}}}
 
 // ================= GTA EXTRAS: stunt ramps, police helicopter, taxi fares =================
 // ---- stunt ramps on one-way lanes mid-block ----
@@ -3312,6 +3329,10 @@ function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateS
 window.__roomsReady=true;
 
 // ================= CAMERA =================
+// GTA III camera views, cycled with V (Select / R3 on a controller): close, normal, far and top-down
+const CAMV=[{n:'CLOSE',d:0.72,h:0.82},{n:'NORMAL',d:1,h:1},{n:'FAR',d:1.38,h:1.32},{n:'HIGH',top:true}];
+const camMode=()=>{if(OPT.camMode==null)OPT.camMode=OPT.cam<1?0:OPT.cam>1?2:1;return OPT.camMode|0;};
+function cycleCam(){OPT.camMode=(camMode()+1)%CAMV.length;saveOpts();note('Camera: '+CAMV[OPT.camMode].n.toLowerCase());}
 const cam={x:0,y:0,zoom:1.4,yaw:-PI/2,h:40,dist:90,base:null,idle:9,px:0,py:0,wasFoot:false};
 // ---- GTA III-style on foot: free-orbit camera, camera-relative movement and lock-on targeting ----
 const GTA3MOVE=()=>OPT.gta3!==false;
@@ -3334,7 +3355,7 @@ function footLook(dt){
   if(cam.base==null||!cam.wasFoot)cam.base=cam.yaw;
   if(jumped)cam.base=player.body;
   cam.wasFoot=true;cam.px=player.x;cam.py=player.y;
-  const held=(mouse.rdown&&!touchMode)||(pad.on&&pad.brake>0.5);
+  const held=(mouse.rdown&&!touchMode)||(pad.on&&(OPT.pad==='classic'?pad.lock:pad.brake>0.5));
   if(held&&!LOCK.held)setLock(pickLock(cam.base,null,0));
   LOCK.held=held;if(!held)LOCK.t=null;
   if(LOCK.t&&(!lockable(LOCK.t)||hyp(LOCK.t.x-player.x,LOCK.t.y-player.y)>480))LOCK.t=null;
@@ -3358,7 +3379,7 @@ function update(dt){
   // ---- player ----
   if(game.state==='play'){
     player.cool-=dt;player.hurt=Math.max(0,player.hurt-dt);
-    if(pressed.swap)swapWeapon();
+    if(pressed.swap)swapWeapon(pressed.swap===-1?-1:1);
     if(pressed.enter&&player.riding)trainAlight();
     else if(pressed.enter&&!player.riding){if(player.car)exitCar(false);else if(!trainBoard())tryEnterCar();}
     if(player.riding){rideTick(dt);}else if(!player.car){
@@ -3691,12 +3712,18 @@ function update(dt){
   // chase camera: sits behind the car (or you) and swings round as you turn
   if(!SCENE.on){let want,dist,hgt,rate;
     if(player.car||player.riding){cam.wasFoot=false;LOCK.t=null;}
-    if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;want=c.a;
-      dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=3.2;}
+    if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;
+      // mouse (captured) or right stick swing the camera round the car; it drifts back behind you once you leave it alone and drive
+      const orb=(mouse.look||0)*0.0033*(OPT.msens||1)+(pad.on&&OPT.pad==='classic'?pad.rx*2.6*dt:0);mouse.look=0;
+      if(orb){cam.corb=angDiff((cam.corb||0)+orb,0);cam.cidle=0;}else{cam.cidle=(cam.cidle||0)+dt;if(cam.cidle>1.2&&s>40)cam.corb=lerpAng(cam.corb||0,0,Math.min(1,dt*1.8));}
+      want=c.a+(cam.corb||0);
+      dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=orb?30:3.2;
+      // GTA III: Q / E (L2 / R2) look left and right; both together look behind
+      const lq=kd.KeyQ,le=kd.KeyE;if(lq&&le){want+=PI;rate=18;}else if(lq){want-=PI/2;rate=14;dist*=0.8;}else if(le){want+=PI/2;rate=14;dist*=0.8;}}
     else if(GTA3MOVE()&&cam.base!=null&&!player.riding){want=cam.base;dist=LOCK.t?84:92;hgt=LOCK.t?44:40;rate=mlLocked()?30:14;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
-    if(kd.KeyC||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
-    dist*=OPT.cam;
+    if(kd.KeyC||mouse.mdown||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
+    {const m=CAMV[camMode()];if(m.top){const sp=player.car?hyp(player.car.vx,player.car.vy):0;dist=(player.car?175+Math.min(80,sp*0.12):135);hgt=(player.car?112+Math.min(50,sp*0.07):84);rate=Math.min(rate,player.car?2.6:6);}else{dist*=m.d;hgt*=m.h;}}
     if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);dist+=k*k*110;hgt+=k*k*90;rate*=0.15;}
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
@@ -4699,7 +4726,7 @@ function drawHeli3(h,fg){
 
 // ---------- frame ----------
 const ITEMS=[];
-function render(){{const want=player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0;HORA=lerp(HORA,want,0.06);HOR=Math.round(HOR0+HORA);}
+function render(){{const want=CAMV[camMode()].top&&game.started&&!SCENE.on&&!MENUVIEW?-LH*0.2:player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0;HORA=lerp(HORA,want,0.06);HOR=Math.round(HOR0+HORA);}
   frameNo++;setCam();
   const lightLvl=0.5-0.5*Math.cos(clock*TAU),night=clamp(darkness/0.8,0,1),warm=clamp(1-Math.abs(lightLvl-0.4)/0.16,0,1)*(1-night*0.5);
   let top=mixA([70,128,206],[92,64,128],warm),bot=mixA([196,212,230],[255,150,96],warm);
@@ -5110,7 +5137,7 @@ function drawHUD(){
     if(big.sub)hudText(big.sub,VW/2,by+sz*0.82,Math.round(22*sc),'#fff','center',G3F);
     ctx.globalAlpha=1;}
   // first-time hints
-  if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE drift · click = drive-by · R radio · F get out':(GTA3MOVE()?(mlLocked()?'WASD move · mouse to look · click to shoot · hold right mouse to lock on · SPACE jump · F steal a car':'Click the game to capture the mouse · WASD move · SPACE jump · F steal a car'):'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
+  if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE handbrake · hold Q/E to look left/right and click for a drive-by · V camera view · F get out':(GTA3MOVE()?(mlLocked()?'WASD move · mouse to look · click to shoot · hold right mouse to lock on · SPACE jump · F steal a car':'Click the game to capture the mouse · WASD move · SPACE jump · F steal a car'):'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
   // crosshair, hit markers, throw charge
   if(LOCK.t&&game.state==='play')drawLockMarker(LOCK.t,sc,false);
   else if(SOFT.t&&!SOFT.t.gone&&game.t-SOFT.at<0.35&&!player.car&&game.state==='play')drawLockMarker(SOFT.t,sc,true);
@@ -5243,7 +5270,8 @@ function openPanel(kind){
   else if(kind==='options'){const onoff=v=>v?'ON':'OFF';h=`<h2>OPTIONS</h2>
     <div class="opt"><span>Slow motion on jumps</span><button data-opt="slowmo">${onoff(OPT.slowmo)}</button></div>
     <div class="opt"><span>Rear-view mirror (V)</span><button data-opt="mirror">${onoff(OPT.mirror)}</button></div>
-    <div class="opt"><span>Camera distance</span><button data-opt="cam">${OPT.cam<1?'NEAR':OPT.cam>1?'FAR':'NORMAL'}</button></div>
+    <div class="opt"><span>Camera view (V)</span><button data-opt="cam">${CAMV[camMode()].n}</button></div>
+    <div class="opt"><span>Controller layout</span><button data-opt="pad">${OPT.pad==='classic'?'GTA III (PS2)':'MODERN'}</button></div>
     <div class="opt"><span>Autosave every 90 s</span><button data-opt="autosave">${onoff(OPT.autosave)}</button></div>
     <div class="opt"><span>Sound (M)</span><button data-opt="sound">${muted?'OFF':'ON'}</button></div>
     <div class="opt"><span>Season</span><button data-opt="season">${(OPT.season||'auto').toUpperCase()}</button></div>
@@ -5267,7 +5295,7 @@ function openPanel(kind){
   p.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=readSave(b.dataset.load);if(s)loadFrom(s);});
   p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
   p.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{const k=b.dataset.opt;
-    if(k==='cam')OPT.cam=OPT.cam<1?1:OPT.cam>1?0.8:1.25;else if(k==='season')OPT.season=OPT.season==='winter'?'summer':OPT.season==='summer'?'auto':'winter';else if(k==='steer')OPT.steer=OPT.steer==='wheel'?'stick':'wheel';else if(k==='btn')OPT.btn=OPT.btn<1?1:OPT.btn>1?0.85:1.2;else if(k==='msens')OPT.msens=OPT.msens<1?1:OPT.msens>1?0.6:1.6;
+    if(k==='cam')OPT.camMode=(camMode()+1)%CAMV.length;else if(k==='pad')OPT.pad=OPT.pad==='classic'?'modern':'classic';else if(k==='season')OPT.season=OPT.season==='winter'?'summer':OPT.season==='summer'?'auto':'winter';else if(k==='steer')OPT.steer=OPT.steer==='wheel'?'stick':'wheel';else if(k==='btn')OPT.btn=OPT.btn<1?1:OPT.btn>1?0.85:1.2;else if(k==='msens')OPT.msens=OPT.msens<1?1:OPT.msens>1?0.6:1.6;
     else if(k==='fs'){try{if(document.fullscreenElement)document.exitFullscreen();else{document.documentElement.requestFullscreen().catch(()=>{});}}catch(_){}setTimeout(()=>openPanel('options'),300);return;}else if(k==='sound'){toggleMute();}else if(k==='city'){openPanel('newcity');return;}else{OPT[k]=!OPT[k];if(k==='mirror')mirrorOn=OPT.mirror;}
     saveOpts();openPanel('options');});
   p.querySelectorAll('[data-yes]').forEach(b=>b.onclick=()=>{try{localStorage.setItem('gc_city_seed',String(((Math.random()*2**31)|0)||7))}catch(_){}location.reload();});

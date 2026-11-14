@@ -15,11 +15,13 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 | Mouse (captured) | | Click the game to capture the mouse (Esc lets go). Move it to look around; aim with the crosshair. In a car it moves a drive-by cursor. Mouse look can be turned off in Options |
 | Hold right mouse | | Lock on to the nearest target (move the mouse to switch) |
 | Mouse + left click | Drag the right side of the screen (or FIRE to auto-aim) | Aim and shoot. Works as a drive-by from inside a car, and fires the cannon in a tank |
-| F / E / Enter | CAR | Get in, get out, or jack a car |
+| F / Enter | CAR | Get in, get out, or jack a car |
 | Space | DRIFT / JUMP | Jump on foot · handbrake in a car |
-| C | | Hold to look behind |
-| V | | Rear-view mirror on/off |
-| Q / mouse wheel | GUN | Switch weapon (fists are always there) |
+| C / middle mouse | LOOK | Hold to look behind |
+| Q / E | | On foot: previous / next weapon. In a car: look left / right (both: look behind); click while looking for a drive-by out that side |
+| V | | Camera view: close, normal, far, high |
+| N | | Rear-view mirror on/off |
+| Mouse wheel | GUN | Switch weapon (fists are always there) |
 | B | | Set off a car bomb |
 | R | RADIO | Change radio station |
 | P / Esc | II (top middle) | Pause |
@@ -30,6 +32,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **GTA III controls and camera (v4.16):** V cycles the camera through close, normal, far and a high view (Select on a controller, R3 on the modern layout). Q and E switch weapons on foot; in a car they look left and right (both together look behind) and a click fires a drive-by out that side, the way GTA III did it. With the mouse captured, moving it swings the camera round your car, and it drifts back behind you as you drive. Middle mouse looks behind. Options → Controller layout switches a pad to GTA III's PlayStation 2 layout (X gas, Square brake, Circle fire, Triangle car, R1 handbrake / lock-on, L1 horn, L2 / R2 look or switch weapons, Select camera).
 - **Mission intro scenes (v4.15):** walking up to a boss for a story job fades to a letterboxed shot of the two of you while they brief you, then fades back to play with the mission's name on screen, like GTA III's cutscenes.
 - **The Docks:** the river bank below Old Town is now a container port: warehouses, stacks of shipping containers you can climb, yellow gantry cranes with booms reaching out over the riverside drive, and a cargo ship tied up alongside.
 - **Every neighbourhood has a name and a feel:** Old Town (cobbled streets), North Point, Harbor View, Uptown, Midtown, Millionaire's Row, the Lotus Quarter and Lotus Bay (red lanterns strung across the streets, glowing at night), Downtown, Eastside, Southside and the Docks. The name comes up as you drive in.
