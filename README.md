@@ -56,7 +56,9 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Install it like an app:** on a phone, use Install as an app on the title screen (or Share → Add to Home Screen on an iPhone). It gets its own icon, opens full screen and works offline. On a computer, Chrome and Edge show an install icon in the address bar.
 - **Turf wars:** take out five gang members in one of their blocks within a minute and the block becomes yours (purple on the maps). Every block pays you every two minutes, and gangs sometimes come back to take one: kill the attackers within 90 seconds or lose it.
 - **Stunt trials:** pull up at the STUNT TRIAL sign by the construction site and land three jumps in a row, each needing more air; the trials get harder each level.
-- **Helicopter:** two Sparrows sit on helipads. SPACE (or UP) climbs, SHIFT (or DOWN) descends, W/S and A/D fly. Tall buildings block you, so climb over them.
+- **Helicopter:** two Sparrows sit on helipads. SPACE (or UP) climbs, SHIFT (or DOWN) descends, W/S and A/D fly. Tall buildings block you, so climb over them. The camera tilts down the higher you fly.
+- **Motorcycles:** Shredder bikes show up in traffic. They're the fastest thing on the road, but crash hard and you'll be thrown off.
+- **Clock:** the time of day (and rain or snow) shows above the minimap.
 - **Robberies:** walk into a 24/7 store and rob the register (2 stars), or crack the vault at Gridlock Savings Bank: stand at the vault for nine seconds while the alarm brings 3, then 4 stars.
 - **Police radio and news:** dispatch calls out your wanted level, where you are and what you're driving, and when they spot or lose you. News flashes report your robberies and the city's gossip.
 - **Ammu-Nation:** two gun shops sell SMG, shotgun, flamethrower, Molotov and rocket ammo, plus body armor (a blue bar over your health that soaks up damage).
@@ -64,7 +66,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Pizza runs:** pull up at Pizza Paolo's for three timed deliveries to houses; the pay goes up each level.
 - **Smarter cops:** they see less far at night and in the rain, and half as far while you sit still in a parking lot, a park or under a bridge. The minimap rings show the reduced range.
 - **No see-through ground:** things behind hills are hidden by the ground in front of them, and bridge decks are open slabs over the water, so you can see under them.
-- **On phones:** a city map (tap the minimap), a wheel-and-pedals driving option, adjustable button size, a fullscreen option, vibration, automatic resolution scaling when the frame rate drops, pause and autosave when you switch apps, and the screen kept awake. It plays upright or sideways.
+- **On phones:** a city map (tap the minimap), a wheel-and-pedals driving option, adjustable button size, a fullscreen option, vibration, automatic resolution scaling when the frame rate drops (now actually lowers the render resolution), pause and autosave when you switch apps, and the screen kept awake. It plays upright or sideways.
 - **Standing on things:** on foot you can jump onto car roofs and ramps, walk across them and ride on top of a moving car.
 - **Police helicopter:** at 4+ stars a chopper circles you with a searchlight and can see you over buildings, which makes you harder to lose. At 5+ stars it shoots. Bring it down with gunfire or rockets.
 - **Taxi fares:** drive a taxi and passengers hail you. Stop beside them, then get them to the marker before the timer runs out. Fares in a row pay more.

@@ -1,4 +1,4 @@
 {
-  "version": "4.3.1",
-  "notes": "Fairer cops at 1 and 2 stars (slower, slower to react, easier to lose, no more spawning on your tail), the helicopter stays in front of buildings it flies over, and bridge decks sort properly against buildings behind them."
+  "version": "4.4.0",
+  "notes": "Motorcycles, a helicopter camera that looks down at the city, a clock above the minimap, and working automatic resolution scaling on slow phones."
 }

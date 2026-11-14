@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.3.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.4.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.3.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.4.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -452,7 +452,7 @@ function acquireLane(c){
   const k=(d===0||d===2)?clamp(Math.round((c.y/T-2)/P),0,NB):clamp(Math.round((c.x/T-2)/P),0,NB);
   c.ai=newAI('lane',d,k,rr(140,200));
 }
-const TRAFFIC_TYPES=['firetruck','sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police','ambulance'];
+const TRAFFIC_TYPES=['bike','bike','firetruck','sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police','ambulance'];
 
 // ===== Driving: a port of GTA2's per-tick car physics (CarPhysics in the GTA2 decompilation) =====
 // GTA2 works in "tile units per tick" at 30 ticks/s. We scale one GTA2 tile to GT pixels (about one car
@@ -700,7 +700,7 @@ function carTiles(c){if(c.t.heli&&(c.alt||0)>30)return;
   if(hitN){
     // drivers glance off walls rather than sticking (a gentle GTA2-style turn to follow the wall)
     if(c.driver){const tang=Math.atan2(hitN[0],-hitN[1]),tA=Math.abs(angDiff(tang,c.a))<PI/2?tang:tang+PI;c.va+=clamp(angDiff(tA,c.a),-1,1)*(PI/180)*TICK*0.3;}
-    if(maxImp>110)damageCar(c,(maxImp-110)*0.07,c.driver==='player'?'player':null);
+    if(maxImp>110)damageCar(c,(maxImp-110)*0.07,c.driver==='player'?'player':null);bikeCrash(c,maxImp);
     crashFx(c,hx,hy,hitN[0],hitN[1],maxImp+20,null);
   }
 }
@@ -2463,7 +2463,8 @@ function updateRadioChatter(dt){for(let i=RADIOLOG.length-1;i>=0;i--){RADIOLOG[i
   if(s===0&&lastStars>0)radioMsg('DISPATCH: All units stand down. Suspect lost.');lastStars=s;
   if(s>0){const seen=seenT<1.2;if(seen&&!wasSeen)radioMsg('DISPATCH: Eyes on the suspect near '+areaName()+'!');if(!seen&&wasSeen)radioMsg('DISPATCH: We lost visual. Search the area.');wasSeen=seen;}
   newsT-=dt;if(newsT<=0&&s===0){newsT=rr(70,140);radioMsg(pick(['NEWS: Traffic is backed up on the Gridlock Bridge again.','NEWS: Mayor promises more cops downtown. Again.','NEWS: Gang tension rising between the Red Sabres and Chrome Saints.','NEWS: Times Square screens hacked to show cat videos.','NEWS: East River declared "mostly swimmable".','WEATHER: '+(rain>0.3?'Storms rolling through the city tonight.':'Clear skies over Gridlock City.')]));}}
-function drawRadioLog(sc){let y=(touchMode?150:56)*sc;for(const m of RADIOLOG){ctx.globalAlpha=Math.min(1,m.life);hudText(m.t,18*sc,y,Math.round(13*sc),m.t.startsWith('DISPATCH')?'#9fd0ff':'#ffe9a8','left',`600 ${Math.round(13*sc)}px system-ui`);y+=18*sc;}ctx.globalAlpha=1;
+function drawRadioLog(sc){{const ms=Math.round((touchMode?118:150)*sc),x=(touchMode?12:16)*sc+ms/2,y=touchMode?12*sc+ms+14*sc:VH-ms-16*sc-12*sc,mins=Math.floor(((clock%1)+1)%1*1440),hh=Math.floor(mins/60),mm=mins%60;
+  if(!touchMode)hudText((hh%12||12)+':'+String(mm).padStart(2,'0')+(hh<12?' AM':' PM')+(rain>0.3?(SEASON()==='winter'?'  ❄':'  ☂'):''),x,y,Math.round(13*sc),'#ddd','center',`600 ${Math.round(13*sc)}px system-ui`);}let y=(touchMode?150:56)*sc;for(const m of RADIOLOG){ctx.globalAlpha=Math.min(1,m.life);hudText(m.t,18*sc,y,Math.round(13*sc),m.t.startsWith('DISPATCH')?'#9fd0ff':'#ffe9a8','left',`600 ${Math.round(13*sc)}px system-ui`);y+=18*sc;}ctx.globalAlpha=1;
   if(drill){const w=200*sc,x=VW/2-w/2,yy=VH*0.68;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(x,yy,w,12*sc);ctx.fillStyle='#ffd600';ctx.fillRect(x+2,yy+2,(w-4)*clamp(drill.t/9,0,1),12*sc-4);hudText('CRACKING THE VAULT',VW/2,yy-12*sc,Math.round(14*sc),'#ffe9a8','center');}}
 function extTick6(dt){updateRobbery(dt);updateRadioChatter(dt);}
 
@@ -2491,6 +2492,10 @@ function updateStunt(dt){stuntCool-=dt;const c=player.car;if(stuntCool>0||!c||c.
   say([['Stunt Trial','Land three jumps, each one bigger: '+need.join(' s, ')+' s of air. Any ramp in the city counts.']],null,[['GO',()=>{runMission({title:'Stunt Trial',stunt:true,steps:need.map((a,i)=>({k:'jump',air:a,timer:i?90:120,desc:'Jump '+(i+1)+' of 3: stay airborne '+a+' s'}))},{sub:'Level '+(stuntLevel+1)});}],['NOT NOW',()=>{},'no']]);}
 function extTick7(dt){updateTurf(dt);updateStunt(dt);}
 
+// ---------- motorcycles ----------
+CT.bike={name:'Shredder',L:30,Wd:11,max:640,acc:600,grip:9.5,turn:3.5,hp:60,mass:0.45,cols:['#d8382a','#151515','#2a7ae0','#f0c020','#e0e0e0'],bike:true};
+// thrown off on a hard crash
+function bikeCrash(c,imp){if(c!==player.car||!c.t.bike||imp<230||game.state!=='play')return;const vx=c.vx,vy=c.vy;exitCar(true);player.vx=vx*0.4;player.vy=vy*0.4;player.jz=6;player.jv=140;hurtPlayer(12);showBig('BAILED!','','#ff9a2e',1);}
 window.__roomsReady=true;
 
 // ================= CAMERA =================
@@ -2825,14 +2830,16 @@ const drops=[];for(let i=0;i<220;i++)drops.push({x:Math.random()*2200,y:Math.ran
 // city tile map (Mode-7 style); buildings and cars are projected 3D boxes; people and props are billboards.
 let lowc=document.createElement('canvas'),L3=lowc.getContext('2d');
 let LW=320,LH=180,HW=160,HOR=72,FOC=160,SCL=1,OX=0,OY=0,lowImg=null,lowBuf=null,HALF=1,frameNo=0;
-const NEAR=5,BH=40;let FOG0=360,FOG1=1250,FOGN0=360,FOGN1=1250;
+const NEAR=5,BH=40;let HOR0=72,HORA=0;let FOG0=360,FOG1=1250,FOGN0=360,FOGN1=1250;
 let CX=0,CY=0,CZ=40,CC=1,CS=0;
 let PX=0,PY=0,PK=0,PF=0,ZOFF=0;
 let AMB=[1,1,1],FOGC=[180,190,205],LIGHTK=0,SKYT=[80,130,200];
 function resizeLow(){
   const asp=VW/VH;
-  if(asp>=1){LH=180;LW=clamp(Math.round(180*asp),240,420);HOR=Math.round(LH*.4);FOC=Math.round(LH*.9);}
-  else{LW=200;LH=clamp(Math.round(200/asp),240,440);HOR=Math.round(LH*.37);FOC=Math.round(LW*.74);}
+  const dk=typeof DYN==='number'?DYN:1;
+  if(asp>=1){LH=Math.round(180*dk);LW=clamp(Math.round(LH*asp),Math.round(240*dk),Math.round(420*dk));HOR=Math.round(LH*.4);FOC=Math.round(LH*.9);}
+  else{LW=Math.round(200*dk);LH=clamp(Math.round(LW/asp),Math.round(240*dk),Math.round(440*dk));HOR=Math.round(LH*.37);FOC=Math.round(LW*.74);}
+  HOR0=HOR;
   HW=LW/2;HALF=HW/FOC;
   lowc.width=LW;lowc.height=LH;L3.imageSmoothingEnabled=false;
   lowImg=L3.createImageData(LW,LH);lowBuf=new Uint32Array(lowImg.data.buffer);
@@ -3284,7 +3291,11 @@ function drawHeliP(c,fg,t,a){const ca=Math.cos(a),sa=Math.sin(a),col=rgbOf(c.col
   obox(c.x-ca*22,c.y-sa*22,a,12,1.4,9,12,col,null,fg);obox(c.x-ca*33,c.y-sa*33,a,2,1,9,19,col,null,fg);
   for(const sd of[-1,1])obox(c.x-sa*6*sd,c.y+ca*6*sd,a,12,0.9,0,2,[50,50,54],null,fg);
   const r=c.rot||0;for(let i=0;i<2;i++){const ra=r+i*PI/2,rc=Math.cos(ra),rs=Math.sin(ra);if(proj(c.x+rc*28,c.y+rs*28,18)){const x1=PX,y1=PY;if(proj(c.x-rc*28,c.y-rs*28,18)){L3.strokeStyle='rgba(20,20,24,.75)';L3.lineWidth=1;L3.beginPath();L3.moveTo(x1,y1);L3.lineTo(PX,PY);L3.stroke();}}}}
-function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return;}if(t.heli){drawHeliP(c,fg,t,a);return;}
+function drawBike3(c,fg,t,hl,hw,a){const ca=Math.cos(a),sa=Math.sin(a),col=rgbOf(c.col);
+  for(const s of[-1,1])obox(c.x+ca*hl*0.7*s,c.y+sa*hl*0.7*s,a,5,1.6,0,9,[20,20,22],null,fg);
+  obox(c.x,c.y,a,hl*0.55,2.6,6,12,col,mixA(col,[255,255,255],0.2),fg);obox(c.x+ca*hl*0.55,c.y+sa*hl*0.55,a,1.5,4,11,15,[60,60,64],null,fg);
+  if(c.driver){const sh=c.driver==='player'?[217,115,31]:c.driver==='cop'?[43,76,155]:[120,90,70];obox(c.x-ca*3,c.y-sa*3,a,3.5,4,12,24,sh,null,fg);obox(c.x-ca*2,c.y-sa*2,a,2.6,2.6,24,30,[30,30,34],[40,40,44],fg);}}
+function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return;}if(t.bike){drawBike3(c,fg,t,hl,hw,a);return;}if(t.heli){drawHeliP(c,fg,t,a);return;}
   const base=c.wreck?[40,36,33]:(c.flash>0?[255,255,255]:rgbOf(c.col));
   const dmg=c.wreck?1:clamp(0.55+0.45*c.hp/t.hp,0.55,1),col=[base[0]*dmg,base[1]*dmg,base[2]*dmg];
   const ca=Math.cos(a),sa=Math.sin(a);
@@ -3558,7 +3569,7 @@ function drawHeli3(h,fg){
 
 // ---------- frame ----------
 const ITEMS=[];
-function render(){
+function render(){{const want=player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0;HORA=lerp(HORA,want,0.06);HOR=Math.round(HOR0+HORA);}
   frameNo++;setCam();
   const lightLvl=0.5-0.5*Math.cos(clock*TAU),night=clamp(darkness/0.8,0,1),warm=clamp(1-Math.abs(lightLvl-0.4)/0.16,0,1)*(1-night*0.5);
   let top=mixA([70,128,206],[92,64,128],warm),bot=mixA([196,212,230],[255,150,96],warm);
