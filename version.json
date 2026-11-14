@@ -1,4 +1,4 @@
 {
-  "version": "4.3.0",
-  "notes": "Install the game as an app on your phone or computer (works offline), turf wars, stunt trials, a helicopter, robberies and police radio."
+  "version": "4.3.1",
+  "notes": "Fairer cops at 1 and 2 stars (slower, slower to react, easier to lose, no more spawning on your tail), the helicopter stays in front of buildings it flies over, and bridge decks sort properly against buildings behind them."
 }
