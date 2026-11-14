@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v3.7.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v3.8.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='3.7.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.8.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -123,7 +123,7 @@ const RAMPS=[];
 // the East River: a wide channel cutting Westside Island off from the city, crossed by three bridges
 const RIVX0=88,RIVX1=112,BRIDGES=[3,9,15],BIGB=9;
 const bridgeRow=ty=>ty%P<4&&BRIDGES.includes(Math.floor(ty/P));
-const BRT=new Uint8Array(W*W),DECKS=[];
+const BRT=new Uint8Array(W*W),DECKS=[],PIERS=[];
 // ---- diagonal avenues (a Broadway through Times Square, and one across Westside Island) ----
 const DIAGT=new Uint8Array(W*W);
 const DIAGS=[[114,30,218,238],[2,240,86,72]].map(([ax,ay,bx,by])=>{ax*=T;ay*=T;bx*=T;by*=T;const L=hyp(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L;return{ax,ay,bx,by,L,ux,uy,nx:-uy,ny:ux};});
@@ -366,7 +366,7 @@ function genMap(){
   {const x0=RIVX0*T,x1=RIVX1*T;
    for(const iy of BRIDGES){const yn=iy*P*T,ys=(iy*P+4)*T,big=iy===BIGB;
      for(let x=x0+20;x<x1;x+=40){props.push({x,y:yn-2,k:'brail',a:0},{x,y:ys+2,k:'brail',a:0},{x,y:yn-3,k:big?'girder':'deck',a:0},{x,y:ys+3,k:big?'girder':'deck',a:0});}
-     if(!big){for(let x=x0+150;x<x1-100;x+=230)props.push({x,y:(yn+ys)/2,k:'pier'});continue;}
+     if(!big){for(let x=x0+150;x<x1-100;x+=230)PIERS.push({x,y:(yn+ys)/2});continue;}
      // the big one: two stone towers, main cables swooping between them and down to anchorages on each shore
      const tA=x0+170,tB=x1-170;
      for(const tx of[tA,tB]){const yc=(yn+ys)/2;props.push({x:tx,y:yc,yc,k:'bcrown',rad:96,ht:240});for(const sd of[-1,1])props.push({x:tx,y:yc+sd*82,yc,k:'bleg',rad:18,ht:230});}
@@ -690,7 +690,7 @@ function carTiles(c){
   }
 }
 function carPair(a,b){
-  if(!!a.t.boat!==!!b.t.boat)return;
+  if(!!a.t.boat!==!!b.t.boat)return;if(a.driver==='race'&&b.driver==='race')return;
   if(a.air>0||b.air>0)return;
   const ra0=hyp(a.t.L,a.t.Wd)/2,rb0=hyp(b.t.L,b.t.Wd)/2,dx=b.x-a.x,dy=b.y-a.y;
   if(dx*dx+dy*dy>(ra0+rb0)*(ra0+rb0))return;
@@ -797,7 +797,7 @@ function panicAround(x,y,r){
   for(const c of cars)if(c.driver==='ai'&&c.ai&&dist2(c.x,c.y,x,y)<r2*0.6)c.ai.cruise=Math.max(c.ai.cruise,260);
 }
 function killPed(p,by,fvx,fvy,burnt){
-  if(p.gone)return;if(p.boss){p.hp=9999;return;}
+  if(p.gone)return;if(p.boss){p.hp=9999;return;}if(by==='player'){STATS.kills++;if(p.cop)STATS.cops++;}
   p.gone=true;
   const body={k:'body',x:p.x,y:p.y,a:p.a,col:burnt?'#1a1612':p.col,skin:burnt?'#1a1612':p.skin,hair:p.hair,cop:p.cop};
   if(fvx||fvy)flyers.push({b:body,vx:fvx,vy:fvy,va:rr(-12,12),t:0.55});
@@ -884,8 +884,8 @@ function respawnAt(sp){
   for(const p of peds)if(p.cop&&dist2(p.x,p.y,sp.x,sp.y)<300*300)p.gone=true;
   game.state='play';
 }
-function wasted(){if(game.state!=='play')return;game.state='wasted';game.timer=DEATH_T;slowT=Math.max(slowT,1.1);vib(300);showBig('WASTED','','#ff2a2a',3);sfx('fail');if(mission)missionFail(true);}
-function busted(){if(game.state!=='play')return;game.state='busted';game.timer=DEATH_T;slowT=Math.max(slowT,0.8);vib([120,60,120]);showBig('BUSTED','','#4da3ff',3);sfx('fail');if(mission)missionFail(true);}
+function wasted(){if(game.state!=='play')return;game.state='wasted';game.timer=DEATH_T;slowT=Math.max(slowT,1.1);STATS.wasted++;vib(300);showBig('WASTED','','#ff2a2a',3);sfx('fail');if(mission)missionFail(true);}
+function busted(){if(game.state!=='play')return;game.state='busted';game.timer=DEATH_T;slowT=Math.max(slowT,0.8);STATS.busted++;vib([120,60,120]);showBig('BUSTED','','#4da3ff',3);sfx('fail');if(mission)missionFail(true);}
 
 // ================= MESSAGES =================
 let big=null;const ticker=[];
@@ -1343,14 +1343,14 @@ cv.addEventListener('contextmenu',e=>e.preventDefault());
 
 // touch
 const joy={id:null,ox:0,oy:0,x:0,y:0,active:false},aimJoy={id:null,ox:0,oy:0,x:0,y:0,active:false};
-const tbtn={horn:{id:null,on:false},nos:{id:null,on:false},gas:{id:null,on:false},rev:{id:null,on:false},look:{id:null,on:false},fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
+const tbtn={phone:{id:null,on:false},horn:{id:null,on:false},nos:{id:null,on:false},gas:{id:null,on:false},rev:{id:null,on:false},look:{id:null,on:false},fire:{id:null,on:false},car:{id:null,on:false},brake:{id:null,on:false},gun:{id:null,on:false},radio:{id:null,on:false},pause:{id:null,on:false}};
 function touchScale(){return clamp(Math.min(VW,VH)/420,0.72,1.2)*(OPT.btn||1)}
 function btnLayout(){const s=touchScale(),pad=16*s,bx=VW-pad,by=VH-pad-8;
   const L={fire:{x:bx-46*s,y:by-46*s,r:46*s,label:'FIRE'},
     brake:{x:bx-148*s,y:by-34*s,r:33*s,label:'DRIFT'},
     car:{x:bx-46*s,y:by-150*s,r:33*s,label:'CAR'},
     gun:{x:bx-128*s,y:by-122*s,r:25*s,label:'GUN'},
-    pause:{x:VW/2,y:24*s,r:17*s,label:'II'},
+    pause:{x:VW/2,y:24*s,r:17*s,label:'II'},phone:{x:VW/2+46*s,y:24*s,r:17*s,label:'CALL'},
     look:{x:bx-128*s,y:by-192*s,r:22*s,label:'LOOK'}};
   if(player.car)L.radio={x:bx-46*s,y:by-226*s,r:23*s,label:'RADIO'};
   if(player.car){L.horn={x:bx-226*s,y:by-30*s,r:25*s,label:'HORN'};if(player.car.up&&player.car.up.nitro)L.nos={x:bx-210*s,y:by-104*s,r:22*s,label:'NOS'};
@@ -1369,7 +1369,7 @@ function onTouch(e){
       let hitBtn=null;for(const k in L){const b=L[k];if(hyp(x-b.x,y-b.y)<b.r*1.3){hitBtn=k;break;}}
       if(hitBtn){tbtn[hitBtn].id=t.identifier;tbtn[hitBtn].on=true;
         if(hitBtn==='car')pressed.enter=true;if(hitBtn==='gun')pressed.swap=true;
-        if(hitBtn==='radio'&&player.car)setStation(radio.st+1);if(hitBtn==='pause')togglePause();}
+        if(hitBtn==='radio'&&player.car)setStation(radio.st+1);if(hitBtn==='pause')togglePause();if(hitBtn==='phone')phoneMenu();}
       else if(x<VW*0.5&&y>VH*0.3&&joy.id===null){
         joy.id=t.identifier;joy.ox=clamp(x,JH.r,VW*0.5);joy.oy=clamp(y,VH*0.3,VH-JH.r*0.6);joy.x=0;joy.y=0;joy.active=true;}
       else if(x>=VW*0.5&&y>VH*0.22&&aimJoy.id===null){aimJoy.id=t.identifier;aimJoy.ox=x;aimJoy.oy=y;aimJoy.x=0;aimJoy.y=0;aimJoy.active=true;}
@@ -1488,6 +1488,7 @@ function tryEnterCar(){
     if(witness||wasCop)crime(0,1);
   }
   if(best.t.police)crime(best.t.army?1000:0,1);
+  if(!best.bought)STATS.stolen++;best.bought=true;
   player.car=best;best.driver='player';best.ai=null;best.traffic=false;best.lastBy='player';
   sfx('door');note(best.t.name+(hadDriver?' (jacked)':''));
   setStation(best.t.police?RADIO.length-1:Math.floor(R()*(RADIO.length-1)));
@@ -1578,7 +1579,7 @@ function carAir(c,dt){
     if(imp>560)damageCar(c,(imp-560)*0.05,c.driver==='player'?'player':null);
     for(let k=0;k<6;k++)puff(c.x+rr(-15,15),c.y+rr(-15,15),rr(-60,60),rr(-60,60),rr(.4,.8),rr(6,10),'#9a9a9a','smoke');
     if(c===player.car){shake=Math.max(shake,4+imp/70);sfx('crash',clamp(imp/700,0.25,0.7));
-      if(c.airT>0.3){const bonus=Math.round(c.airT*c.airT*1500/50)*50;addMoney(bonus);showBig(c.airT>1.0?'INSANE STUNT BONUS':'STUNT BONUS','+$'+bonus.toLocaleString()+'  ·  '+c.airT.toFixed(1)+'s air','#ffd600',2.2);chaos();}}
+      if(c.airT>0.3){STATS.jumps++;STATS.bestAir=Math.max(STATS.bestAir,c.airT);lastJumpAir=c.airT;const bonus=Math.round(c.airT*c.airT*1500/50)*50;addMoney(bonus);showBig(c.airT>1.0?'INSANE STUNT BONUS':'STUNT BONUS','+$'+bonus.toLocaleString()+'  ·  '+c.airT.toFixed(1)+'s air','#ffd600',2.2);chaos();}}
     else if(nearPlayer(c.x,c.y,600))sfx('crash',0.3);
   }
 }
@@ -1707,7 +1708,8 @@ function dlgShow(){const d=document.getElementById('dlg'),l=DLG.lines[DLG.i];d.s
 function say(lines,done,choice){DLG.open=true;DLG.lines=lines;DLG.i=0;DLG.done=done||null;DLG.choice=choice||null;dlgShow();sfx('ring',0.3);}
 function dlgNext(){if(!DLG.open)return;if(DLG.i<DLG.lines.length-1){DLG.i++;dlgShow();return;}if(DLG.choice)return;const f=DLG.done;dlgClose();if(f)f();}
 function dlgClose(){DLG.open=false;document.getElementById('dlg').style.display='none';}
-window.addEventListener('keydown',e=>{if(!DLG.open)return;if(e.code==='Enter'||e.code==='Space'||e.code==='KeyF'||e.code==='KeyE'){dlgNext();e.preventDefault();e.stopImmediatePropagation();}
+window.addEventListener('keydown',e=>{if(!DLG.open)return;if(DLG.choice&&DLG.i===DLG.lines.length-1&&(e.code==='Enter'||e.code==='Escape'||e.code==='Backspace')){const c=e.code==='Enter'?DLG.choice[0]:DLG.choice[DLG.choice.length-1];dlgClose();c[1]();e.preventDefault();e.stopImmediatePropagation();return;}
+  if(e.code==='Enter'||e.code==='Space'||e.code==='KeyF'||e.code==='KeyE'){dlgNext();e.preventDefault();e.stopImmediatePropagation();}
   else if(DLG.choice&&DLG.i===DLG.lines.length-1&&(e.code==='KeyY'||e.code==='KeyN')){const c=DLG.choice[e.code==='KeyY'?0:1];if(c){dlgClose();c[1]();}e.stopImmediatePropagation();}},true);
 
 // ---------- gang bosses and the story ----------
@@ -1742,6 +1744,14 @@ const CHAPTERS=[
     {k:'heat',stars:3},
     {k:'lose',timer:180,desc:'Lose the 3-star wanted level'},
     {k:'talk',lines:[[VINCE,'Ha! The whole radio was screaming about you. You\'re one of us now.'],[VINCE,'Watch yourself around Dex. That man smiles too much.']]}]},
+  {title:'Jump the Gap',pay:3500,steps:[
+    {k:'talk',lines:[[VINCE,'My nephew says nobody can make a real jump in this town anymore. Prove him wrong.'],[VINCE,'Find a ramp: an alley, a lot, the construction site. Stay in the air for a full second and a half.']]},
+    {k:'jump',air:1.5,timer:240,desc:'Hit a ramp and stay airborne for 1.5 s'}]},
+  {title:'Riverside Rumble',pay:5500,steps:[
+    {k:'talk',lines:[[VINCE,'Jade Lotus boys are unloading on the riverside like they own it.'],[VINCE,'Break up the party, then take one of their boats down to the south dock. They hate that.']]},
+    {k:'kill',gang:2,n:6,around:()=>({x:RIVX0*T-60,y:(11*P+9)*T}),spread:260,timer:180,desc:'Take out the 6 Jade Lotus on the riverside'},
+    {k:'boat'},
+    {k:'drive',to:()=>LM.dockS,car:'boat',r:110,timer:120,desc:'Take the boat to the south dock'}]},
  ],
  [ // Chrome Saints
   {title:'Times Square Handoff',pay:2500,steps:[
@@ -1760,6 +1770,15 @@ const CHAPTERS=[
     {k:'talk',lines:[[DEX,'A bank truck is making its rounds. It owes me money. Technically.'],[DEX,'Crack it open. It\'s armored, so bring something with a kick.']]},
     {k:'wreck',at:()=>({x:player.x,y:player.y}),far:900,type:'truck',col:'#3a4a3a',hp:600,cruise:180,timer:180,desc:'Wreck the armored truck'},
     {k:'talk',lines:[[DEX,'Wonderful. You and I are going to do great things together.'],[DEX,'Mother Lin, though... she\'s old-fashioned. Be careful who you trust.']]}]},
+  {title:'Hostile Takeover',pay:5000,steps:[
+    {k:'talk',lines:[[DEX,'I want a SWAT van for a little... corporate event. They park them at Police HQ.'],[DEX,'Bring it to me. Expect some disagreement from the owners.']]},
+    {k:'steal',type:'swat',col:'#1c1e24',where:()=>({x:policeSpawn.x+3*T,y:policeSpawn.y+2*T}),desc:'Steal the SWAT van at Police HQ'},
+    {k:'heat',stars:3},
+    {k:'drive',to:()=>BOSSES[1].pt,car:'stolen',desc:'Bring the SWAT van to Dex'},
+    {k:'lose',timer:200,desc:'Now lose the cops'}]},
+  {title:'Penthouse Party',pay:4500,steps:[
+    {k:'talk',lines:[[DEX,'I\'m throwing a party and the caterers have gone missing. With my champagne.'],[DEX,'Four crates, scattered around Times Square. Ninety seconds. Go.']]},
+    {k:'collect',n:4,around:()=>LM.tsq,spread:700,timer:90,desc:'Grab the 4 champagne crates around Times Square'}]},
  ],
  [ // Jade Lotus
   {title:'Beach Pickup',pay:2500,steps:[
@@ -1779,6 +1798,17 @@ const CHAPTERS=[
     {k:'heat',stars:2},
     {k:'lose',timer:180,needBoat:true,desc:'Lose the cops on the water'},
     {k:'talk',lines:[[LIN,'You did well. Now hear an old woman\'s warning.'],[LIN,'Dex Calloway has been buying everyone\'s secrets. Soon he will try to buy yours.']]}]},
+  {title:'Ghost Cab',pay:4000,steps:[
+    {k:'talk',lines:[[LIN,'Three of my people need rides tonight, and nobody notices a taxi.'],[LIN,'Take a cab and visit each of them. Don\'t keep them waiting.']]},
+    {k:'steal',type:'taxi',where:()=>lotNear(player.x,player.y,300,1200),desc:'Get the taxi waiting nearby'},
+    {k:'drive',to:()=>lotNear(player.x,player.y,900,1800),car:'stolen',timer:70,desc:'First pickup'},
+    {k:'drive',to:()=>lotNear(player.x,player.y,900,1800),car:'stolen',timer:70,desc:'Second pickup'},
+    {k:'drive',to:()=>lotNear(player.x,player.y,900,1800),car:'stolen',timer:70,desc:'Third pickup'}]},
+  {title:'Fireworks',pay:6000,steps:[
+    {k:'talk',lines:[[LIN,'The Red Sabres burned my cousin\'s restaurant. Tonight we answer with fireworks.'],[LIN,'Three of their cars are cruising the old town. None of them gets home.']]},
+    {k:'wreck',at:()=>({x:4*P*T,y:4*P*T}),far:500,type:'sedan',col:'#4f1418',hp:160,cruise:230,timer:120,desc:'Wreck the first Red Sabres car'},
+    {k:'wreck',at:()=>({x:player.x,y:player.y}),far:900,type:'sports',col:'#4f1418',hp:160,cruise:260,timer:120,desc:'Wreck the second Red Sabres car'},
+    {k:'wreck',at:()=>({x:player.x,y:player.y}),far:900,type:'sedan',col:'#4f1418',hp:200,cruise:240,timer:120,desc:'Wreck the last Red Sabres car'}]},
  ],
 ];
 const FINALE={title:'Gridlock',pay:25000,steps:[
@@ -1815,10 +1845,12 @@ function stepNext(){const m=mission;if(!m||m.type!=='story')return;m.si++;m.ring
       m.items=items;break;}
     case 'heat':crime(0,s.stars);setTimeout(stepNext,0);break;
     case 'lose':break;
+    case 'jump':lastJumpAir=0;break;
     case 'boat':{if(player.car&&player.car.t.boat){setTimeout(stepNext,0);break;}let b=null,bd=1e18;for(const c of cars)if(c.t.boat&&!c.wreck&&!c.driver){const d=dist2(c.x,c.y,player.x,player.y);if(d<bd){bd=d;b=c;}}
       if(!b){const d=LM.dockW;b=makeCar('boat',d.x,d.y,PI/2);}st.c=b;b.vip=true;m.tgt=b;m.desc='Get in the speedboat';break;}
   }}
 function storyTick(dt){const m=mission;if(DLG.open)return;const s=m.steps[m.si];if(!s)return;const st=s.st,pc=player.car;
+  if(m.cd>0){m.cd-=dt;const n=Math.ceil(m.cd);if(n!==m.cdn){m.cdn=n;showBig(n>0?String(n):'GO!','','#ffd600',0.8);sfx(n>0?'ring':'pass',0.5);}if(pc){pc.vx*=0.8;pc.vy*=0.8;}m.clock=0;return;}
   if(m.opts.race)m.clock+=dt;
   switch(s.k){
     case 'steal':if(st.c.wreck||st.c.burn>=0){storyFail('The car was wrecked');return;}if(pc===st.c)stepNext();break;
@@ -1835,6 +1867,7 @@ function storyTick(dt){const m=mission;if(DLG.open)return;const s=m.steps[m.si];
     case 'kill':{const left=st.list.filter(p=>!p.gone).length;m.desc=s.desc+' ('+left+' left)';let b=null,bd=1e18;for(const p of st.list)if(!p.gone){const d=dist2(p.x,p.y,player.x,player.y);if(d<bd){bd=d;b=p;}p.angry=999;}m.tgt=b;if(!left)stepNext();break;}
     case 'collect':{for(const it of m.items)if(!it.got&&dist2(it.x,it.y,player.x,player.y)<(pc?36:24)**2){it.got=true;sfx('pickup');}
       const left=m.items.filter(i=>!i.got).length;m.desc=(s.desc||'')+' ('+(s.n-left)+'/'+s.n+')';let b=null,bd=1e18;for(const it of m.items)if(!it.got){const d=dist2(it.x,it.y,player.x,player.y);if(d<bd){bd=d;b=it;}}m.tgt=b;if(!left)stepNext();break;}
+    case 'jump':if(lastJumpAir>=s.air){stepNext();}else if(lastJumpAir>0){note('Only '+lastJumpAir.toFixed(1)+' s. Go faster!');lastJumpAir=0;}m.tgt=null;break;
     case 'lose':if(s.needBoat&&!(pc&&pc.t.boat)){m.desc='Stay on the water and lose the cops';}if(stars()===0&&(!s.needBoat||(pc&&pc.t.boat)))stepNext();break;
     case 'boat':if(pc===st.c||(pc&&pc.t.boat)){st.c.vip=false;stepNext();}break;
   }}
@@ -1845,7 +1878,7 @@ function storyPass(){const m=mission;mission=null;ringT=6;
   else{STORY.prog[m.g]++;addRespect(m.g,1.5);showBig('MISSION PASSED','+$'+d.pay.toLocaleString(),'#3ee07a',3);
     const next=storyAvail(m.g);note(next?GANGS[m.g].name+': see the boss for the next job':'Every gang trusts you now... maybe too much. Visit Vince.');}
   if(OPT.autosave&&stars()===0)writeSave('auto');}
-function storyFail(msg){const m=mission;if(!m)return;for(const s of m.steps){if(s.st&&s.st.c&&s.st.c!==player.car)s.st.c.vip=false;if(s.st&&s.st.list)for(const p of s.st.list)p.target=false;}
+function storyFail(msg){const m=mission;if(!m)return;for(const c of m.rivals||[]){c.driver=null;c.vip=false;c.traffic=true;c.race=null;}for(const s of m.steps){if(s.st&&s.st.c&&s.st.c!==player.car)s.st.c.vip=false;if(s.st&&s.st.list)for(const p of s.st.list)p.target=false;}
   mission=null;ringT=8;dlgClose();if(msg!==false){showBig(m.opts.race?'RACE FAILED':'MISSION FAILED',msg||'','#ff4040',2.6);sfx('fail');}}
 // boss peds stand at their hideouts; walk up to one on foot to get the next job
 const bossPeds=[null,null,null];
@@ -1956,7 +1989,7 @@ function updateFire(dt){const c=player.car;if(fireJob){for(const f of fireJob.fi
 
 // ---------- street races (time trials over the bridges) ----------
 const RACES=[
-  {name:'Gridlock Sprint',start:ixPt(4,BIGB),route:[[6,BIGB],[8,BIGB],[10,BIGB],[10,11],[TSQ.ix,TSQ.iy]],gold:38},
+  {name:'Gridlock Sprint',start:ixPt(4,BIGB),route:[[6,BIGB],[8,BIGB],[10,BIGB],[10,TSQ.iy],[TSQ.ix,TSQ.iy]],gold:38},
   {name:'River Loop',start:ixPt(6,1),route:[[6,3],[8,3],[8,9],[8,15],[6,15],[6,9],[6,3]],gold:62},
   {name:'Beach Dash',start:ixPt(12,15),route:[[14,15],[14,17],[10,17],[8,17],[8,15],[6,15],[4,15],[4,17]],gold:48},
 ];
@@ -1967,10 +2000,29 @@ function updateRaces(dt){raceCool-=dt;const c=player.car;if(mission||DLG.open||!
   for(const r of RACES){if(dist2(r.start.x,r.start.y,c.x,c.y)>70*70||hyp(c.vx,c.vy)>80)continue;raceCool=6;
     say([['Race',r.name+': '+r.route.length+' checkpoints. Gold time '+r.gold+' s.'+(BEST[r.name]?' Your best: '+BEST[r.name].toFixed(1)+' s.':'')]],null,[['RACE',()=>startRace(r)],['NOT NOW',()=>{},'no']]);return;}}
 function startRace(r){const steps=r.route.map((q,i)=>({k:'drive',to:()=>ixPt(q[0],q[1]),car:'any',r:110,desc:'Checkpoint '+(i+1)+' / '+r.route.length}));
-  steps[0].timer=Math.round(r.gold*1.8);runMission({title:r.name,steps},{race:r,sub:'GO!'});}
-function raceDone(m){const r=m.opts.race,t=m.clock;const medal=t<=r.gold?'GOLD':t<=r.gold*1.25?'SILVER':'BRONZE',pay=medal==='GOLD'?3000:medal==='SILVER'?1500:600;
+  steps[0].timer=Math.round(r.gold*1.8)+3;runMission({title:r.name,steps},{race:r,sub:'Get ready'});mission.cd=3.2;mission.rivals=[];
+  const pc=player.car,ca=Math.cos(pc.a),sa=Math.sin(pc.a);
+  [[-1,-70],[1,-70],[1,0]].forEach(([side,back],i)=>{const x=pc.x+ca*back-sa*side*34,y=pc.y+sa*back+ca*side*34;if(solidPx(x,y))return;
+    const c=makeCar(pick(['sports','sports','sedan']),x,y,pc.a,pick(['#e0402a','#2a7ae0','#20a060','#f0c020']));c.driver='race';c.vip=true;c.race={wp:0,done:false,skill:rr(0.86,0.98)};mission.rivals.push(c);});}
+function raceAI(c,dt){const m=mission;if(!m||!m.opts.race||!c.race){c.driver=null;c.traffic=true;c.vip=false;return;}
+  const r=m.opts.race,R2=c.race;if(m.cd>0||R2.done){driveCar(c,0,0,true,dt);return;}
+  const wp=ixPt(...r.route[R2.wp]),pv=R2.wp>0?ixPt(...r.route[R2.wp-1]):r.start,dx=wp.x-c.x,dy=wp.y-c.y,d=hyp(dx,dy);
+  if(d<100){R2.wp++;if(R2.wp>=r.route.length){R2.done=true;m.finished=(m.finished||0)+1;R2.place=m.finished;}return;}
+  // follow the street from the last checkpoint to the next, in the right-hand lane
+  const sl=hyp(wp.x-pv.x,wp.y-pv.y)||1,ux=(wp.x-pv.x)/sl,uy=(wp.y-pv.y)/sl,along=(c.x-pv.x)*ux+(c.y-pv.y)*uy,sp=hyp(c.vx,c.vy),la=Math.min(sl,along+60+sp*0.3);
+  {const fx=Math.cos(c.a),fy=Math.sin(c.a);let bl=false;for(const o of cars){if(o===c)continue;const rx=o.x-c.x,ry=o.y-c.y;if(rx*rx+ry*ry>140*140)continue;const f=rx*fx+ry*fy,l=-rx*fy+ry*fx;if(f>0&&f<110&&Math.abs(l)<26){bl=true;break;}}
+   if(bl)R2.pass=1.6;else if(R2.pass>0)R2.pass-=dt;}
+  const lo=R2.pass>0?-26:22,gx=pv.x+ux*la-uy*lo,gy=pv.y+uy*la+ux*lo;
+  const nx=R2.wp+1<r.route.length?ixPt(...r.route[R2.wp+1]):wp,turn=Math.abs(angDiff(Math.atan2(nx.y-wp.y,nx.x-wp.x),Math.atan2(uy,ux)));
+  const diff=angDiff(Math.atan2(gy-c.y,gx-c.x),c.a);let target=560*R2.skill;if(d<300&&turn>0.6)target=Math.min(target,150+d*0.7);if(Math.abs(diff)>0.6)target=Math.min(target,160);
+  // stuck: judged by actual progress, then back up and swing round
+  R2.chk=(R2.chk||0)+dt;if(R2.chk>1){R2.chk=0;const mv=hyp(c.x-(R2.lx||0),c.y-(R2.ly||0));R2.lx=c.x;R2.ly=c.y;if(mv<25&&!R2.rev)R2.rev=1.1;}
+  const vf=c.vx*Math.cos(c.a)+c.vy*Math.sin(c.a);let thr=vf<target?1:-0.6,st=clamp(diff*2.4,-1,1);
+  if(R2.rev>0){R2.rev-=dt;thr=-1;st=-st;if(R2.rev<=0)R2.rev=0;}
+  driveCar(c,thr,st,Math.abs(diff)>1.1&&sp>200,dt);}
+function raceDone(m){const r=m.opts.race,t=m.clock;const place=(m.finished||0)+1;for(const c of m.rivals||[]){c.driver=null;c.vip=false;c.traffic=true;c.race=null;}const medal=t<=r.gold?'GOLD':t<=r.gold*1.25?'SILVER':'BRONZE',pay=(medal==='GOLD'?3000:medal==='SILVER'?1500:600)+(place===1?2000:place===2?600:0);if(place===1)STATS.raceWins++;if(medal==='GOLD')GOLDS[r.name]=1;
   const best=!BEST[r.name]||t<BEST[r.name];if(best)BEST[r.name]=t;addMoney(pay);sfx('pass');vib([50,30,50]);
-  showBig(medal+'  '+t.toFixed(1)+' s',(best?'New best!  ':'')+'+$'+pay.toLocaleString(),medal==='GOLD'?'#ffd600':medal==='SILVER'?'#d0d4dc':'#d08a4a',3.2);}
+  showBig(['1ST','2ND','3RD','4TH'][place-1]+' PLACE · '+medal,t.toFixed(1)+' s  '+(best?'New best!  ':'')+'+$'+pay.toLocaleString(),medal==='GOLD'?'#ffd600':medal==='SILVER'?'#d0d4dc':'#d08a4a',3.2);}
 
 // ---------- smarter wanted level: cops see less at night, in the rain, and when you hide ----------
 let hiding=false;
@@ -2006,6 +2058,7 @@ function drawBigMap(sc){const s=Math.min(VW,VH)*0.92,ox=(VW-s)/2,oy=(VH-s)/2,k=s
   for(const sp of sprayPads)icon(sp.x,sp.y,'#3ee07a','$');
   icon(hospitalSpawn.x,hospitalSpawn.y,'#ffffff','+');
   for(const c of cars)if(c.t.boat&&!c.driver)icon(c.x,c.y,'#6ab8ff','~');
+  icon(SHOWROOM.x,SHOWROOM.y,'#ff6060','A');
   const tg=objectiveTarget();if(tg){const[a,b]=P2(tg.x,tg.y);ctx.fillStyle='#ffd600';ctx.beginPath();ctx.arc(a,b,6+Math.sin(game.t*6)*2,0,TAU);ctx.fill();ctx.stroke();}
   {const o=player.car||player,[a,b]=P2(o.x,o.y);ctx.save();ctx.translate(a,b);ctx.rotate(o.a);ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-2,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
   hudText(touchMode?'tap to close':'TAB to close',VW/2,oy+s-14,Math.round(13*sc),'#fff','center',`600 ${Math.round(13*sc)}px system-ui`);
@@ -2021,10 +2074,10 @@ let wakeLock=null;async function keepAwake(){try{if(navigator.wakeLock&&!wakeLoc
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.started)keepAwake();});
 
 // ---------- per-frame hook ----------
-function extTick(dt){transitTick(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
-function extSave(){return{story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel};}
+function extTick(dt){transitTick(dt);extTick2(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
+function extSave(){return{story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS};}
 function extLoad(e){if(!e)return;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
-  for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;}
+  for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});}
 
 // ---------- traffic on the diagonal avenues ----------
 function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir=ai.dir,ux=d.ux*dir,uy=d.uy*dir,lx=-uy,ly=ux;
@@ -2039,6 +2092,38 @@ function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir
   const vf=c.vx*fx+c.vy*fy;let thr=vf<target-10?1:vf>target+15?-1:0.15;if(target===0)thr=vf>5?-1:0;
   if(target>0&&spd<12){ai.stuckT+=dt;if(ai.stuckT>2){ai.revT=1;ai.stuckT=0}}else ai.stuckT=0;if(ai.revT>0){ai.revT-=dt;thr=-1;steer=-steer;}
   driveCar(c,thr,steer,false,dt);}
+
+// ---------- stats, completion, a phone for getaway cars, and a car showroom ----------
+const STATS={kills:0,cops:0,stolen:0,jumps:0,bestAir:0,dist:0,raceWins:0,wasted:0,busted:0};const GOLDS={};let lastJumpAir=0;
+function completion(){const sm=CHAPTERS.reduce((a,c)=>a+c.length,0)+1,sd=STORY.prog.reduce((a,b)=>a+b,0)+STORY.fin;
+  const parts=[[sd/sm,40],[PACKAGES.filter(k=>k.got).length/PACKAGES.length,20],[Object.keys(GOLDS).length/RACES.length,15],[SAFEHOUSES.filter(s=>s.owned).length/SAFEHOUSES.length,10],[Math.min(1,jobLevel/10),5],[Math.min(1,fireLevel/10),5],[Math.min(1,STATS.jumps/20),5]];
+  return Math.round(parts.reduce((a,[v,w])=>a+clamp(v,0,1)*w,0));}
+function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS · ${completion()}% COMPLETE</h2><div class="ctl">
+<b>Story</b><span>${STORY.prog.reduce((a,b)=>a+b,0)+STORY.fin} / ${CHAPTERS.reduce((a,c)=>a+c.length,0)+1} missions</span>
+<b>Hidden packages</b><span>${PACKAGES.filter(k=>k.got).length} / ${PACKAGES.length}</span>
+<b>Race golds</b><span>${Object.keys(GOLDS).length} / ${RACES.length} · ${STATS.raceWins} wins</span>
+<b>Safehouses</b><span>${SAFEHOUSES.filter(s=>s.owned).length} / ${SAFEHOUSES.length}</span>
+<b>Job levels</b><span>Duty ${jobLevel} · Fire ${fireLevel}</span>
+<b>Stunt jumps</b><span>${STATS.jumps} · best ${STATS.bestAir.toFixed(1)} s</span>
+<b>Cars stolen</b><span>${STATS.stolen}</span><b>People taken out</b><span>${STATS.kills} (${STATS.cops} cops)</span>
+<b>Distance driven</b><span>${km} km</span><b>Wasted / busted</b><span>${STATS.wasted} / ${STATS.busted}</span></div>`;}
+// phone: G (or PHONE) orders a car to be dropped off nearby
+const ORDERS=[['Getaway car',300,'sports'],['Taxi',150,'taxi'],['Pickup truck',250,'truck'],['Fire truck',600,'firetruck']];
+let delivery=null;
+function phoneMenu(){if(DLG.open||game.state!=='play'||mission&&mission.opts&&mission.opts.race)return;
+  say([['Phone','Who are you calling?']],null,ORDERS.map(([n,p,t])=>[n.toUpperCase()+' $'+p,()=>orderCar(n,p,t)]).concat([['HANG UP',()=>{},'no']]));}
+function orderCar(n,p,t){if(money<p){note('Not enough cash');return;}let s=null;for(let i=0;i<60&&!s;i++){const a=R()*TAU,d=rr(160,320);s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);}
+  if(!s){note('Nobody can reach you here');return;}addMoney(-p);const c=makeCar(t,s.x,s.y,s.dir*PI/2);c.special=false;delivery={c,t:40};sfx('ring',0.5);note(n+' on its way. Look for the marker');}
+window.addEventListener('keydown',e=>{if(e.code==='KeyG'&&game.started&&!game.paused&&!e.repeat)phoneMenu();});
+// showroom
+const SHOWROOM=(()=>{const l=nearestLot((15*P+9)*T,(11*P+9)*T)||lotBlocks[0];return{x:l.x,y:l.y-50,px:l.x,py:l.y+40};})();
+SIGNS.push({x:SHOWROOM.x,y:SHOWROOM.y,text:'AUTO SHOWROOM',bg:'#7a1a1a',fg:'#ffffff',h:44,on:()=>true});
+const STOCK=[['Viper',9000,'sports'],['Cruiser',3500,'sedan'],['Hauler',4500,'truck'],['Ambulance',6000,'ambulance'],['Army surplus tank',75000,'tank']];
+let showCool=0;
+function updateShowroom(dt){showCool-=dt;if(showCool>0||player.car||DLG.open||game.state!=='play')return;if(dist2(SHOWROOM.x,SHOWROOM.y,player.x,player.y)>36*36)return;showCool=4;
+  say([['Salesman','Welcome to Gridlock Motors! Everything on the lot, cash only, no questions.']],null,STOCK.map(([n,p,t])=>[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Come back with more cash');return;}addMoney(-p);const c=makeCar(t,SHOWROOM.px,SHOWROOM.py,0);c.special=false;sfx('pass');showBig('NEW WHEELS',n,'#3ee07a',2);}]).concat([['JUST LOOKING',()=>{},'no']]));}
+function extTick2(dt){updateShowroom(dt);if(player.car){STATS.dist+=hyp(player.car.vx,player.car.vy)*dt;}
+  if(delivery){delivery.t-=dt;if(delivery.t<=0||player.car===delivery.c||cars.indexOf(delivery.c)<0)delivery=null;}}
 
 // ================= ELEVATED TRAIN (the El) AND THE SUBWAY =================
 // The El runs a loop above the streets of the east side on steel pillars. Board it at a station and ride to the next one.
@@ -2155,7 +2240,7 @@ function update(dt){
   const actR=viewR+900,actR2=actR*actR;
   const active=[];
   for(const c of cars){
-    if(dist2(c.x,c.y,player.x,player.y)>actR2&&c!==player.car)continue;
+    if(dist2(c.x,c.y,player.x,player.y)>actR2&&c!==player.car&&c.driver!=='race')continue;
     active.push(c);
     if(c.wreck){c.wreckT+=dt;driveCar(c,0,0,true,dt);}
     else if(c.driver==='ai'||c.driver==='cop'){
@@ -2170,6 +2255,7 @@ function update(dt){
         if(c.shootT<=0&&d<260&&los(c.x,c.y,tg.x,tg.y)){c.shootT=rr(.9,1.6);const aa=npcAim(Math.atan2(tg.y-c.y,tg.x-c.x),true);
           fireBullet(c.x+Math.cos(aa)*(c.t.Wd/2+8),c.y+Math.sin(aa)*(c.t.Wd/2+8),aa,850,c.driver==='cop'?'cop':'gang',6,'b',5);sfx('smg',nearPlayer(c.x,c.y,600)?0.5:0.2);}}
     }else if(c.driver==='copboat'){copBoatAI(c,dt);
+    }else if(c.driver==='race'){raceAI(c,dt);
     }else if(c.driver!=='player'){
       if(Math.abs(c.vx)+Math.abs(c.vy)>1||Math.abs(c.va)>0.01)driveCar(c,0,0,true,dt);
     }
@@ -3167,10 +3253,14 @@ function worldPass(top,bot,lightLvl,warm){
   // ---- flat things on the ground (drawn before anything stands on them) ----
   const R0=FOG1+60;
   const vis=(x,y,rad)=>{const dx=x-CX,dy=y-CY,f=dx*CC+dy*CS;if(f<-rad||f>R0)return false;const r=-dx*CS+dy*CC;return Math.abs(r)<=(f+rad)*HALF+rad*2;};
-  {const sl=[];for(const s of DECKS){if(!vis(s.x,s.y,70))continue;sl.push([(s.x-CX)*CC+(s.y-CY)*CS,s]);}sl.sort((a,b)=>b[0]-a[0]);
-   for(const[f,s]of sl){const fg=fogAt(f),d=GH(s.x,s.y);ZOFF=0;obox(s.x,s.y,0,16.4,64,d-(s.big?9:7),d,[82,78,74],[60,60,64],fg);
-     if(s.big)obox(s.x,s.y,0,16.4,66,d-14,d-9,[58,54,52],null,fg);
-     obox(s.x,s.y,0,16,1.1,d,d+0.2,[214,176,40],null,fg);if(s.dash)for(const o of[-32,32])obox(s.x,s.y+o,0,7,0.9,d,d+0.2,[226,226,220],null,fg);}}
+  {const sl=[];for(const s of DECKS){if(!vis(s.x,s.y,70))continue;sl.push([(s.x-CX)*CC+(s.y-CY)*CS,s]);}for(const q of PIERS){if(!vis(q.x,q.y,70))continue;sl.push([(q.x-CX)*CC+(q.y-CY)*CS+60,{pier:1,x:q.x,y:q.y}]);}sl.sort((a,b)=>b[0]-a[0]);
+   for(const[f,s]of sl){if(s.pier){const d=GH(s.x,s.y);ZOFF=0;obox(s.x,s.y,0,9,58,RIVL,d-8,[150,144,134],null,fogAt(f-60));continue;}const fg=fogAt(f),xa=s.x-16.5,xb=s.x+16.5,ya=s.y-64,yb=s.y+64,da=GH(xa,s.y),db=GH(xb,s.y),th=s.big?14:7;ZOFF=0;
+     // only the road surface and the outer edge facing the camera: the ends sit below the road and never show
+     quad(xa,ya,da,xb,ya,db,xb,yb,db,xa,yb,da,lit([60,60,64],1.06,fg));
+     if(CY<ya)quad(xa,ya,da-th,xb,ya,db-th,xb,ya,db,xa,ya,da,lit([82,78,74],sunK(0,-1),fg));
+     if(CY>yb)quad(xa,yb,da-th,xb,yb,db-th,xb,yb,db,xa,yb,da,lit([82,78,74],sunK(0,1),fg));
+     quad(xa,s.y-1.1,da+0.2,xb,s.y-1.1,db+0.2,xb,s.y+1.1,db+0.2,xa,s.y+1.1,da+0.2,lit([214,176,40],1,fg));
+     if(s.dash)for(const o of[-32,32])quad(s.x-7,s.y+o-0.9,(da+db)/2+0.2,s.x+7,s.y+o-0.9,(da+db)/2+0.2,s.x+7,s.y+o+0.9,(da+db)/2+0.2,s.x-7,s.y+o+0.9,(da+db)/2+0.2,lit([226,226,220],1,fg));}}
   for(const c of cars){if(!vis(c.x,c.y,60))continue;ZOFF=GH(c.x,c.y);const fg=fogAt((c.x-CX)*CC+(c.y-CY)*CS);flat(c.x+2,c.y+2,c.a,c.t.L/2+2,c.t.Wd/2+2,0.3,`rgba(0,0,0,${0.3*(1-fg)})`);}
   for(const m of marks){if(m.k!=='body'||!vis(m.x,m.y,20))continue;ZOFF=GH(m.x,m.y);proj(m.x,m.y,0);drawBody3(m,0.4);}
   if(mission){const pulse=0.5+0.5*Math.sin(game.t*5);
@@ -3314,6 +3404,7 @@ function hudText(txt,x,y,size,col,align,font){
 function objectiveTarget(){
   if(job&&!mission)return job.kind==='vig'?job.car:job.stage==='pickup'?job.ped:job;
   if(fare&&!mission)return fare.stage==='pickup'?fare.ped:fare;
+  if(delivery&&!mission)return delivery.c;
   if(fireJob&&!mission){let b=null,bd=1e18;for(const f of fireJob.fires)if(f.hp>0){const d=dist2(f.x,f.y,player.x,player.y);if(d<bd){bd=d;b=f;}}return b;}
   if(!mission){if(ringing>=0)return phones[ringing];return null;}
   if(mission.type==='story')return mission.tgt;
@@ -3521,7 +3612,7 @@ function applySave(s){money=s.money||0;saveMoney();player.ammo=(s.ammo||[]).map(
 const fmtPlay=t=>{t=Math.floor(t/60);return Math.floor(t/60)+'h '+String(t%60).padStart(2,'0')+'m'};
 const slotSummary=s=>s?`$${(s.money||0).toLocaleString()} · ${(s.pkg||[]).filter(Boolean).length}/${PACKAGES.length} packages · ${fmtPlay(s.play||0)} played<br><small>${new Date(s.ts).toLocaleString()}</small>`:'<i>Empty</i>';
 function menuItems(){
-  if(menuMode==='pause')return[['RESUME',()=>togglePause()],['SAVE GAME',()=>openPanel('save')],['LOAD GAME',()=>openPanel('load')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')],['QUIT TO TITLE',()=>quitTitle()]];
+  if(menuMode==='pause')return[['RESUME',()=>togglePause()],['SAVE GAME',()=>openPanel('save')],['LOAD GAME',()=>openPanel('load')],['STATS',()=>openPanel('stats')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')],['QUIT TO TITLE',()=>quitTitle()]];
   const any=latestSave();
   return[...(any?[['CONTINUE',()=>loadFrom(any.s)]]:[]),['NEW GAME',()=>newGame()],['LOAD GAME',()=>openPanel('load')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')]];
 }
@@ -3553,6 +3644,7 @@ function openPanel(kind){
     <div class="opt"><span>Fullscreen</span><button data-opt="fs">${document.fullscreenElement?'EXIT':'GO FULLSCREEN'}</button></div>
     <div class="opt"><span>New city layout</span><button data-opt="city">GENERATE</button></div><p class="note">A new layout moves the hidden packages, so package progress in old saves won't carry over.</p>`;}
   else if(kind==='controls'){h='<h2>CONTROLS</h2>'+document.getElementById('ctlSrc').innerHTML;}
+  else if(kind==='stats'){h=statsHTML();}
   else if(kind==='newcity'){h='<h2>NEW CITY?</h2><p>The page will reload with a freshly generated city. Your saves are kept, but their hidden-package progress belongs to the old city.</p><div class="opt"><button data-yes="city">GENERATE</button><button data-back="options">CANCEL</button></div>';}
   h+='<button class="back" data-back="1">BACK</button>';p.innerHTML=h;
   p.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=readSave(b.dataset.load);if(s)loadFrom(s);});
