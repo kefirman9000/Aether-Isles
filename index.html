@@ -49,7 +49,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.18.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.18.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -86,7 +86,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.18.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.18.1',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -2037,6 +2037,8 @@ function bossBlip(cx,x,y,b,sz){const av=storyAvail(b.g),s=Math.round(sz*(av?1:0.
  BOSSES.forEach((b,i)=>{let best=null,bd=1e18;for(const l of lotBlocks){if(zoneOf(l.x,l.y)!==i)continue;const tx=Math.floor(l.x/T);if(tx>=RIVX0-4&&tx<RIVX1+4)continue;const d=dist2(l.x,l.y,(zc[i][0]*P+9)*T,(zc[i][1]*P+9)*T);if(d<bd){bd=d;best=l;}}
    b.pt=best?{x:best.x,y:best.y}:blockPt(zc[i][0],zc[i][1]);
    SIGNS.push({x:b.pt.x,y:b.pt.y-46,text:GANGS[i].name.toUpperCase(),bg:GANGS[i].car,fg:'#f5f1e2',h:44,on:()=>true});});}
+// GTA III-style mission markers: a glowing circle on the ground beside each boss; step into it to start the job
+for(const b of BOSSES){let mk=null;for(const r of[58,72,46])for(let k=0;k<8&&!mk;k++){const a=PI/2+k*PI/4,x=b.pt.x+Math.cos(a)*r,y=b.pt.y+Math.sin(a)*r;if(walkable(tileAt(Math.floor(x/T),Math.floor(y/T)))&&!solidPx(x,y))mk={x,y};}b.mk=mk||{x:b.pt.x,y:b.pt.y+50};b.mk.g=b.g;}
 const STORY={prog:[0,0,0],fin:0};
 // ---- the city opens up in stages, like GTA III's islands: you start on the west bank (Old Town, the Lotus Quarter).
 // The bridges east stay closed until you've done two jobs for Vince; then the rest of the city opens.
@@ -2243,12 +2245,13 @@ const bossPeds=[null,null,null];
 function updateBosses(){for(const b of BOSSES){if(dist2(b.pt.x,b.pt.y,player.x,player.y)>1100*1100)continue;let p=bossPeds[b.g];
     if(!p||p.gone||peds.indexOf(p)<0){p=makePed(b.pt.x,b.pt.y,false);makeGang(p,b.g);p.boss=true;p.target=true;p.hp=9999;bossPeds[b.g]=p;}
     p.x=b.pt.x;p.y=b.pt.y;p.a=Math.atan2(player.y-p.y,player.x-p.x);
-    if(!mission&&!DLG.open&&!player.car&&game.state==='play'&&dist2(p.x,p.y,player.x,player.y)<44*44&&!b.cool){
+    const onMk=dist2(b.mk.x,b.mk.y,player.x,player.y)<24*24,hasJob=!!storyAvail(b.g)&&!mission;
+    if(!mission&&!DLG.open&&!player.car&&game.state==='play'&&(hasJob?onMk:dist2(p.x,p.y,player.x,player.y)<44*44)&&!b.cool){
       const ch=storyAvail(b.g);b.cool=true;
       if(!ch){say([[b.name,STORY.fin?'Gridlock City is yours. Enjoy it.':!cityOpen()?'I don\'t know you yet. Go see Vince in Old Town, then we\'ll talk.':'Nothing for you today. Check with the others.']]);}
       else if(stars()>0){say([[b.name,'You\'re bringing heat to my door! Lose the cops first.']]);}
       else{const g=b.g;runMission(ch,{sub:GANGS[g].name,boss:p});mission.g=g;mission.gang=-1;}}
-    if(dist2(p.x,p.y,player.x,player.y)>90*90)b.cool=false;}}
+    if(dist2(p.x,p.y,player.x,player.y)>90*90&&dist2(b.mk.x,b.mk.y,player.x,player.y)>60*60)b.cool=false;}}
 
 // ---------- safehouses and garages ----------
 const SAFEHOUSES=[];
@@ -4995,6 +4998,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
   for(const k of STASH)if(!k.got)add(25,k,k.x,k.y,10,null,12,k.z);
   for(const g of GOLDG)if(!GOLDGOT[g.w])add(27,g,g.x,g.y,10,null,14,g.z);
   if(roofRun){const c=roofRun.cps[roofRun.i];add(26,c,c.x,c.y,30,null,60,c.z);}
+  if(!mission&&game.state==='play'&&!SCENE.on)for(const b of BOSSES)if(storyAvail(b.g))add(28,b.mk,b.mk.x,b.mk.y,26,null,70);
   phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8,null,27));
   if(mission&&mission.items)for(const it of mission.items)if(!it.got)add(6,it,it.x,it.y,8);
   for(const sg of SIGNS){if(sg.sh)sg.text=sg.sh.owned?'SAFEHOUSE':'FOR SALE $'+sg.sh.price.toLocaleString();add(20,sg,sg.x,sg.y,40,null,sg.h+12);}
@@ -5065,6 +5069,14 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
     case 4:drawPickup3(o,fg);break;
     case 5:drawPhone3(o,phones.indexOf(o)===ringing&&!mission,fg);break;
     case 6:drawCase3(o,fg);break;
+    case 28:{const m=o,col=GANGS[o.g].col,pulse=0.5+0.5*Math.sin(game.t*3.2),rgb=rgbOf('#ffd24a');ZOFF=GH(m.x,m.y);
+      // a pool of light on the ground, a ring that breathes, and a soft beam rising out of it
+      if(proj(m.x,m.y,0.5)){const gx=PX,gy=PY,k=PK;L3.globalCompositeOperation='lighter';
+        L3.globalAlpha=0.32+0.18*pulse;L3.fillStyle='#ffd24a';L3.beginPath();L3.ellipse(gx,gy,20*k,20*k*Math.max(0.18,Math.abs((CZ-ZOFF)/Math.max(30,PF))*0.9),0,0,TAU);L3.fill();
+        if(proj(m.x,m.y,46)){const ty=PY,w=13*k;const gr=L3.createLinearGradient(0,ty,0,gy);gr.addColorStop(0,'rgba(255,210,74,0)');gr.addColorStop(1,`rgba(255,210,74,${0.35+0.2*pulse})`);L3.globalAlpha=1;L3.fillStyle=gr;L3.fillRect(gx-w,ty,w*2,gy-ty);}
+        L3.globalCompositeOperation='source-over';L3.globalAlpha=1;}
+      ring3(m.x,m.y,20+pulse*3,0.6,`rgba(255,226,120,${0.75+0.25*pulse})`,1.6);ring3(m.x,m.y,13,0.6,col,1.2);
+      if(proj(m.x,m.y,52+Math.sin(game.t*4)*3))glow(PX,PY,7*PK,'#ffd24a',0.5);break;}
     case 26:{ZOFF+=o.z;ring3(o.x,o.y,22,1,'rgba(200,130,255,.9)',2);ring3(o.x,o.y,14+Math.sin(game.t*5)*3,1,'rgba(255,255,255,.7)',1.5);if(proj(o.x,o.y,30))glow(PX,PY,10*PK,'#c07cff',0.6);break;}
     case 27:{ZOFF+=o.z;const bob=Math.sin(game.t*3+o.x)*1.5;obox(o.x,o.y,game.t*1.5,6,2,6+bob,9+bob,[212,175,55],[255,220,100],fg,null,null,true);obox(o.x+Math.cos(game.t*1.5)*4,o.y+Math.sin(game.t*1.5)*4,game.t*1.5,1.5,1.5,2+bob,7+bob,[190,150,40],null,fg);if(proj(o.x,o.y,10+bob))glow(PX,PY,6*PK,'#ffd650',0.7);break;}
     case 25:{ZOFF+=o.z;const bob=Math.sin(game.t*3+o.x)*0.8;obox(o.x,o.y,0.5,7,3.6,0.5+bob,6+bob,[58,84,48],[74,104,60],fg);obox(o.x,o.y,0.5,2,3.8,6+bob,7+bob,[40,40,40],null,fg);if(proj(o.x,o.y,9+bob))glow(PX,PY,4*PK,'#fff2a0',0.35+0.25*Math.sin(game.t*4));break;}

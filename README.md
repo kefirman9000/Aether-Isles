@@ -32,6 +32,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **Mission markers (v4.18.1):** when a boss has a job for you, a glowing yellow circle with a beam of light sits on the ground beside them. Step into it to start the mission, like GTA III. No circle means no work right now.
 - **Long guns (v4.18):** a sniper rifle and an assault rifle at Ammu-Nation. Hold right mouse (or the lock-on button) to look down the scope in first person; the mouse wheel zooms the sniper scope. A sniper round can blow a tire or a fuel tank.
 - **GTA III police:** one star still fades if they lose you, but two or more stay until you hit a spray shop or grab a bribe. At four stars the chopper comes out, and a SWAT team ropes down from it.
 - **Hospitals and police stations all over town:** get wasted or busted and you wake up at the nearest one, not across the map.
