@@ -1538,7 +1538,7 @@ function mlTick(){if(!mlLocked())return;
   if(!mlWanted()){ML.exiting=true;try{document.exitPointerLock();}catch(_){}return;}
   mouse.used=true;
   if(player.car){mouse.x=VW/2;mouse.y=VH*0.4;}
-  else{mouse.x=VW/2;mouse.y=VH*0.44;}}
+  else{mouse.x=VW/2;mouse.y=SCOPE.on?OY+HOR0*SCL:VH*0.44;}}
 document.addEventListener('pointerlockchange',()=>{if(mlLocked()){ML.exiting=false;return;}
   // the player pressed Esc to let go of the mouse: pause, so the game doesn't carry on without them
   if(!ML.exiting)setTimeout(()=>{if(!game.paused&&game.started&&game.state!=='menu')togglePause();},60);ML.exiting=false;});
@@ -1552,7 +1552,7 @@ cv.addEventListener('mousedown',e=>{if(e.button===1){mouse.mdown=true;e.preventD
   if(!mlLocked()&&mlWanted()&&!touchMode){try{const r=cv.requestPointerLock();if(r&&r.catch)r.catch(()=>{});}catch(_){}ML.dy=0;mouse.used=true;return;} // this click only grabs the mouse
   if(e.button===0)mouse.down=true;if(e.button===2)mouse.rdown=true;mouse.used=true;});
 window.addEventListener('mouseup',e=>{if(e.button===1)mouse.mdown=false;if(e.button===0)mouse.down=false;if(e.button===2)mouse.rdown=false;});
-cv.addEventListener('wheel',e=>{pressed.swap=e.deltaY<0?-1:1;e.preventDefault()},{passive:false});
+cv.addEventListener('wheel',e=>{if(SCOPE.on)SCOPE.zw=e.deltaY<0?-1:1;else pressed.swap=e.deltaY<0?-1:1;e.preventDefault()},{passive:false});
 // middle mouse = look behind (GTA III PC)
 cv.addEventListener('auxclick',e=>{if(e.button===1)e.preventDefault();});
 cv.addEventListener('contextmenu',e=>e.preventDefault());
@@ -1769,7 +1769,8 @@ function playerFire(){
   player.cool=w.rate*(inCar?1.4:1);let aimT=null;
   if(player.ammo[player.w]!==Infinity)player.ammo[player.w]--;
   let a=player.a,ox=player.x,oy=player.y,life;
-  const [wx,wy,wz]=(mouse.used&&!touchMode)?aimPoint():[0,0,0];
+  if(SCOPE.on){mouse.x=VW/2;mouse.y=OY+HOR0*SCL;}
+  const [wx,wy,wz]=((mouse.used&&!touchMode)||SCOPE.on)?aimPoint():[0,0,0];
   const hostile=p=>p.state==='cop'||p.angry>0||p.brawl>0||(p.gang!=null&&respect[p.gang]<=-2);
   if(inCar){
     const c=player.car;
@@ -1784,7 +1785,7 @@ function playerFire(){
     ox=c.x+Math.cos(a)*(c.t.Wd/2+8);oy=c.y+Math.sin(a)*(c.t.Wd/2+8);
   }else{
     if(LOCK.t){a=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);aimT=[LOCK.t.x,LOCK.t.y,GH(LOCK.t.x,LOCK.t.y)+(LOCK.t.jz||0)+15];}
-    else if(mouse.used&&!touchMode&&!aimJoy.active){a=Math.atan2(wy-player.y,wx-player.x);aimT=[wx,wy,wz];}
+    else if((mouse.used&&!touchMode||SCOPE.on)&&!aimJoy.active){a=Math.atan2(wy-player.y,wx-player.x);aimT=[wx,wy,wz];}
     else if(aimJoy.active){a=joyAng(aimJoy);let best=null,bs=0.35;for(const p of peds){if(p.gone)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>360)continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),a));if(da<bs){bs=da;best=p;}}if(best){a=Math.atan2(best.y-player.y,best.x-player.x);aimT=[best.x,best.y,GH(best.x,best.y)+(best.jz||0)+15];}
       else{const ht=heliAssist(a,0.5);if(ht){a=ht[3];aimT=ht;}}}
     else if(touchMode||!mouse.used){
@@ -1800,10 +1801,10 @@ function playerFire(){
   const ivx=inCar?player.car.vx:player.vx,ivy=inCar?player.car.vy:player.vy,nB=bullets.length;
   if(w.fan){for(const deg of w.fan)fireBullet(ox,oy,a+deg*PI/180,w.spd*rr(.92,1.05),'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
   else if(w.dual){for(const sd of [-1,1])fireBullet(ox-Math.sin(a)*5*sd,oy+Math.cos(a)*5*sd,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
-  else{fireBullet(ox,oy,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,w.kind==='b'?ivx:0,w.kind==='b'?ivy:0);if(w.gren)bullets[bullets.length-1].gren=true;}
+  else{fireBullet(ox,oy,a+rr(-w.spread,w.spread)*(SCOPE.on?0.25:1),w.spd,'player',w.dmg,w.kind,w.cdmg,life,w.kind==='b'?ivx:0,w.kind==='b'?ivy:0);if(w.gren)bullets[bullets.length-1].gren=true;}
   // give your shots a height: they fly toward the 3D point you aimed at (over cars, up to roofs, at the chopper)
   {const gz=GH(player.x,player.y),z0=gz+(inCar?(player.car.az||0)+14:(player.jz||0)+16);
-   for(let i=nB;i<bullets.length;i++){const b=bullets[i];if(b.kind!=='b'&&b.kind!=='r')continue;b.z=z0;b.dz=0;b.rel=z0-gz;if(b.kind==='b')b.life=1.05;
+   for(let i=nB;i<bullets.length;i++){const b=bullets[i];if(b.kind!=='b'&&b.kind!=='r')continue;b.z=z0;b.dz=0;b.rel=z0-gz;if(b.kind==='b')b.life=w.sniper?1.1:1.05;if(SCOPE.on){b.z=GH(player.x,player.y)+(player.jz||0)+27;b.rel=null;b.dz=0;}
      if(aimT){const hd=Math.max(20,hyp(aimT[0]-ox,aimT[1]-oy)),dz=(aimT[2]-z0)/hd;
        // a plain ground point at your own level: shoot level, the way it always worked
        if(AIMSNAP||Math.abs(aimT[2]-(gz+(inCar?0:(player.jz||0))))>12||aimT[2]>gz+40||aimT.length>3){b.dz=clamp(dz,-1.2,1.2);b.rel=null;}}}}
@@ -2447,12 +2448,12 @@ function extTick2(dt){updateShowroom(dt);if(player.car){STATS.dist+=hyp(player.c
 player.armor=0;
 const BATIDX=()=>WEAPONS.findIndex(w=>w.kind==='x');
 const GUNSHOPS=[[3,9],[14,12]].map(([bx,by])=>{const l=nearestLot((bx*P+9)*T,(by*P+9)*T)||lotBlocks[0];const s={x:l.x+50,y:l.y-50};SIGNS.push({x:s.x,y:s.y,text:'AMMU-NATION',bg:'#2a2a2a',fg:'#ff4040',h:42,on:()=>true});return s;});
-const GUNSTOCK=[['Baseball bat',100,'bat',Infinity],['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Grenades + 8',900,'gren',8],['Body armor',500,-1,100]];
+const GUNSTOCK=[['Baseball bat',100,'bat',Infinity],['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Grenades + 8',900,'gren',8],['Assault rifle + 120',2500,'rifle',120],['Sniper rifle + 20',3500,'sniper',20],['Body armor',500,-1,100]];
 let gunCool=0;
 function updateGunShops(dt){}
 function gunMenu(){
     const dk=gunDiscount();say([['Ammu-Nation',dk<1?'Friends of the neighborhood get 20% off. Pick something.':'Protect yourself. Pick something.']],null,GUNSTOCK.map(([n,p0,w,a])=>{const p=Math.round(p0*dk);return[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');
-      if(w==='bat')w=BATIDX();if(w==='gren')w=GRENIDX();if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}];}).concat([['LEAVE',()=>{},'no']]));}
+      if(w==='bat')w=BATIDX();if(w==='gren')w=GRENIDX();if(w==='rifle')w=WIDX('Assault Rifle');if(w==='sniper')w=WIDX('Sniper Rifle');if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}];}).concat([['LEAVE',()=>{},'no']]));}
 // a crane by the river buys particular cars, once each
 const EXPORTS=[['compact',600],['sedan',700],['taxi',900],['sports',2000],['truck',1200],['ambulance',1800],['police',2500],['firetruck',2200],['swat',3500],['muscle',2400],['roadster',2800],['garbage',1600],['tank',10000]];
 const EXPORTED={};
@@ -2826,6 +2827,10 @@ WEAPONS.push({name:'Grenades',rate:.9,dmg:0,spd:430,spread:.03,kind:'m',gren:tru
 const GRENIDX=()=>WEAPONS.findIndex(w=>w.gren);
 // fists (GTA III): always with you, switch to them with Q
 WEAPONS.push({name:'Fists',rate:.38,dmg:0,spd:0,spread:0,kind:'x',fist:true,cdmg:0,kick:0});
+// GTA III's long guns: hold right mouse (or the lock-on button) to look down the scope in first person
+WEAPONS.push({name:'Sniper Rifle',rate:1.25,dmg:150,spd:2600,spread:0,kind:'b',cdmg:30,kick:6,scope:4,sniper:true,range:0.95});
+WEAPONS.push({name:'Assault Rifle',rate:.1,dmg:24,spd:1400,spread:.035,kind:'b',cdmg:6,kick:1.8,scope:1.7,range:0.8});
+const WIDX=n=>WEAPONS.findIndex(w=>w.name===n);
 const BAT=WEAPONS.findIndex(w=>w.kind==='x');
 function meleeSwing(){const ca=Math.cos(player.a),sa=Math.sin(player.a),fist=!!WEAPONS[player.w].fist;sfx('door',fist?0.3:0.5);let hit=false;
   for(const p of peds){if(p.gone)continue;const dx=p.x-player.x,dy=p.y-player.y,f=dx*ca+dy*sa,l=Math.abs(-dx*sa+dy*ca);if(f<0||f>34||l>18)continue;hit=true;
@@ -3351,6 +3356,9 @@ window.__roomsReady=true;
 const CAMV=[{n:'CLOSE',d:0.72,h:0.82},{n:'NORMAL',d:1,h:1},{n:'FAR',d:1.38,h:1.32},{n:'HIGH',top:true}];
 const camMode=()=>{if(OPT.camMode==null)OPT.camMode=OPT.cam<1?0:OPT.cam>1?2:1;return OPT.camMode|0;};
 function cycleCam(){OPT.camMode=(camMode()+1)%CAMV.length;saveOpts();note('Camera: '+CAMV[OPT.camMode].n.toLowerCase());}
+// ---- scoped first-person aim (sniper rifle, assault rifle): the camera moves to your eyes and the view zooms in ----
+const SCOPE={on:false,z:1,zw:0};
+function scopeWanted(){const w=WEAPONS[player.w];return !!(w&&w.scope&&!player.car&&!player.riding&&game.state==='play'&&!SCENE.on&&((mouse.rdown&&!touchMode)||(pad.on&&(OPT.pad==='classic'?pad.lock:pad.brake>0.5))));}
 const cam={x:0,y:0,zoom:1.4,yaw:-PI/2,h:40,dist:90,base:null,idle:9,px:0,py:0,wasFoot:false};
 // ---- GTA III-style on foot: free-orbit camera, camera-relative movement and lock-on targeting ----
 const GTA3MOVE=()=>OPT.gta3!==false;
@@ -3373,7 +3381,7 @@ function footLook(dt){
   if(cam.base==null||!cam.wasFoot)cam.base=cam.yaw;
   if(jumped)cam.base=player.body;
   cam.wasFoot=true;cam.px=player.x;cam.py=player.y;
-  const held=(mouse.rdown&&!touchMode)||(pad.on&&(OPT.pad==='classic'?pad.lock:pad.brake>0.5));
+  const held=!WEAPONS[player.w].scope&&((mouse.rdown&&!touchMode)||(pad.on&&(OPT.pad==='classic'?pad.lock:pad.brake>0.5)));
   if(held&&!LOCK.held)setLock(pickLock(cam.base,null,0));
   LOCK.held=held;if(!held)LOCK.t=null;
   if(LOCK.t&&(!lockable(LOCK.t)||hyp(LOCK.t.x-player.x,LOCK.t.y-player.y)>480))LOCK.t=null;
@@ -3382,7 +3390,7 @@ function footLook(dt){
     LOCK.flick+=(mouse.turn||0)+(mouse.look||0)*0.5;if(Math.abs(LOCK.flick)>45){const n=pickLock(cam.base,LOCK.t,Math.sign(LOCK.flick));if(n)setLock(n);LOCK.flick=0;}
     if(pad.on&&Math.abs(pad.rx)>0.7&&Math.abs(LOCK.rx0)<=0.7){const n=pickLock(cam.base,LOCK.t,Math.sign(pad.rx));if(n)setLock(n);}
     const ta=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);cam.base=lerpAng(cam.base,ta,Math.min(1,dt*7));cam.idle=0;}
-  else{LOCK.flick=0;orbit=(mlLocked()?(mouse.look||0)*0.0033:(mouse.turn||0)*0.006)*(OPT.msens||1)+(pad.on?pad.rx*2.9*dt:0);}
+  else{LOCK.flick=0;orbit=(mlLocked()?(mouse.look||0)*0.0033:(mouse.turn||0)*0.006)*(OPT.msens||1)/(SCOPE.on?SCOPE.z:1)+(pad.on?pad.rx*2.9*dt/(SCOPE.on?SCOPE.z:1):0);if(SCOPE.on&&!mlLocked())orbit+=(mouse.turn||0)*0.003;}
   LOCK.rx0=pad.on?pad.rx:0;mouse.turn=0;mouse.look=0;
   if(orbit){cam.base+=orbit;cam.idle=0;}else cam.idle+=dt;
   // after a moment without touching the camera it drifts back behind you while you move (but not when you run at it)
@@ -3728,7 +3736,14 @@ function update(dt){
 
   // ---- camera ----
   // chase camera: sits behind the car (or you) and swings round as you turn
-  if(!SCENE.on){let want,dist,hgt,rate;
+  SCOPE.on=scopeWanted();
+  if(SCOPE.on){const w=WEAPONS[player.w];if(SCOPE.zw){SCOPE.z=clamp(SCOPE.z*(SCOPE.zw<0?1.25:0.8),1.3,w.scope*1.6);SCOPE.zw=0;}else if(SCOPE.z<1.2)SCOPE.z=w.scope;
+    const py=(mouse.lookY||0)*0.0028*(OPT.msens||1)*(OPT.invertY?-1:1)/SCOPE.z+(pad.on?pad.ry*1.2*dt*(OPT.invertY?-1:1)/SCOPE.z:0);mouse.lookY=0;
+    cam.pitch=clamp((cam.pitch||0)+py,-0.95,0.95);cam.pidle=0;
+    if(cam.base!=null){cam.yaw=cam.base;}player.a=player.body=cam.yaw;
+    cam.dist=0.5;cam.x=player.x-Math.cos(cam.yaw)*0.5;cam.y=player.y-Math.sin(cam.yaw)*0.5;cam.gz=GH(player.x,player.y);cam.h=(player.jz||0)+27;}
+  else{if(SCOPE.z>1.2){SCOPE.z=1;cam.pitch=clamp(cam.pitch||0,-0.5,0.62);cam.dist=40;}}
+  if(!SCENE.on&&!SCOPE.on){let want,dist,hgt,rate;
     if(player.car||player.riding){cam.wasFoot=false;LOCK.t=null;}
     if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;
       // mouse (captured) or right stick swing the camera round the car; it drifts back behind you once you leave it alone and drive
@@ -3800,7 +3815,7 @@ const drops=[];for(let i=0;i<220;i++)drops.push({x:Math.random()*2200,y:Math.ran
 // The camera sits behind the player looking level at the horizon. The ground is ray-cast row by row into the
 // city tile map (Mode-7 style); buildings and cars are projected 3D boxes; people and props are billboards.
 let lowc=document.createElement('canvas'),L3=lowc.getContext('2d');
-let LW=320,LH=180,HW=160,HOR=72,FOC=160,SCL=1,OX=0,OY=0,lowImg=null,lowBuf=null,HALF=1,frameNo=0;
+let FOC0=160,LW=320,LH=180,HW=160,HOR=72,FOC=160,SCL=1,OX=0,OY=0,lowImg=null,lowBuf=null,HALF=1,frameNo=0;
 const NEAR=5,BH=40;let HOR0=72,HORA=0;let FOG0=360,FOG1=1250,FOGN0=360,FOGN1=1250;
 let CX=0,CY=0,CZ=40,CC=1,CS=0;
 let PX=0,PY=0,PK=0,PF=0,ZOFF=0;
@@ -3810,7 +3825,7 @@ function resizeLow(){
   const dk=typeof DYN==='number'?DYN:1;
   if(asp>=1){LH=Math.round(180*dk);LW=clamp(Math.round(LH*asp),Math.round(240*dk),Math.round(420*dk));HOR=Math.round(LH*.4);FOC=Math.round(LH*.9);}
   else{LW=Math.round(200*dk);LH=clamp(Math.round(LW/asp),Math.round(240*dk),Math.round(440*dk));HOR=Math.round(LH*.37);FOC=Math.round(LW*.74);}
-  HOR0=HOR;
+  HOR0=HOR;FOC0=FOC;
   HW=LW/2;HALF=HW/FOC;
   lowc.width=LW;lowc.height=LH;L3.imageSmoothingEnabled=false;
   lowImg=L3.createImageData(LW,LH);lowBuf=new Uint32Array(lowImg.data.buffer);
@@ -4764,7 +4779,8 @@ function drawHeli3(h,fg){
 
 // ---------- frame ----------
 const ITEMS=[];
-function render(){{const live=game.started&&!SCENE.on&&!MENUVIEW,want=(CAMV[camMode()].top&&live?-LH*0.2:player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0)-(live?((cam.pitch||0)>0?(cam.hx||0)*FOC/Math.max(20,cam.dist)+(cam.pitch||0)*LH*0.1:(cam.pitch||0)*LH*0.5):0);HORA=lerp(HORA,want,cam.pidle<0.3?0.35:0.06);HOR=Math.round(HOR0+HORA);}
+function render(){if(SCOPE.on&&!MENUVIEW){FOC=Math.round(FOC0*SCOPE.z);HALF=HW/FOC;HORA=0;HOR=Math.round(HOR0-Math.tan(cam.pitch||0)*FOC);FOG0=900;FOG1=2400;}else if(FOC!==FOC0){FOC=FOC0;HALF=HW/FOC;FOG0=FOGN0;FOG1=FOGN1;}
+  if(!(SCOPE.on&&!MENUVIEW)){const live=game.started&&!SCENE.on&&!MENUVIEW,want=(CAMV[camMode()].top&&live?-LH*0.2:player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0)-(live?((cam.pitch||0)>0?(cam.hx||0)*FOC/Math.max(20,cam.dist)+(cam.pitch||0)*LH*0.1:(cam.pitch||0)*LH*0.5):0);HORA=lerp(HORA,want,cam.pidle<0.3?0.35:0.06);HOR=Math.round(HOR0+HORA);}
   frameNo++;setCam();
   const lightLvl=0.5-0.5*Math.cos(clock*TAU),night=clamp(darkness/0.8,0,1),warm=clamp(1-Math.abs(lightLvl-0.4)/0.16,0,1)*(1-night*0.5);
   let top=mixA([70,128,206],[92,64,128],warm),bot=mixA([196,212,230],[255,150,96],warm);
@@ -4871,7 +4887,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
     ITEMS.push({kind,o,f,slot,rad});};
   for(const c of cars){if(c===player.car)continue;add(0,c,c.x,c.y,Math.max(c.t.L,c.t.Wd)/2+4,null,carRoof(c)+3,c.az||0);}
   if(MIRROR||MENUVIEW){}else if(player.car)add(14,player.car,player.car.x,player.car.y,Math.max(player.car.t.L,player.car.t.Wd)/2+4,null,30,player.car.az||0);
-  else if(!player.riding)add(14,player,player.x,player.y,6,null,26,player.jz||0);
+  else if(!player.riding&&!SCOPE.on)add(14,player,player.x,player.y,6,null,26,player.jz||0);
   for(const d of DECKS)add(24,d,d.x,d.y,70,null,14);
   for(let i=0;i<train.cars;i++){const p=trainCar(i);add(22,{x:p.x,y:p.y,a:p.a,i},p.x,p.y,50,null,EL_H+30);}
   {const rm=roomAt(CX,CY);if(rm)for(const o of rm.props)add(13,o,o.x,o.y,o.rad,null,o.ht);}
@@ -5021,6 +5037,7 @@ function weaponIcon(g,w,x,y,r){const gold=/Golden/.test(w.name),body=gold?'#e8c1
   else if(k==='m'){poly([-7,18,7,18,8,-2,3,-8,3,-14,-3,-14,-3,-8,-8,-2],'#5c8a3a');g.fillStyle='#e9e0c8';g.fillRect(-2,-20,4,7);g.strokeRect(-2,-20,4,7);
     g.fillStyle='#ff9a2e';g.beginPath();g.moveTo(-3,-20);g.quadraticCurveTo(0,-32,4,-21);g.closePath();g.fill();}
   else if(k==='r'){poly([-24,-5,18,-5,22,-8,26,-8,26,8,22,8,18,5,-24,5],'#6f7a52');poly([-10,5,-4,5,-4,14,-10,14],dark);poly([4,5,9,5,9,12,4,12],dark);}
+  else if(w.scope){poly([-26,-2,-6,-5,26,-5,26,-2,4,-1,2,2,-8,2,-18,7,-27,4],body);g.fillStyle=dark;if(w.sniper){g.fillRect(-6,-11,16,5);g.strokeRect(-6,-11,16,5);}else{poly([2,-1,7,-1,5,12,0,12],dark);g.fillRect(-2,-9,6,4);}}
   else if(/Shotgun/.test(n)){poly([-24,-1,-8,-5,24,-5,24,-1,0,-1,-2,2,-10,2,-20,7,-25,5],body);g.fillStyle='#8a5a32';g.fillRect(-2,-1,12,4);g.strokeRect(-2,-1,12,4);}
   else if(/SMG/.test(n)){poly([-14,-8,16,-8,16,-2,22,-2,22,1,8,1,6,4,0,4,-2,16,-8,16,-6,4,-14,4],body);poly([2,4,7,4,6,15,1,15],dark);g.strokeStyle='rgba(0,0,0,.9)';g.beginPath();g.moveTo(-14,-3);g.lineTo(-24,-3);g.lineTo(-24,4);g.stroke();}
   else{const one=()=>{poly([-14,-8,14,-8,14,-2,-2,-2,-4,1,-6,12,-14,12,-12,0,-14,-2],body);g.fillStyle=dark;g.fillRect(-11,0,4,9);};
@@ -5177,9 +5194,15 @@ function drawHUD(){
   // first-time hints
   if(game.t<12&&game.state==='play'&&!touchMode){ctx.globalAlpha=Math.min(1,(12-game.t)/2);hudText(player.car?'W/S gas · A/D steer · SPACE handbrake · hold Q/E to look left/right and click for a drive-by · V camera view · F get out':(GTA3MOVE()?(mlLocked()?'WASD move · mouse to look · click to shoot · hold right mouse to lock on · SPACE jump · F steal a car':'Click the game to capture the mouse · WASD move · SPACE jump · F steal a car'):'W/S walk · A/D turn · SPACE jump · mouse aim & shoot · F steal a car'),VW/2,VH-80*sc,Math.round(14*sc),'#ffe680','center',`600 ${Math.round(14*sc)}px system-ui`);ctx.globalAlpha=1;}
   // crosshair, hit markers, throw charge
-  if(LOCK.t&&game.state==='play')drawLockMarker(LOCK.t,sc,false);
+  if(SCOPE.on){const cx=VW/2,cy=OY+HOR0*SCL,w=WEAPONS[player.w];
+    if(w.sniper){const r=Math.min(VW,VH)*0.42;ctx.save();ctx.fillStyle='#000';ctx.beginPath();ctx.rect(0,0,VW,VH);ctx.arc(cx,cy,r,0,TAU,true);ctx.fill('evenodd');
+      ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy-r);ctx.lineTo(cx,cy+r);ctx.stroke();
+      ctx.lineWidth=4;ctx.beginPath();ctx.moveTo(cx-r,cy);ctx.lineTo(cx-r*0.12,cy);ctx.moveTo(cx+r*0.12,cy);ctx.lineTo(cx+r,cy);ctx.moveTo(cx,cy+r*0.12);ctx.lineTo(cx,cy+r);ctx.stroke();
+      ctx.fillStyle=hitMarks.length?'#ff3030':'#ff2a2a';ctx.fillRect(cx-1.5,cy-1.5,3,3);ctx.restore();hudText(SCOPE.z.toFixed(1)+'x',cx+r*0.7,cy+r*0.75,Math.round(14*sc),'#cfd8c0','center');}
+    else{ctx.strokeStyle=hitMarks.length?'#ff4040':'rgba(255,255,255,.95)';ctx.lineWidth=2;ctx.beginPath();ctx.arc(cx,cy,9,0,TAU);ctx.moveTo(cx-18,cy);ctx.lineTo(cx-11,cy);ctx.moveTo(cx+11,cy);ctx.lineTo(cx+18,cy);ctx.moveTo(cx,cy+11);ctx.lineTo(cx,cy+18);ctx.stroke();ctx.fillStyle='#fff';ctx.fillRect(cx-1,cy-1,2,2);}}
+  else if(LOCK.t&&game.state==='play')drawLockMarker(LOCK.t,sc,false);
   else if(SOFT.t&&!SOFT.t.gone&&game.t-SOFT.at<0.35&&!player.car&&game.state==='play')drawLockMarker(SOFT.t,sc,true);
-  if(!touchMode&&mouse.used&&game.state==='play'&&!game.paused&&!LOCK.t){
+  if(!touchMode&&mouse.used&&game.state==='play'&&!game.paused&&!LOCK.t&&!SCOPE.on){
     const cx=mouse.x,cy=mouse.y,hm=hitMarks.length>0,g=player.cool>0?5:0;
     ctx.strokeStyle=hm?'#ff4040':'rgba(255,255,255,.9)';ctx.lineWidth=2;ctx.beginPath();
     ctx.moveTo(cx-14-g,cy);ctx.lineTo(cx-5-g,cy);ctx.moveTo(cx+5+g,cy);ctx.lineTo(cx+14+g,cy);ctx.moveTo(cx,cy-14-g);ctx.lineTo(cx,cy-5-g);ctx.moveTo(cx,cy+5+g);ctx.lineTo(cx,cy+14+g);ctx.stroke();
