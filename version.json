@@ -1,4 +1,4 @@
 {
-  "version": "4.1.0",
-  "notes": "GPS route to your objective on the minimap and city map, bigger guidance arrows, and ambulances, trucks and fire trucks no longer look see-through."
+  "version": "4.1.1",
+  "notes": "Boat camera sits behind the boat again, and signs are crisp labels that stay readable and hide behind buildings."
 }

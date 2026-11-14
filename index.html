@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.1.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.1.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.1.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.1.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1950,7 +1950,7 @@ function copBoatAI(c,dt){const pc=player.car,tg=pc||player,a=Math.atan2(tg.y-c.y
   if(stars()===0||!(pc&&pc.t.boat)){c.driver=null;c.traffic=true;}}
 function updateBoats(dt){const pc=player.car;
   for(const c of cars){if(!c.t.boat)continue;
-    const sp=hyp(c.vx,c.vy);if(sp>120&&R()<dt*14)puff(c.x-Math.cos(c.a)*c.t.L/2,c.y-Math.sin(c.a)*c.t.L/2,-c.vx*0.1+rr(-20,20),-c.vy*0.1+rr(-20,20),0.7,rr(4,7),'#eef6ff','smoke');}
+    const sp=hyp(c.vx,c.vy);if(sp>120&&R()<dt*14)puff(c.x-Math.cos(c.a)*c.t.L/2,c.y-Math.sin(c.a)*c.t.L/2,-c.vx*0.1+rr(-20,20),-c.vy*0.1+rr(-20,20),0.45,rr(2,3.2),'#eef6ff','smoke');}
   if(pc&&pc.t.boat&&stars()>0){copBoatT-=dt;let n=0;for(const c of cars)if(c.driver==='copboat')n++;
     if(copBoatT<=0&&n<Math.min(3,stars())){copBoatT=7;for(let i=0;i<20;i++){const a=R()*TAU,d=rr(600,900),x=pc.x+Math.cos(a)*d,y=pc.y+Math.sin(a)*d;
       if(!boatOK(Math.floor(x/T),Math.floor(y/T))||camSees(x,y))continue;const c=makeCar('copboat',x,y,a+PI);c.driver='copboat';c.special=true;break;}}}}
@@ -2703,7 +2703,8 @@ function update(dt){
     if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);dist+=k*k*110;hgt+=k*k*90;rate*=0.15;}
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
-    for(let s2=10;s2<=dist;s2+=6)if(solidPx(player.x-ca*s2,player.y-sa*s2)){dd=Math.max(24,s2-10);break;}
+    const inBoat=player.car&&player.car.t.boat;if(inBoat){hgt+=14;dist+=10;}
+    for(let s2=10;s2<=dist;s2+=6){const qx=player.x-ca*s2,qy=player.y-sa*s2;if(solidPx(qx,qy)&&!(inBoat&&tileAt(Math.floor(qx/T),Math.floor(qy/T))===WATER)){dd=Math.max(24,s2-10);break;}}
     cam.dist=lerp(cam.dist,dd,Math.min(1,dt*(dd<cam.dist?16:2.5)));cam.h=lerp(cam.h,hgt,Math.min(1,dt*3));
     cam.x=player.x-ca*cam.dist;cam.y=player.y-sa*cam.dist;{const gz=GH(player.x,player.y)+(player.riding?EL_H+6:player.car?(player.car.az||0)*0.85:(player.jz||0)>18?player.jz-6:(player.jz||0)*0.4);cam.gz=cam.gz==null?gz:lerp(cam.gz,gz,Math.min(1,dt*(player.car&&player.car.air>0?9:5)));}}
   updateAudio();
@@ -3486,7 +3487,20 @@ const occBin=f=>f<=0?0:Math.min(OCCN-1,Math.floor(Math.sqrt(f/OCCF)*OCCN));
 function occClip(f,x0,x1,yBot){const b=occBin(f);if(b<=0)return false;const o=b*OCCW;x0=Math.max(0,x0|0);x1=Math.min(OCCW-1,x1|0);if(x1<x0)return false;
   let need=false;for(let x=x0;x<=x1;x++)if(OCC[o+x]<yBot-1){need=true;break;}if(!need)return false;
   L3.save();L3.beginPath();L3.moveTo(0,-50);L3.lineTo(OCCW,-50);for(let x=OCCW-1;x>=0;x--){const y=OCC[o+x];L3.lineTo(x+1,y);L3.lineTo(x,y);}L3.closePath();L3.clip();L3.beginPath();return true;}
-function worldPass(top,bot,lightLvl,warm){
+// signs are drawn as crisp labels on the full-resolution HUD, hidden when a building is in the way
+const SIGNQ=[];
+function qSign(x,y,z,text,bg,fgc){if(MIRROR||SIGNQ.length>40)return;SIGNQ.push({x,y,z,text,bg,fg:fgc});}
+function drawSigns(sc){const list=[];for(const q of SIGNQ){const p=projFull(q.x,q.y,q.z);if(!p||p[2]>1150)continue;
+    if(!inHall(CX,CY)&&!roomAt(CX,CY)&&!los(CX,CY,q.x,q.y))continue;list.push([p,q]);}
+  list.sort((a,b)=>a[0][2]-b[0][2]);const used=[];
+  for(const[p,q]of list){const f=p[2],fs=Math.round(clamp(3000/f,12,22)*sc),a=clamp((1150-f)/250,0,1);ctx.globalAlpha=a;ctx.font=`700 ${fs}px system-ui,sans-serif`;
+    const w=ctx.measureText(q.text).width+fs*0.9,h=fs*1.5,x=p[0]-w/2;let y=p[1]-h;
+    for(let k=0;k<4;k++){const hit=used.find(u=>x<u[0]+u[2]&&x+w>u[0]&&y<u[1]+u[3]&&y+h>u[1]);if(!hit)break;y=hit[1]-h-3;}used.push([x,y,w,h]);ctx.fillStyle=q.bg;ctx.strokeStyle='rgba(0,0,0,.7)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.roundRect?ctx.roundRect(x,y,w,h,fs*0.3):ctx.rect(x,y,w,h);ctx.fill();ctx.stroke();
+    ctx.fillStyle=q.fg;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(q.text,p[0],y+h/2+1);
+    ctx.fillStyle=q.bg;ctx.beginPath();ctx.moveTo(p[0]-5,p[1]);ctx.lineTo(p[0]+5,p[1]);ctx.lineTo(p[0],p[1]+6);ctx.fill();}
+  ctx.globalAlpha=1;}
+function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
   // headlights that light up the road
   const heads=[];
   if(LIGHTK>0.02){const cand=[];for(const c of cars){if(c.wreck||!c.driver)continue;const d2=dist2(c.x,c.y,CX,CY);if(d2>700*700)continue;cand.push([d2,c]);}
@@ -3621,14 +3635,14 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
     case 7:drawPart3(o,fg);break;
     case 8:drawBullet3(o);break;
     case 9:{const z=Math.sin(clamp(1-o.t/0.55,0,1)*PI)*16+1;proj(o.b.x,o.b.y,z);drawBody3(o.b,z);break;}
-    case 10:sign3(o.x,o.y,46,'SPRAY $500','#11704a','#f5f1e2',10,fg);break;
-    case 11:sign3(o.x,o.y,46,'CAR CRUSHER','#ffc21a','#0d0e16',10,fg);break;
+    case 10:qSign(o.x,o.y,46,'SPRAY SHOP','#11704a','#f5f1e2');break;
+    case 11:qSign(o.x,o.y,46,'CAR CRUSHER','#ffc21a','#0d0e16');break;
     case 13:drawProp3(o,fg);break;
     case 22:{const a=o.a,lit2=LIGHTK>0.2||o.z===0,ca=Math.cos(a),sa=Math.sin(a),EL_H=o.z!=null?o.z:EL_H0;obox(o.x,o.y,a,44,12,EL_H+3,EL_H+26,[178,182,190],[146,150,156],fg);
       obox(o.x,o.y,a,42,12.4,EL_H+13,EL_H+20,lit2?[255,228,160]:[58,68,88],null,fg,0,0,lit2);obox(o.x,o.y,a,44.3,12.5,EL_H+7,EL_H+9,[170,30,36],null,fg);
       obox(o.x,o.y,a,40,8,EL_H+26,EL_H+28,[120,124,130],null,fg);if(o.i===0)obox(o.x+ca*44,o.y+sa*44,a,1,6,EL_H+14,EL_H+18,lit2?[255,250,220]:[200,200,190],null,fg,0,0,lit2);break;}
     case 23:{ZOFF=0;if(proj(o.x,o.y,RIVL+o.z)){const a=clamp(o.life/1.2,0,1);glow(PX,PY,(o.shell?3:5)*Math.max(0.6,PK*4),o.col,a);}break;}
-    case 20:sign3(o.x,o.y,o.h,o.text,o.bg,o.fg,9,fg);break;
+    case 20:qSign(o.x,o.y,o.h,o.text,o.bg,o.fg);break;
     case 21:{const k=o.hp/100;for(let i=0;i<3;i++){const fx=o.x+Math.sin(game.t*3+i*2)*8,fy=o.y+Math.cos(game.t*2.3+i)*8;obox(fx,fy,game.t+i,5*k+2,5*k+2,0,14*k+6+Math.sin(game.t*9+i)*3,[255,120+i*40,20],[255,220,80],0,0,0,true);}break;}
     case 15:drawTL(o,fg);break;
     case 16:drawRamp3(o,fg);break;
@@ -3636,7 +3650,7 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
     case 17:ZOFF=o.z;drawHeli3(o,fg);break;
     case 18:sign3(o.x,o.y,30+Math.sin(game.t*4)*3,'TAXI STOP','#ffd600','#111111',10,fg);break;
     case 14:if(o===player){if(game.state==='wasted'){flat(player.x,player.y,player.a,8,4.5,0.5,litH('#d9731f',1,fg));flat(player.x-Math.cos(player.a)*11,player.y-Math.sin(player.a)*11,player.a,3.5,3.5,0.7,litH('#e0ac69',1,fg));}else drawPed3(player,true,fg);}else drawCar3(o,fg);break;
-    case 12:sign3(o.x,o.y,30+Math.sin(game.t*4)*3,'DROP','#ffd600','#111111',11,fg);break;
+    case 12:qSign(o.x,o.y,30+Math.sin(game.t*4)*3,'DROP','#ffd600','#111111');break;
   }
 }
 // world generation is done: gameplay randomness goes back to Math.random
@@ -3776,6 +3790,7 @@ function drawHUD(){
   for(const h of hitMarks){const pr=projFull(h.x,h.y,14);if(!pr)continue;const sx=pr[0],sy=pr[1],r=7+(0.18-h.t)*40;
     ctx.strokeStyle=h.kill?'#ff3030':'#ffffff';ctx.globalAlpha=Math.min(1,h.t*8);ctx.lineWidth=2.5;ctx.beginPath();ctx.moveTo(sx-r,sy-r);ctx.lineTo(sx-r/2,sy-r/2);ctx.moveTo(sx+r,sy-r);ctx.lineTo(sx+r/2,sy-r/2);ctx.moveTo(sx-r,sy+r);ctx.lineTo(sx-r/2,sy+r/2);ctx.moveTo(sx+r,sy+r);ctx.lineTo(sx+r/2,sy+r/2);ctx.stroke();ctx.globalAlpha=1;}
   if(throwCharge>0&&!player.car){const pr=projFull(player.x,player.y,34)||[VW/2,VH*0.6];const sx=pr[0],sy=pr[1]-10;ctx.fillStyle='rgba(0,0,0,.6)';ctx.fillRect(sx-20,sy,40,6);ctx.fillStyle='#ffb300';ctx.fillRect(sx-19,sy+1,38*throwCharge,4);}
+  if(game.state==='play'||game.state==='wasted'||game.state==='busted')drawSigns(sc);
   drawBehindWarnings(sc);
   {let sy=VH*0.76;if(stars()>0&&hiding){hudText('HIDING · cops see less',VW/2,sy,Math.round(13*sc),'#9fd0ff','center',`600 ${Math.round(13*sc)}px system-ui`);sy+=18*sc;}
    if(duty&&player.car){hudText('ON DUTY · tap horn to stop',VW-18*sc,touchMode?VH*0.42:VH*0.36,Math.round(12*sc),'#7dff8a','right',`600 ${Math.round(12*sc)}px system-ui`);}
