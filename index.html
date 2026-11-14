@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.1.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.1.2</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.1.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.1.2',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -1476,7 +1476,7 @@ function updateAudio(){
   let sd=1e9;if(heat>0)for(const c of cars)if(c.ai&&c.ai.mode==='chase')sd=Math.min(sd,hyp(c.x-player.x,c.y-player.y));
   siren.g.gain.setTargetAtTime(heat>0&&!muted?clamp(1-sd/1000,0,1)*0.05:0,t,0.15);
   siren.o.frequency.setTargetAtTime(720+260*Math.sin(game.t*4.2),t,0.02);
-  squeal.g.gain.setTargetAtTime(player.car&&player.car.skid&&!muted&&game.state==='play'?0.045:0,t,0.05);
+  squeal.g.gain.setTargetAtTime(player.car&&player.car.skid&&!player.car.t.boat&&!muted&&game.state==='play'?0.045:0,t,0.05);
   const ron=(!!player.car||(ROOM&&ROOM.id==='club'))&&game.state==='play'&&RADIO[radio.st].kind!=='off'&&!muted&&!game.paused;
   radioG.gain.setTargetAtTime(ron?0.3:0,t,0.15);if(ron)radioTick();
 }
@@ -1955,7 +1955,7 @@ function updateBoats(dt){const pc=player.car;
     if(copBoatT<=0&&n<Math.min(3,stars())){copBoatT=7;for(let i=0;i<20;i++){const a=R()*TAU,d=rr(600,900),x=pc.x+Math.cos(a)*d,y=pc.y+Math.sin(a)*d;
       if(!boatOK(Math.floor(x/T),Math.floor(y/T))||camSees(x,y))continue;const c=makeCar('copboat',x,y,a+PI);c.driver='copboat';c.special=true;break;}}}}
 function boatSeesPlayer(tg){for(const c of cars)if(c.driver==='copboat'&&dist2(c.x,c.y,tg.x,tg.y)<(520*sightK())**2)return true;return false;}
-function exitBoatSpot(c){let best=null,bd=1e18;for(let j=-4;j<=4;j++)for(let i=-4;i<=4;i++){const tx=Math.floor(c.x/T)+i,ty=Math.floor(c.y/T)+j;if(!walkable(tileAt(tx,ty)))continue;const x=(tx+.5)*T,y=(ty+.5)*T,d=dist2(x,y,c.x,c.y);if(d<bd){bd=d;best=[x,y];}}return best;}
+function exitBoatSpot(c){let best=null,bd=1e18;for(let j=-6;j<=6;j++)for(let i=-6;i<=6;i++){const tx=Math.floor(c.x/T)+i,ty=Math.floor(c.y/T)+j,tt=tileAt(tx,ty);if(!(walkable(tt)||tt===ROAD)||BRT[ty*W+tx])continue;const x=(tx+.5)*T,y=(ty+.5)*T,d=dist2(x,y,c.x,c.y);if(d<bd){bd=d;best=[x,y];}}return best;}
 
 // ---------- spray shop upgrades ----------
 const UPG=[['armor','Armor plating','Takes half damage',1500],['bp','Bulletproof','Bullets bounce off',2000],['nitro','Nitro','Hold SHIFT / NOS for a boost',1000],['paint','Respray colour','A fresh coat of paint',200]];
@@ -2484,7 +2484,7 @@ function update(dt){
     carCircles(c);
     c.flash-=dt;
     // skids
-    if(c.skid&&!c.wreck){
+    if(c.skid&&!c.wreck&&!c.t.boat){
       const ca=Math.cos(c.a),sa=Math.sin(c.a),bx=-ca*c.t.L*0.32,by=-sa*c.t.L*0.32,ox=-sa*c.t.Wd*0.38,oy=ca*c.t.Wd*0.38;
       const w1=[c.x+bx+ox,c.y+by+oy],w2=[c.x+bx-ox,c.y+by-oy];
       if(R()<0.3)puff(w1[0],w1[1],rr(-15,15),rr(-15,15),rr(.5,.9),rr(4,7),'#9a9a9a','smoke');
