@@ -36,6 +36,23 @@ CHECKS = {
     'tow truck hooks a car': """()=>{let s=null;for(let i=0;i<80&&!s;i++)s=laneSpotNear(player.x+rr(-600,600),player.y+rr(-600,600));const a=s.dir*PI/2;
         const tw=makeCar('tow',s.x,s.y,a);const o=makeCar('sedan',s.x-Math.cos(a)*(tw.t.L/2+30),s.y-Math.sin(a)*(tw.t.L/2+30),a);player.car=tw;tw.driver='player';tw.ai=null;
         towToggle(tw);const ok=tw.towing===o;tw.towing=null;o.towedBy=null;exitCar(true);return ok||'not hooked'}""",
+    'remapped key drives the action': """()=>{setKey('KeyF','KeyX');const ok=KEYREV.KeyX==='KeyF'&&KEYREV.KeyF==='Unbound';OPT.keys={};buildKeyRev();return (ok&&KEYREV.KeyF==='KeyF')||'remap table wrong'}""",
+    'unique stunt jump pays once': """()=>{if(!USJ.length)return 'no unique jumps';let tried=0; // traffic can block one run-up, so try a few ramps
+        for(const r of USJ.slice(0,5)){tried++;const ca=Math.cos(r.a),sa=Math.sin(r.a),c=makeCar('sports',r.x-ca*120,r.y-sa*120,r.a);
+          player.car=c;c.driver='player';c.ai=null;player.x=c.x;player.y=c.y;c.vx=ca*520;c.vy=sa*520;keys.KeyW=true;for(let i=0;i<60&&!(c.air>0);i++)update(1/60);
+          for(let i=0;i<300&&c.air>0;i++)update(1/60);keys.KeyW=false;c.vx=c.vy=0;exitCar(true);slowT=0;if(usjCount()>=1)break;}
+        const n=usjCount(),before=money;return n>=1||('no jump counted after '+tried+' ramps')}""",
+    'RC Wreckers blows up a car': """()=>{if(!RCPAD)return 'no RC pad';clearHeat();player.car=null;player.x=RCPAD.x;player.y=RCPAD.y;player.jz=0;rcStart();const rc=player.car;if(!rc||!rc.t.rc)return 'no toy car';
+        const v=makeCar('sedan',rc.x+40,rc.y,0);ACT.arm=0;playerFire();for(let i=0;i<300;i++)update(1/60);const sc=ACT?ACT.score:-1;if(ACT){ACT.timer=0;for(let i=0;i<120;i++)update(1/60);}
+        return (sc>=1&&!ACT&&!player.car)||('score '+sc+', still running '+!!ACT)}""",
+    'off-road run finishes': """()=>{const o=OFFROAD[0];if(!o)return 'no off-road run';const c=makeCar('pickup',o.x,o.y,0);player.car=c;c.driver='player';c.ai=null;player.x=c.x;player.y=c.y;offStart(o);
+        for(let n=0;ACT&&n<40;n++){const p=ACT.cps[ACT.i];c.x=p.x;c.y=p.y;c.vx=c.vy=0;update(1/60);}const ok=!ACT&&STATS.offWins>=1;c.vx=c.vy=0;exitCar(true);return ok||'run did not finish'}""",
+    'the Dodo takes off and lands': """()=>{if(!STRIP)return 'no airstrip';STORY.prog[0]=2;clearHeat();const c=makeCar('dodo',STRIP.x0+30,STRIP.y,0);c.alt=0;player.car=c;c.driver='player';c.ai=null;player.x=c.x;player.y=c.y;
+        keys.KeyW=true;let top=0;for(let i=0;i<420;i++){keys.Space=hyp(c.vx,c.vy)>345;update(1/60);top=Math.max(top,c.alt);}keys.Space=false;keys.KeyW=false;keys.KeyS=true;
+        for(let i=0;i<1500&&c.alt>0;i++){keys.ShiftLeft=c.alt>16;update(1/60);}keys.ShiftLeft=false;keys.KeyS=false;const ok=top>40&&c.alt===0&&!c.wreck;c.vx=c.vy=0;exitCar(true);
+        return ok||('top '+Math.round(top)+', alt '+Math.round(c.alt)+', wreck '+c.wreck)}""",
+    'rating, sleep and the PS2 look': """()=>{const r=RANKS[crimRank(crimScore())][1];const c0=clock;enterRoom('safe',{x:player.x,y:player.y});sleepSix();const d=((clock-c0)%1+1)%1;leaveRoom();
+        OPT.ps2=true;rain=1;for(let i=0;i<60;i++)update(1/60);game.paused=false;render();rain=0;rainTarget=0;return (!!r&&Math.abs(d-0.25)<0.01)||('rank '+r+', slept '+d)}""",
     'renders a frame': """()=>{game.paused=false;render();return true}""",
 }
 

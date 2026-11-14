@@ -282,7 +282,7 @@ function obox(x,y,a,hl,hw,z0,z1,side,top,fg,front,back,em){
   if((CX-(x-fx))*-ca+(CY-(y-fy))*-sa>0)quad(BRx,BRy,z0,BLx,BLy,z0,BLx,BLy,z1,BRx,BRy,z1,lit(back||side,sunK(-ca,-sa),fg,em));
   if((CX-(x+rx))*-sa+(CY-(y+ry))*ca>0)quad(FRx,FRy,z0,BRx,BRy,z0,BRx,BRy,z1,FRx,FRy,z1,lit(side,sunK(-sa,ca),fg,em));
   if((CX-(x-rx))*sa+(CY-(y-ry))*-ca>0)quad(BLx,BLy,z0,FLx,FLy,z0,FLx,FLy,z1,BLx,BLy,z1,lit(side,sunK(sa,-ca),fg,em));
-  if(!NOTOP&&CZ>z1)quad(FLx,FLy,z1,FRx,FRy,z1,BRx,BRy,z1,BLx,BLy,z1,lit(top||side,1.06,fg,em));
+  if(!NOTOP&&CZ>z1){quad(FLx,FLy,z1,FRx,FRy,z1,BRx,BRy,z1,BLx,BLy,z1,lit(top||side,1.06,fg,em));if(SHEEN)sheenTop(x,y,ca,sa,hl,hw,z1);}
   return fv;
 }
 let NOTOP=false;
@@ -595,7 +595,8 @@ function drawCar3(c,fg){
   ZOFF+=c.az||0;
   if(!c.wreck&&!c.t.heli&&!c.t.boat&&c.hp<c.t.hp*0.5)ZOFF-=1.6*(1-c.hp/(c.t.hp*0.5)); // a wrecked suspension sits low
   const t=c.t,hl=t.L/2,hw=t.Wd/2,a=c.a;PIT=Math.abs(c.pitch||0)>0.004?c.pitch:0;PVX=c.x;PVY=c.y;PCA=Math.cos(a);PSA=Math.sin(a);
-  try{drawCarBody(c,fg,t,hl,hw,a);}finally{PIT=0;}
+  SHEEN=PIT?null:sheenFor(c);
+  try{drawCarBody(c,fg,t,hl,hw,a);}finally{PIT=0;SHEEN=null;}
 }
 function drawBoat3(c,fg,t,hl,hw,a){const ca=Math.cos(a),sa=Math.sin(a),col=rgbOf(c.col),cop=t.police;
   obox(c.x-ca*4,c.y-sa*4,a,hl-6,hw,0,5,[230,230,226],[200,200,196],fg);
@@ -614,7 +615,7 @@ function drawBike3(c,fg,t,hl,hw,a){const ca=Math.cos(a),sa=Math.sin(a),col=rgbOf
   for(const s of[-1,1])obox(c.x+ca*hl*0.7*s,c.y+sa*hl*0.7*s,a,5,1.6,0,9,[20,20,22],null,fg);
   obox(c.x,c.y,a,hl*0.55,2.6,6,12,col,mixA(col,[255,255,255],0.2),fg);obox(c.x+ca*hl*0.55,c.y+sa*hl*0.55,a,1.5,4,11,15,[60,60,64],null,fg);
   if(c.driver){const sh=c.driver==='player'?[217,115,31]:c.driver==='cop'?[43,76,155]:[120,90,70];obox(c.x-ca*3,c.y-sa*3,a,3.5,4,12,24,sh,null,fg);obox(c.x-ca*2,c.y-sa*2,a,2.6,2.6,24,30,[30,30,34],[40,40,44],fg);}}
-function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return;}if(t.bike){drawBike3(c,fg,t,hl,hw,a);return;}if(t.heli){drawHeliP(c,fg,t,a);return;}
+function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return;}if(t.bike){drawBike3(c,fg,t,hl,hw,a);return;}if(t.plane){drawPlaneP(c,fg,t,a);return;}if(t.heli){drawHeliP(c,fg,t,a);return;}if(t.rc){drawRC(c,fg,t,a);return;}
   const base=c.wreck?[40,36,33]:(c.flash>0?[255,255,255]:rgbOf(c.col));
   const dmg=c.wreck?1:clamp(0.55+0.45*c.hp/t.hp,0.55,1),col=[base[0]*dmg,base[1]*dmg,base[2]*dmg];
   const ca=Math.cos(a),sa=Math.sin(a);
@@ -902,6 +903,7 @@ function drawPed3(p,isPl,fg){
   }
   parts.sort((u,v)=>(v[0]-u[0])||(u[1]-v[1]));
   for(const q of parts)obox(q[2],q[3],a,q[4],q[5],q[1],q[6],q[7],q[8]||q[7],fg);
+  if(!lod)pedRim(p,jz);
 }
 function drawBody3(m,z){const ca=Math.cos(m.a),sa=Math.sin(m.a);flat(m.x,m.y,m.a,8,4.5,z,litH(m.col,1,fogAt(PF)));flat(m.x+ca*-11,m.y+sa*-11,m.a,3.5,3.5,z+0.2,litH(m.cop?'#1b2a55':m.skin,1,fogAt(PF)));}
 function drawLamp3(s,fg){
@@ -927,7 +929,7 @@ function ring3(x,y,r,z,col,lw){L3.beginPath();let first=true;for(let i=0;i<=24;i
 function drawPart3(p,fg){const f=p.life/p.max;let z;
   if(p.type==='smoke')z=6+(1-f)*46;else if(p.type==='fire')z=3+(1-f)*24+p.size*0.4;else if(p.type==='flash')z=11;else z=2+f*10;
   if(!proj(p.x,p.y,z))return;const s=Math.max(1,p.size*PK*(p.type==='flash'?1.4-f*0.4:p.type==='fire'?0.5+f*0.5:p.type==='smoke'?0.9:0.6));
-  if(p.type==='smoke'){L3.globalAlpha=f*0.55;L3.fillStyle=litH(p.col,1,fg);L3.fillRect(R2(PX-s),R2(PY-s),R2(s*2),R2(s*2));}
+  if(p.type==='smoke'){const s2=Math.min(s,LH*0.055);L3.globalAlpha=f*0.55*clamp(PF/70,0.2,1)*(s>s2?s2/s:1);L3.fillStyle=litH(p.col,1,fg);L3.fillRect(R2(PX-s2),R2(PY-s2),R2(s2*2),R2(s2*2));} // capped: a puff right at the lens used to cover the screen
   else if(p.type==='fire'||p.type==='flash'){L3.globalCompositeOperation='lighter';L3.globalAlpha=Math.min(1,f*1.5);L3.fillStyle=p.col;L3.fillRect(R2(PX-s),R2(PY-s),R2(s*2),R2(s*2));L3.globalCompositeOperation='source-over';}
   else{L3.globalAlpha=Math.min(1,f*2);L3.fillStyle=p.type==='spark'?p.col:litH(p.col,1,fg);L3.fillRect(R2(PX-s/2),R2(PY-s/2),Math.max(1,R2(s)),Math.max(1,R2(s)));}
   L3.globalAlpha=1;}
@@ -1021,6 +1023,7 @@ function render(){if(SCOPE.on&&!MENUVIEW){FOC=Math.round(FOC0*SCOPE.z);HALF=HW/F
   ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);
   const sx=(R()-.5)*shake,sy=(R()-.5)*shake;
   ctx.drawImage(lowc,0,0,LW,LH,OX+sx,OY+sy,LW*SCL,LH*SCL);
+  if(OPT.ps2!==false&&!MENUVIEW&&!FREECAM.on)ps2Look(sx,sy);
   MIRH=0;
   if(mir){const mw=Math.min(VW*0.34,440),mh=mw*MHm/MWm,mx=VW/2-mw/2,my=touchMode?54:10;
     ctx.fillStyle='#111';ctx.fillRect(mx-4,my-4,mw+8,mh+8);ctx.save();ctx.translate(mx+mw,my);ctx.scale(-1,1);ctx.drawImage(mirC,0,0,MWm,MHm,0,0,mw,mh);ctx.restore();
@@ -1034,7 +1037,7 @@ function render(){if(SCOPE.on&&!MENUVIEW){FOC=Math.round(FOC0*SCOPE.z);HALF=HW/F
     else if(fadeIn>0){fadeIn=Math.max(0,fadeIn-rdt*1.25);ctx.globalAlpha=fadeIn;ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}}
   ctx.imageSmoothingEnabled=true;
   if(SCENE.on&&!MENUVIEW){const bh=Math.round(VH*0.11);ctx.fillStyle='#000';ctx.fillRect(0,0,VW,bh);ctx.fillRect(0,VH-bh,VW,bh);if(SCENE.f>0){ctx.globalAlpha=SCENE.f;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}}
-  else if(!MENUVIEW)drawHUD();
+  else if(!MENUVIEW&&!FREECAM.on)drawHUD();
 }
 // ---- ground occlusion: for each screen column, how high the ground nearer than a given depth reaches.
 // Things standing behind a hill or under a bridge deck get clipped by it instead of showing through.
@@ -1127,6 +1130,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
   for(const k of STASH)if(!k.got)add(25,k,k.x,k.y,10,null,12,k.z);
   for(const g of GOLDG)if(!GOLDGOT[g.w])add(27,g,g.x,g.y,10,null,14,g.z);
   if(roofRun){const c=roofRun.cps[roofRun.i];add(26,c,c.x,c.y,30,null,60,c.z);}
+  if(ACT&&ACT.kind==='off'){const c=ACT.cps[ACT.i];add(26,c,c.x,c.y,30,null,60,0);}
   if(!mission&&game.state==='play'&&!SCENE.on)for(const b of BOSSES)if(storyAvail(b.g))add(28,b.mk,b.mk.x,b.mk.y,26,null,70);
   phones.forEach((ph,i)=>add(5,ph,ph.x,ph.y,8,null,27));
   if(mission&&mission.items)for(const it of mission.items)if(!it.got)add(6,it,it.x,it.y,8);
@@ -1296,6 +1300,7 @@ function objectiveTarget(){
   if(fare&&!mission)return fare.stage==='pickup'?fare.ped:fare;
   if(delivery&&!mission)return delivery.c;
   if(fireJob&&!mission){let b=null,bd=1e18;for(const f of fireJob.fires)if(f.hp>0){const d=dist2(f.x,f.y,player.x,player.y);if(d<bd){bd=d;b=f;}}return b;}
+  if(ACT&&ACT.tg&&!mission)return ACT.tg;
   if(roofRun&&!mission)return roofRun.cps[roofRun.i];
   if(!mission)return WAYPOINT;
   if(mission.type==='story')return mission.tgt;
@@ -1307,6 +1312,7 @@ function objectiveTarget(){
 }
 function drawHUD(){
   const sc=clamp(Math.min(VW,VH)/700,0.65,1.25);
+  drawScreenRain(sc);extrasHUD(sc);
   // hurt vignette
   if(player.hurt>0){const g=ctx.createRadialGradient(VW/2,VH/2,Math.min(VW,VH)*0.3,VW/2,VH/2,Math.max(VW,VH)*0.7);g.addColorStop(0,'rgba(255,0,0,0)');g.addColorStop(1,`rgba(255,0,0,${player.hurt})`);ctx.fillStyle=g;ctx.fillRect(0,0,VW,VH);}
   // ---- GTA III-style cluster, top right: weapon icon, clock, health and armor, money, wanted stars ----
@@ -1338,7 +1344,7 @@ function drawHUD(){
   {const ry=hy+(player.car?34:2)*sc,bw2=96*sc;
   for(let g=0;g<3;g++){const y=ry+g*14*sc,mid=mx-bw2/2;ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(mx-bw2,y,bw2,8*sc);
     const v=respect[g]/5*(bw2/2-2);ctx.fillStyle=GANGS[g].col;ctx.fillRect(v>=0?mid:mid+v,y+2,Math.abs(v),8*sc-4);
-    ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(mid-0.5,y,1,8*sc);ctx.fillStyle=GANGS[g].col;ctx.fillRect(mx-bw2-11*sc,y,8*sc,8*sc);}}
+    ctx.fillStyle='rgba(255,255,255,.55)';ctx.fillRect(mid-0.5,y,1,8*sc);ctx.fillStyle=GANGS[g].col;ctx.fillRect(mx-bw2-11*sc,y,8*sc,8*sc);hudText(GANGS[g].name.split(' ').pop().toUpperCase(),mx-bw2-15*sc,y+4*sc,Math.round(9*sc),GANGS[g].col,'right','system-ui,sans-serif');}}
   // mission panel
   const msz=Math.round((touchMode?118:150)*sc);
   let ly=touchMode?msz+22*sc:18*sc;
@@ -1350,7 +1356,7 @@ function drawHUD(){
     let extra=mission.desc;if(mission.type==='cases')extra=mission.items.filter(i=>i.got).length+' / 4 briefcases';
     ctx.strokeStyle='rgba(0,0,0,.8)';ctx.lineWidth=3;
     {const maxW=touchMode?VW*0.58:440;const words=extra.split(' ');let line='',yy=ly+64*sc;for(const wd of words){const tst=line?line+' '+wd:wd;if(ctx.measureText(tst).width>maxW&&line){ctx.strokeText(line,18*sc,yy);ctx.fillText(line,18*sc,yy);line=wd;yy+=17*sc;}else line=tst;}if(line){ctx.strokeText(line,18*sc,yy);ctx.fillText(line,18*sc,yy);}}
-  }else if(job){hudText(job.kind==='vig'?'VIGILANTE: WRECK THE SUSPECT':job.stage==='pickup'?'AMBULANCE: PICK UP THE PATIENT':'AMBULANCE: GET TO THE HOSPITAL',18*sc,ly+12*sc,Math.round(16*sc),job.kind==='vig'?'#4da3ff':'#7dff8a','left');{const tm=Math.max(0,Math.ceil(job.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'   level '+(jobLevel+1),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(roofRun){roofRunHUD(sc,ly);}else if(sideJob){sideJobHUD(sc,ly);}else if(fare){hudText(fare.stage==='pickup'?'TAXI: PICK UP THE FARE':'TAXI: DRIVE TO THE MARKER',18*sc,ly+12*sc,Math.round(16*sc),'#ffd600','left');{const tm=Math.max(0,Math.ceil(fare.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0'),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(ringing>=0){hudText('☎ PAYPHONE RINGING',18*sc,ly+12*sc,Math.round(15*sc),Math.floor(game.t*2)%2?'#ffd600':'#fff','left');}
+  }else if(job){hudText(job.kind==='vig'?'VIGILANTE: WRECK THE SUSPECT':job.stage==='pickup'?'AMBULANCE: PICK UP THE PATIENT':'AMBULANCE: GET TO THE HOSPITAL',18*sc,ly+12*sc,Math.round(16*sc),job.kind==='vig'?'#4da3ff':'#7dff8a','left');{const tm=Math.max(0,Math.ceil(job.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0')+'   level '+(jobLevel+1),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(ACT){actHUD(sc,ly);}else if(roofRun){roofRunHUD(sc,ly);}else if(sideJob){sideJobHUD(sc,ly);}else if(fare){hudText(fare.stage==='pickup'?'TAXI: PICK UP THE FARE':'TAXI: DRIVE TO THE MARKER',18*sc,ly+12*sc,Math.round(16*sc),'#ffd600','left');{const tm=Math.max(0,Math.ceil(fare.timer));hudText(Math.floor(tm/60)+':'+String(tm%60).padStart(2,'0'),18*sc,ly+40*sc,Math.round(22*sc),tm<=10&&Math.floor(game.t*4)%2?'#ff4040':'#fff','left');}}else if(ringing>=0){hudText('☎ PAYPHONE RINGING',18*sc,ly+12*sc,Math.round(15*sc),Math.floor(game.t*2)%2?'#ffd600':'#fff','left');}
   // objective arrow: hovers over the target when you can see it, otherwise a compass arrow at the top
   const tg=objectiveTarget();
   if(tg&&game.state==='play'){

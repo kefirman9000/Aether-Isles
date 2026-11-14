@@ -26,6 +26,7 @@ function frame(now){
   pollPad();mlTick();{const n2=performance.now();cutTick(Math.min(0.05,(n2-(SCENE.lt||n2))/1000));SCENE.lt=n2;}
   let dt=Math.min(0.033,Math.max(0,(now-last)/1000));last=now;
   if(slowT>0&&!game.paused){slowT-=dt;dt*=0.35;}
+  if(FREECAM.on)freeCamTick(dt);else
   if(game.state!=='menu'&&!game.paused&&!DLG.open)update(dt);
   if(game.state!=='menu')render();else menuView(dt);
   requestAnimationFrame(frame);
@@ -50,6 +51,7 @@ if('ontouchstart' in window||navigator.maxTouchPoints>0){
 }
 // ================= TITLE MENU, PAUSE MENU, OPTIONS AND SAVES =================
 const OPT=Object.assign({slowmo:false,mirror:true,cam:1,autosave:true,steer:'stick',btn:1,assist:true,msens:1,rumble:true,gta3:true,mouselook:true},(()=>{try{return JSON.parse(localStorage.getItem('gc_opts')||'{}')}catch(_){return{}}})());
+buildKeyRev();
 function saveOpts(){try{localStorage.setItem('gc_opts',JSON.stringify(OPT))}catch(_){}}
 mirrorOn=OPT.mirror;
 let MENUVIEW=false,menuMode='title',menuSel=0,panelOpen=null,autoT=0;
@@ -86,6 +88,9 @@ function openPanel(kind){
   else if(kind==='save'){h='<h2>SAVE GAME</h2>';if(stars()>0||game.state!=='play')h+='<p class="warn">You can\'t save while the cops are after you.</p>';
     for(const sl of ['1','2','3']){const s=readSave(sl);h+=`<div class="slot"><div><b>${slotName(sl)}</b><br>${slotSummary(s)}</div><button data-save="${sl}" ${stars()>0||game.state!=='play'?'disabled':''}>${s?'OVERWRITE':'SAVE'}</button></div>`;}}
   else if(kind==='options'){const onoff=v=>v?'ON':'OFF';h=`<h2>OPTIONS</h2>
+    <div class="opt"><span>PS2 look (colour grade, trails, rain on the lens, paint sheen)</span><button data-opt="ps2">${onoff(OPT.ps2!==false)}</button></div>
+    <div class="opt"><span>Keyboard</span><button data-opt="keys">REMAP KEYS</button></div>
+    <div class="opt"><span>Controller buttons</span><button data-opt="padmap">REMAP BUTTONS</button></div>
     <div class="opt"><span>Slow motion on jumps</span><button data-opt="slowmo">${onoff(OPT.slowmo)}</button></div>
     <div class="opt"><span>Rear-view mirror (V)</span><button data-opt="mirror">${onoff(OPT.mirror)}</button></div>
     <div class="opt"><span>Camera view (V)</span><button data-opt="cam">${CAMV[camMode()].n}</button></div>
@@ -105,18 +110,20 @@ function openPanel(kind){
     <div class="opt"><span>Fullscreen</span><button data-opt="fs">${document.fullscreenElement?'EXIT':'GO FULLSCREEN'}</button></div>
     <div class="opt"><span>New city layout</span><button data-opt="city">GENERATE</button></div><p class="note">A new layout moves the hidden packages, so package progress in old saves won't carry over.</p>`;}
   else if(kind==='controls'){h='<h2>CONTROLS</h2>'+document.getElementById('ctlSrc').innerHTML;}
+  else if(kind==='keys'){h=keysHTML();}
+  else if(kind==='padmap'){h=padHTML();}
   else if(kind==='stats'){h=statsHTML();}
   else if(kind==='missions'){h=missionsHTML();}
   else if(kind==='cheats'){h='<h2>CHEATS</h2><p>Type a code while playing, or enter it here.</p><div class="opt"><input id="cheatIn" style="flex:1;padding:8px;font:16px system-ui;background:#111;color:#fff;border:1px solid #555;border-radius:4px" placeholder="code"><button id="cheatGo">ENTER</button></div><p class="note" id="cheatMsg"></p>';}
   else if(kind==='newcity'){h='<h2>NEW CITY?</h2><p>The page will reload with a freshly generated city. Your saves are kept, but their hidden-package progress belongs to the old city.</p><div class="opt"><button data-yes="city">GENERATE</button><button data-back="options">CANCEL</button></div>';}
-  h+='<button class="back" data-back="1">BACK</button>';p.innerHTML=h;
+  h+='<button class="back" data-back="'+(kind==='keys'||kind==='padmap'?'options':'1')+'">BACK</button>';p.innerHTML=h;wireRemap(p);
   {const ci=p.querySelector('#cheatGo');if(ci)ci.onclick=()=>{const v=p.querySelector('#cheatIn').value;const ok=tryCheat(v);p.querySelector('#cheatMsg').textContent=ok?'Activated!':'Nothing happened.';};}
   p.querySelectorAll('[data-rep]').forEach(b=>b.onclick=()=>{closePanel();replayMission(b.dataset.rep);});
   p.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=readSave(b.dataset.load);if(s)loadFrom(s);});
-  p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
+  p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{sleepSix();if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
   p.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{const k=b.dataset.opt;
     if(k==='cam')OPT.camMode=(camMode()+1)%CAMV.length;else if(k==='pad')OPT.pad=OPT.pad==='classic'?'modern':'classic';else if(k==='handling')OPT.handling=OPT.handling==='gta3'?'gta2':'gta3';else if(k==='season')OPT.season=OPT.season==='winter'?'summer':OPT.season==='summer'?'auto':'winter';else if(k==='steer')OPT.steer=OPT.steer==='wheel'?'stick':'wheel';else if(k==='btn')OPT.btn=OPT.btn<1?1:OPT.btn>1?0.85:1.2;else if(k==='msens')OPT.msens=OPT.msens<1?1:OPT.msens>1?0.6:1.6;
-    else if(k==='fs'){try{if(document.fullscreenElement)document.exitFullscreen();else{document.documentElement.requestFullscreen().catch(()=>{});}}catch(_){}setTimeout(()=>openPanel('options'),300);return;}else if(k==='sound'){toggleMute();}else if(k==='city'){openPanel('newcity');return;}else{OPT[k]=!OPT[k];if(k==='mirror')mirrorOn=OPT.mirror;}
+    else if(k==='fs'){try{if(document.fullscreenElement)document.exitFullscreen();else{document.documentElement.requestFullscreen().catch(()=>{});}}catch(_){}setTimeout(()=>openPanel('options'),300);return;}else if(k==='sound'){toggleMute();}else if(k==='city'){openPanel('newcity');return;}else if(k==='keys'||k==='padmap'){openPanel(k);return;}else if(k==='ps2'){OPT.ps2=OPT.ps2===false;}else{OPT[k]=!OPT[k];if(k==='mirror')mirrorOn=OPT.mirror;}
     saveOpts();openPanel('options');});
   p.querySelectorAll('[data-yes]').forEach(b=>b.onclick=()=>{try{localStorage.setItem('gc_city_seed',String(((Math.random()*2**31)|0)||7))}catch(_){}location.reload();});
   p.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>{if(b.dataset.back==='options')openPanel('options');else closePanel();});

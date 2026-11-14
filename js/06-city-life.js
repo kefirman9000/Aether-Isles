@@ -478,6 +478,7 @@ function updateStash(){if(player.car||game.state!=='play')return;for(const k of 
 // out to shoot at whatever is after you; any that don't fit wait where you left them.
 const CREW_COL='#9a5ad8',FOLLOW=[];let crewSpawnT=0,crewTickT=0;
 function seatsOf(c){const t=c.t,k=c.type;if(!c||t.tank)return 0;if(t.bus)return 3;if(t.bike||t.heli)return 1;if(t.boat)return 2;
+  if(t.rc)return 0;
   if(['sports','roadster','muscle','compact','truck','garbage','ambulance','icecream','foodtruck','firetruck','armytruck','fbi'].includes(k))return 1;
   if(k==='pickup'||k==='van')return 2;return 3;}
 function makeCrew(p,bi){p.crew=true;p.gang=null;p.col=CREW_COL;p.hp=CREWUP.armor?110:60;p.home=bi;p.state='walk';p.shootT=rr(.3,.8);p.hair=pick(['#222','#3a2a1a','#111']);
@@ -774,7 +775,7 @@ let dockT=0;function updateDockers(dt){dockT-=dt;if(dockT>0||game.state!=='play'
   if(peds.filter(p=>!p.gone&&p.docker).length>=7)return;
   for(let i=0;i<10;i++){const [bx,by]=pick(near),x=(bx*P+5+rr(0,8))*T,y=(by*P+5+rr(0,8))*T,ti=Math.floor(y/T)*W+Math.floor(x/T);
     if(map[ti]!==LOT||camSees(x,y))continue;const q=makePed(x,y,false);q.docker=true;q.col=pick(['#e8701a','#e8c81a','#3a5a8a']);q.hat=pick(['#f0c020','#f0f0ea','#e8701a']);pedPickNext(q);return;}}
-function extTick14(dt){updateDockers(dt);updateRadioText(dt);updateStages(dt);updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
+function extTick14(dt){extrasTick(dt);updateDockers(dt);updateRadioText(dt);updateStages(dt);updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
 function extTick13(dt){extTick14(dt);updateWaypoint();updateGangWar(dt);updateReputation(dt);updateTurfPressure(dt);updatePolice(dt);updateEscapes(dt);}
 function extTick12(dt){updateCrew(dt);extTick13(dt);}
 function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();extTick12(dt);}

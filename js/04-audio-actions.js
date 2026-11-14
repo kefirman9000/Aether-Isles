@@ -113,8 +113,9 @@ function tryEnterCar(){
 }
 function exitCar(force){
   const c=player.car;if(!c)return;
+  if(c.t.rc&&ACT&&ACT.kind==='rc'&&!force){rcBoom();return;}
   if(!force&&hyp(c.vx,c.vy)>220)return;
-  if(c.t.heli&&(c.alt||0)>6&&!force){note('Land first (hold SHIFT to descend)');return;}
+  if(c.t.heli&&(c.alt||0)>6&&!force){note(c.t.plane?'Land first':'Land first (hold SHIFT to descend)');return;}
   if(c.t.boat){const s=exitBoatSpot(c);if(!s){if(!force){note('Get closer to the shore');return;}}else{player.x=s[0];player.y=s[1];player.vx=player.vy=0;c.driver=null;player.car=null;player.body=c.a;player.a=c.a;sfx('door');return;}}
   const ca=Math.cos(c.a),sa=Math.sin(c.a),off=c.t.Wd/2+12;
   const cands=[[c.x+sa*off,c.y-ca*off],[c.x-sa*off,c.y+ca*off],[c.x+ca*(c.t.L/2+12),c.y+sa*(c.t.L/2+12)],[c.x-ca*(c.t.L/2+12),c.y-sa*(c.t.L/2+12)]];
@@ -123,6 +124,7 @@ function exitCar(force){
   c.driver=null;c.traffic=true;player.car=null;player.body=c.a;player.a=c.a;sfx('door');unseatCrew(c);
 }
 function playerFire(){
+  if(ACT&&ACT.kind==='rc'){rcBoom();return;}
   const w=WEAPONS[player.w];
   if(player.cool>0||player.ammo[player.w]<=0)return;
   const inCar=!!player.car;
@@ -200,7 +202,7 @@ function carRamps(c){
     c.rampZ=r.h*(f+r.hl)/(2*r.hl);c.rampP=Math.atan2(r.h,2*r.hl);
     if(f>r.hl-6){ // off the lip: launch with upward speed from the ramp angle (a slow car just drops off the end)
       c.air=1;c.airT=0;c.az=r.h;c.vz=vd>140?clamp(vd*0.52,90,380):0;c.pitch=c.rampP;
-      if(c===player.car&&c.vz>0){if(OPT.slowmo)slowT=Math.max(slowT,0.55);sfx('rocket',0.35);}}
+      if(c===player.car&&c.vz>0){if(OPT.slowmo)slowT=Math.max(slowT,0.55);sfx('rocket',0.35);usjLaunch(c,r);}}
   }
 }
 function carAir(c,dt){
@@ -212,7 +214,7 @@ function carAir(c,dt){
     const imp=-c.vz;c.az=0;c.vz=0;c.air=0;c.pitch=-0.05-clamp(imp/2600,0,0.16);c.vx*=0.95;c.vy*=0.95;c.va*=0.5;
     if(imp>560)damageCar(c,(imp-560)*0.05,c.driver==='player'?'player':null);
     for(let k=0;k<6;k++)puff(c.x+rr(-15,15),c.y+rr(-15,15),rr(-60,60),rr(-60,60),rr(.4,.8),rr(6,10),'#9a9a9a','smoke');
-    if(c===player.car){shake=Math.max(shake,4+imp/70);sfx('crash',clamp(imp/700,0.25,0.7));
+    if(c===player.car){shake=Math.max(shake,4+imp/70);sfx('crash',clamp(imp/700,0.25,0.7));usjLand(c);
       if(c.airT>0.3){STATS.jumps++;STATS.bestAir=Math.max(STATS.bestAir,c.airT);lastJumpAir=c.airT;const bonus=Math.round(c.airT*c.airT*1500/50)*50;addMoney(bonus);showBig(c.airT>1.0?'INSANE STUNT BONUS':'STUNT BONUS','+$'+bonus.toLocaleString()+'  ·  '+c.airT.toFixed(1)+'s air','#ffd600',2.2);chaos();}}
     else if(nearPlayer(c.x,c.y,600))sfx('crash',0.3);
   }

@@ -452,11 +452,12 @@ function drawBigMap(sc){const s=Math.min(VW,VH)*0.92,ox=(VW-s)/2,oy=(VH-s)/2,k=s
   for(const hs of HOSPITALS)icon(hs.x,hs.y,'#ffffff','+');
   for(const c of cars)if(c.t.boat&&!c.driver)icon(c.x,c.y,'#6ab8ff','~');
   icon(SHOWROOM.x,SHOWROOM.y,'#ff6060','A');icon(STUNT.x,STUNT.y,'#ffc21a','S');icon(BANK.x,BANK.y,'#1f3f6f','$');for(const s2 of STORES)icon(s2.x,s2.y,'#d8382a','7');for(const h of HELIPADS)icon(h.x,h.y,'#c9a23a','^');icon(CLUB.x,CLUB.y,'#ff4fa8','♪');for(const g of GUNSHOPS)icon(g.x,g.y,'#ff4040','W');icon(EXPORT.x,EXPORT.y,'#6ab8ff','E');icon(PIZZA.x,PIZZA.y,'#ffe25a','P');
-  bigMapExtras(P2,icon,k_);
+  bigMapExtras(P2,icon,k_);extrasMap(P2,icon);
   const tg=objectiveTarget();if(tg){const gp=gpsRoute(tg);if(gp){ctx.beginPath();const[p0,p1]=P2((player.car||player).x,(player.car||player).y);ctx.moveTo(p0,p1);for(const q of gp){const[x,y]=P2(q.x,q.y);ctx.lineTo(x,y);}ctx.strokeStyle='#ffd600';ctx.lineWidth=3;ctx.stroke();}}
   if(tg){const[a,b]=P2(tg.x,tg.y);ctx.fillStyle='#ffd600';ctx.beginPath();ctx.arc(a,b,6+Math.sin(game.t*6)*2,0,TAU);ctx.fill();ctx.stroke();}
   {const o=player.car||player,[a,b]=P2(o.x,o.y);ctx.save();ctx.translate(a,b);ctx.rotate(o.a);ctx.fillStyle='#fff';ctx.strokeStyle='#000';ctx.beginPath();ctx.moveTo(9,0);ctx.lineTo(-6,-6);ctx.lineTo(-2,0);ctx.lineTo(-6,6);ctx.closePath();ctx.fill();ctx.stroke();ctx.restore();}
   hudText(touchMode?'tap to close':'TAB to close',VW/2,oy+s-14,Math.round(13*sc),'#fff','center',`600 ${Math.round(13*sc)}px system-ui`);
+  hudText('★ stunt jump  RC toy cars  4 off-road run  ✈ airstrip',VW/2,oy+32,Math.round(12*sc),'#ddd','center',`600 ${Math.round(12*sc)}px system-ui`);
   hudText('! job  H safehouse  R race  $ spray  ~ boat  W guns  A cars  E export  P pizza',VW/2,oy+16,Math.round(12*sc),'#ddd','center',`600 ${Math.round(12*sc)}px system-ui`);}
 
 // ---------- mobile: dynamic resolution, background pause, keep the screen awake ----------
@@ -472,7 +473,7 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.star
 function extTick(dt){extTick5(dt);transitTick(dt);extTick2(dt);extTick3(dt);extTick4(dt);updateBosses();updateSafehouses(dt);updateBoats(dt);updateShop();updateNitro(dt);updateHorn(dt);updateFire(dt);updateRaces(dt);updateLife(dt);mobileTick(dt);}
 function extSave(){return{gym:GYM,gold:GOLDGOT,tags:{seed:SAVE_SEED,d:TAGS.map(t=>t.done?1:0)},runs:RUNBEST,secret:secretFound,crewup:CREWUP,roof:{seed:SAVE_SEED,got:STASH.map(k=>k.got?1:0)},trash:trashLevel,taco:tacoLevel,story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel,stats:STATS,golds:GOLDS,exp:EXPORTED,pizza:pizzaLevel,armor:player.armor,turf:TURF,stunt:stuntLevel};}
 function extLoad(e){if(!e)return;GYM=e.gym||0;for(const k in GOLDGOT)delete GOLDGOT[k];Object.assign(GOLDGOT,e.gold||{});applyGold();for(const t of TAGS)t.done=false;if(e.tags&&e.tags.seed===SAVE_SEED)(e.tags.d||[]).forEach((d,i)=>{if(TAGS[i])TAGS[i].done=!!d;});for(const k in RUNBEST)delete RUNBEST[k];Object.assign(RUNBEST,e.runs||{});secretFound=!!e.secret;Object.assign(CREWUP,{guns:0,armor:0,slot:0,guard:0},e.crewup||{});for(const k of STASH)k.got=false;if(e.roof&&e.roof.seed===SAVE_SEED)(e.roof.got||[]).forEach((g,i)=>{if(STASH[i])STASH[i].got=!!g;});trashLevel=e.trash||0;tacoLevel=e.taco||0;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
-  for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});for(const k in EXPORTED)delete EXPORTED[k];Object.assign(EXPORTED,e.exp||{});pizzaLevel=e.pizza||0;player.armor=e.armor||0;for(const k in TURF)delete TURF[k];Object.assign(TURF,e.turf||{});stuntLevel=e.stunt||0;}
+  for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;for(const k of['usj','rcBest','offBest','offWins','flightBest','rank'])delete STATS[k];Object.assign(STATS,e.stats||{});for(const k in GOLDS)delete GOLDS[k];Object.assign(GOLDS,e.golds||{});for(const k in EXPORTED)delete EXPORTED[k];Object.assign(EXPORTED,e.exp||{});pizzaLevel=e.pizza||0;player.armor=e.armor||0;for(const k in TURF)delete TURF[k];Object.assign(TURF,e.turf||{});stuntLevel=e.stunt||0;}
 
 // ---------- traffic on the diagonal avenues ----------
 function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir=ai.dir,ux=d.ux*dir,uy=d.uy*dir,lx=-uy,ly=ux;
@@ -504,6 +505,7 @@ function statsHTML(){const km=(STATS.dist/32*4/1000).toFixed(1);return`<h2>STATS
 <b>Turf blocks</b><span>${Object.keys(TURF).length}</span><b>Stunt trial level</b><span>${stuntLevel}</span>
 <b>Stunt jumps</b><span>${STATS.jumps} · best ${STATS.bestAir.toFixed(1)} s</span>
 <b>Cars stolen</b><span>${STATS.stolen}</span><b>People taken out</b><span>${STATS.kills} (${STATS.cops} cops)</span>
+${ratingHTML()}
 <b>Distance driven</b><span>${km} km</span><b>Wasted / busted</b><span>${STATS.wasted} / ${STATS.busted}</span></div>`;}
 // phone: G (or PHONE) orders a car to be dropped off nearby
 const ORDERS=[['Start a gang war',0,'war'],['Crew upgrades',0,'crewup'],['Crew backup',250,'crew'],['Getaway car',300,'sports'],['Taxi',150,'taxi'],['Pickup truck',250,'pickup'],['Fire truck',600,'firetruck']];

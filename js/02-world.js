@@ -64,7 +64,7 @@ function hand(c){
   return t.h=H;
 }
 function carGear(c){const H=hand(c),v=hyp(c.vx,c.vy)/(GT*TICK);return v>H.g3s?3:v>H.g2s?2:1;}
-function driveCar(c,thr,steer,hb,dt){if(c.t.heli){heliDrive(c,thr,steer,hb,dt);return;}
+function driveCar(c,thr,steer,hb,dt){if(c.t.plane){planeDrive(c,thr,steer,hb,dt);return;}if(c.t.rc){rcDrive(c,thr,steer,hb,dt);return;}if(c.t.heli){heliDrive(c,thr,steer,hb,dt);return;}
   if(c.air>0){c.skid=false;return;} // airborne: no grip, no steering
   if((c.driver==='ai'||c.driver==='cop')&&!c.t.tank&&!(c.ai&&c.ai.mode==='chase')&&!(c.gang!=null&&respect[c.gang]<=-3))return driveCarAI(c,thr,steer,hb,dt);
   const t=c.t;c.driven=true;

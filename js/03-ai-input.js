@@ -360,9 +360,9 @@ const pad={on:false,lx:0,ly:0,rx:0,ry:0,gas:0,brake:0,pb:[],aim:false,aimA:0,run
 const dzn=v=>Math.abs(v)<0.18?0:(v-Math.sign(v)*0.18)/0.82;
 function pollPad(){let gp=null;try{const l=navigator.getGamepads?navigator.getGamepads():[];for(const g of l)if(g&&g.connected&&g.buttons&&g.buttons.length>9){gp=g;break;}}catch(_){}
   if(!gp){if(pad.on){pad.on=false;pad.aim=false;for(const k in PADK)PADK[k]=false;}return;}
-  pad.gp=gp;const B=i=>{const b=gp.buttons[i];return!!b&&(b.pressed||b.value>0.5);},b=[];for(let i=0;i<17;i++)b[i]=B(i);const edge=i=>b[i]&&!pad.pb[i];
+  pad.gp=gp;const B=i=>{const b=gp.buttons[PM(i)];return!!b&&(b.pressed||b.value>0.5);},b=[];for(let i=0;i<17;i++)b[i]=B(i);const edge=i=>b[i]&&!pad.pb[i];
   pad.lx=dzn(gp.axes[0]||0);pad.ly=dzn(gp.axes[1]||0);pad.rx=dzn(gp.axes[2]||0);pad.ry=dzn(gp.axes[3]||0);
-  pad.gas=gp.buttons[7]?gp.buttons[7].value:0;pad.brake=gp.buttons[6]?gp.buttons[6].value:0;
+  {const g7=gp.buttons[PM(7)],g6=gp.buttons[PM(6)];pad.gas=g7?g7.value:0;pad.brake=g6?g6.value:0;}
   const active=b.some(x=>x)||Math.abs(pad.lx)+Math.abs(pad.ly)+Math.abs(pad.rx)+Math.abs(pad.ry)>0.1||pad.gas>0.05||pad.brake>0.05;
   if(active){if(!pad.on){pad.on=true;if(game.started)note('Controller connected');}mouse.used=false;}
   const menuUp=document.getElementById('menu').style.display!=='none';

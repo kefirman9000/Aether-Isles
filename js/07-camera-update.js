@@ -414,7 +414,7 @@ function update(dt){
     if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);dist+=k*k*110;hgt+=k*k*90;rate*=0.15;}
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
     const ca=Math.cos(cam.yaw),sa=Math.sin(cam.yaw);let dd=dist;
-    const inBoat=player.car&&player.car.t.boat;if(inBoat){hgt+=14;dist+=10;}if(player.car&&player.car.t.heli){dist+=50;hgt+=26;}
+    const inBoat=player.car&&player.car.t.boat;if(inBoat){hgt+=14;dist+=10;}if(player.car&&player.car.t.heli){dist+=50;hgt+=26;}if(player.car&&player.car.t.rc){dist*=0.55;hgt*=0.5;}
     // pull the camera in when a wall is between it and you; up on a roof or fire escape, only things taller than the camera count
     {const camZ=GH(player.x,player.y)+(player.jz||0)+hgt,hi=(player.jz||0)>12;
     for(let s2=10;s2<=dist;s2+=6){const qx=player.x-ca*s2,qy=player.y-sa*s2;if(!solidPx(qx,qy)||(inBoat&&tileAt(Math.floor(qx/T),Math.floor(qy/T))===WATER))continue;
