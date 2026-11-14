@@ -2041,13 +2041,33 @@ function storyAvail(g){if(STORY.prog[g]<CHAPTERS[g].length)return CHAPTERS[g][ST
 // ---- the mission runner (story missions and races use it) ----
 function runMission(def,opts){
   sfx('pass');mission={type:'story',def,opts:opts||{},title:def.title,desc:'',timer:9999,max:9999,steps:def.steps,si:-1,gang:-1,tgt:null,ring:false,x:0,y:0,clock:0};
-  showBig(def.title.toUpperCase(),opts&&opts.sub||'','#ffcc00',2.6);stepNext();}
+  if(opts&&opts.boss&&def.steps[0]&&def.steps[0].k==='talk')cutStart(opts.boss);
+  else showBig(def.title.toUpperCase(),opts&&opts.sub||'','#ffcc00',2.6);
+  stepNext();}
+// ---- mission intro scenes, GTA III-style: fade from black, a side-on shot of you and the boss in letterbox while they talk, then fade back to play ----
+const SCENE={on:false,phase:'',t:0,f:0,boss:null,after:null,side:1};
+function cutStart(boss){SCENE.on=true;SCENE.phase='in';SCENE.t=0;SCENE.f=1;SCENE.boss={x:boss.x,y:boss.y};SCENE.after=null;
+  const a=Math.atan2(boss.y-player.y,boss.x-player.x);player.a=player.body=a;player.vx=player.vy=0;LOCK.t=null;
+  // put the camera on whichever side of the pair has room
+  const mx=(player.x+boss.x)/2,my=(player.y+boss.y)/2;let best=1,bs=-1;for(const sd of[1,-1]){let n=0;for(let k=20;k<=110;k+=15)if(!solidPx(mx-Math.sin(a)*k*sd,my+Math.cos(a)*k*sd))n++;else break;if(n>bs){bs=n;best=sd;}}SCENE.side=best;SCENE.room=bs;}
+function cutEnd(after){SCENE.phase='out';SCENE.t=0;SCENE.after=after;}
+function cutTick(rdt){if(!SCENE.on)return;SCENE.t+=rdt;
+  if(SCENE.phase==='in'){SCENE.f=Math.max(0,1-SCENE.t/0.7);if(SCENE.t>0.7)SCENE.phase='talk';}
+  else if(SCENE.phase==='talk'&&!DLG.open&&SCENE.t>1.5)cutEnd(null); // the talk was cut short somehow: don't get stuck in the scene
+  else if(SCENE.phase==='out'){SCENE.f=Math.min(1,SCENE.t/0.45);if(SCENE.t>=0.45){SCENE.on=false;SCENE.f=0;fadeIn=1;cam.base=player.body;cam.yaw=player.body;cam.dist=60;const f=SCENE.after;SCENE.after=null;if(f)f();return;}}
+  // the shot: side-on to the two of you, slowly pushing in
+  const b=SCENE.boss,a=Math.atan2(b.y-player.y,b.x-player.x),mx=(player.x+b.x)/2,my=(player.y+b.y)/2,d=hyp(b.x-player.x,b.y-player.y);
+  player.a=player.body=a;
+  const room=SCENE.room>=6,k=(room?(78+d*0.5):(60+d*0.4))*(1-Math.min(0.14,SCENE.t*0.012)),sd=SCENE.side;
+  if(room){cam.x=mx-Math.sin(a)*k*sd-Math.cos(a)*k*0.35;cam.y=my+Math.cos(a)*k*sd-Math.sin(a)*k*0.35;}
+  else{cam.x=player.x-Math.cos(a)*k*0.8-Math.sin(a)*14*sd;cam.y=player.y-Math.sin(a)*k*0.8+Math.cos(a)*14*sd;} // over your shoulder
+  cam.yaw=Math.atan2(my-cam.y,mx-cam.x);cam.h=26;cam.gz=GH(mx,my)+(player.jz||0);}
 function stepNext(){const m=mission;if(!m||m.type!=='story')return;m.si++;m.ring=false;m.tgt=null;m.items=null;
   if(m.si>=m.steps.length){storyPass();return;}
   const s=m.steps[m.si];s.st={};m.desc=s.desc||m.desc;if(s.timer){m.timer=s.timer;m.max=s.timer;}else if(!m.opts.race){m.timer=9999;m.max=9999;}
   const st=s.st;
   switch(s.k){
-    case 'talk':say(s.lines,()=>stepNext());break;
+    case 'talk':say(s.lines,SCENE.on&&SCENE.phase!=='out'?()=>cutEnd(()=>stepNext()):()=>stepNext());break;
     case 'steal':{const p=s.where();const c=makeCar(s.type,p.x,p.y,PI/2,s.col);c.vip=true;st.c=c;m.tgt=c;break;}
     case 'drive':{const p=s.to();st.x=p.x;st.y=p.y;m.ring=true;m.x=p.x;m.y=p.y;m.tgt={x:p.x,y:p.y};if(s.car==='stolen'){const prev=m.steps.slice(0,m.si).reverse().find(q=>q.k==='steal');st.c=prev&&prev.st.c;}break;}
     case 'wreck':{let p=s.at();if(s.far){const a=R()*TAU;p={x:p.x+Math.cos(a)*s.far,y:p.y+Math.sin(a)*s.far};}
@@ -2113,7 +2133,7 @@ function updateBosses(){for(const b of BOSSES){if(dist2(b.pt.x,b.pt.y,player.x,p
       const ch=storyAvail(b.g);b.cool=true;
       if(!ch){say([[b.name,STORY.fin?'Gridlock City is yours. Enjoy it.':'Nothing for you today. Check with the others.']]);}
       else if(stars()>0){say([[b.name,'You\'re bringing heat to my door! Lose the cops first.']]);}
-      else{const g=b.g;runMission(ch,{sub:GANGS[g].name});mission.g=g;mission.gang=-1;}}
+      else{const g=b.g;runMission(ch,{sub:GANGS[g].name,boss:p});mission.g=g;mission.gang=-1;}}
     if(dist2(p.x,p.y,player.x,player.y)>90*90)b.cool=false;}}
 
 // ---------- safehouses and garages ----------
@@ -3626,7 +3646,7 @@ function update(dt){
 
   // ---- camera ----
   // chase camera: sits behind the car (or you) and swings round as you turn
-  {let want,dist,hgt,rate;
+  if(!SCENE.on){let want,dist,hgt,rate;
     if(player.car||player.riding){cam.wasFoot=false;LOCK.t=null;}
     if(player.car){const c=player.car,s=hyp(c.vx,c.vy),big=c.t.truck||c.t.tank||c.t.swat;want=c.a;
       dist=94+Math.min(56,s*0.075)+(big?28:0);hgt=42+Math.min(14,s*0.02)+(big?12:0);rate=3.2;}
@@ -4484,7 +4504,7 @@ function drawPed3(p,isPl,fg){
   const a=p.a,ca=Math.cos(a),sa=Math.sin(a),at=(f,r)=>[p.x+ca*f-sa*r,p.y+sa*f+ca*r];
   const body=rgbOf(isPl?'#d9731f':(p.flash>0?'#ffffff':p.col)),skin=rgbOf(p.skin||'#e0ac69'),pants=isPl?[44,52,80]:PANTS[(p.id||0)%PANTS.length];
   const hair=p.cop?rgbOf(p.kind==='swat'?'#15171c':p.kind==='fbi'?'#202020':(p.kind==='armytruck'||p.kind==='tank')?'#3d4a22':'#1b2a55'):rgbOf(p.hair||'#222');
-  const sw=p.moving?Math.sin(p.anim):0,armed=isPl||p.gun,lod=PK<0.7;
+  const sw=p.moving?Math.sin(p.anim):0,armed=isPl?!(SCENE.on||WEAPONS[player.w].fist):p.gun,lod=PK<0.7;
   const parts=[];const P=(f,r,hl,hw,z0,z1,c,top)=>{const[x,y]=at(f,r);parts.push([(x-CX)*CC+(y-CY)*CS,z0,x,y,hl,hw,z1,c,top]);};
   if(lod){P(0,0,2,4,0,18,body);P(0,0,2.4,2.4,18,23.5,skin,hair);}
   else{
@@ -4630,7 +4650,8 @@ function render(){{const want=player.car&&player.car.t.heli?-clamp((player.car.a
       ctx.globalCompositeOperation='source-over';const b=clamp((k-0.62)/0.33,0,1);if(b>0){ctx.globalAlpha=b;ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);}ctx.globalAlpha=1;}
     else if(fadeIn>0){fadeIn=Math.max(0,fadeIn-rdt*1.25);ctx.globalAlpha=fadeIn;ctx.fillStyle='#000';ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}}
   ctx.imageSmoothingEnabled=true;
-  if(!MENUVIEW)drawHUD();
+  if(SCENE.on&&!MENUVIEW){const bh=Math.round(VH*0.11);ctx.fillStyle='#000';ctx.fillRect(0,0,VW,bh);ctx.fillRect(0,VH-bh,VW,bh);if(SCENE.f>0){ctx.globalAlpha=SCENE.f;ctx.fillRect(0,0,VW,VH);ctx.globalAlpha=1;}}
+  else if(!MENUVIEW)drawHUD();
 }
 // ---- ground occlusion: for each screen column, how high the ground nearer than a given depth reaches.
 // Things standing behind a hill or under a bridge deck get clipped by it instead of showing through.
@@ -4992,7 +5013,7 @@ function drawHUD(){
   if(frenzy){const tm=Math.max(0,Math.ceil(frenzy.timer));hudText('KILL FRENZY '+frenzy.count+'/'+frenzy.goal+'  0:'+String(tm).padStart(2,'0'),VW/2,touchMode?VH*0.47:60*sc,Math.round(19*sc),Math.floor(game.t*3)%2?'#ff3b3b':'#ffd0d0','center');}
   if(combo.n>=2)hudText('CHAOS x'+combo.n,VW/2,touchMode?VH*0.51:90*sc,Math.round(17*sc),'#ff9a2e','center');
   // area and vehicle names, GTA III-style: big words in the bottom right (centred on phones, where the buttons live)
-  if(mission!==HUDMIS){HUDMIS=mission;titleCard=mission&&!(mission.opts&&mission.opts.race)?{text:mission.title.toUpperCase(),at:game.t}:null;}
+  if(mission!==HUDMIS&&!SCENE.on){HUDMIS=mission;titleCard=mission&&!(mission.opts&&mission.opts.race)?{text:mission.title.toUpperCase(),at:game.t}:null;}
   if(titleCard){const age=game.t-titleCard.at;if(age>3.4)titleCard=null;else if(!big){ctx.globalAlpha=clamp(Math.min(age*3,(3.4-age)*1.5),0,1);bigText(titleCard.text,VW/2,VH*(touchMode?0.4:0.62),Math.round(clamp(VW/22,24,46)),'#e8c14a');ctx.globalAlpha=1;}}
   if(player.car!==HUDCAR){HUDCAR=player.car;carBanner=player.car?{text:player.car.t.name.toUpperCase(),at:game.t}:null;}
   {const bx=touchMode?VW/2:VW-24*sc,al=touchMode?'center':'right';let by=touchMode?VH*0.28:VH-54*sc;
@@ -5078,7 +5099,7 @@ function startGame(){
 }
 let last=performance.now();
 function frame(now){
-  pollPad();mlTick();
+  pollPad();mlTick();{const n2=performance.now();cutTick(Math.min(0.05,(n2-(SCENE.lt||n2))/1000));SCENE.lt=n2;}
   let dt=Math.min(0.033,Math.max(0,(now-last)/1000));last=now;
   if(slowT>0&&!game.paused){slowT-=dt;dt*=0.35;}
   if(game.state!=='menu'&&!game.paused&&!DLG.open)update(dt);
