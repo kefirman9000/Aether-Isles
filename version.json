@@ -1,4 +1,4 @@
 {
-  "version": "4.4.0",
-  "notes": "Motorcycles, a helicopter camera that looks down at the city, a clock above the minimap, and working automatic resolution scaling on slow phones."
+  "version": "4.4.1",
+  "notes": "Cleaner bridges: smooth parapets and railings that follow the deck instead of chunky stepped blocks."
 }

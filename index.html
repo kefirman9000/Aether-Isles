@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.4.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.4.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.4.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.4.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -377,7 +377,6 @@ function genMap(){
   for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(map[y*W+x]===WALK)walkTiles.push([x,y]);
   {const x0=RIVX0*T,x1=RIVX1*T;
    for(const iy of BRIDGES){const yn=iy*P*T,ys=(iy*P+4)*T,big=iy===BIGB;
-     for(let x=x0+20;x<x1;x+=40){props.push({x,y:yn-2,k:'brail',a:0},{x,y:ys+2,k:'brail',a:0},{x,y:yn-3,k:big?'girder':'deck',a:0},{x,y:ys+3,k:big?'girder':'deck',a:0});}
      if(!big){for(let x=x0+150;x<x1-100;x+=230)PIERS.push({x,y:(yn+ys)/2});continue;}
      // the big one: two stone towers, main cables swooping between them and down to anchorages on each shore
      const tA=x0+170,tB=x1-170;
@@ -3766,6 +3765,12 @@ function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o
      if(CY<ya)quad(xa,ya,da-th,xb,ya,db-th,xb,ya,db,xa,ya,da,lit([82,78,74],sunK(0,-1),fg));
      if(CY>yb)quad(xa,yb,da-th,xb,yb,db-th,xb,yb,db,xa,yb,da,lit([82,78,74],sunK(0,1),fg));
      quad(xa,s.y-1.1,da+0.2,xb,s.y-1.1,db+0.2,xb,s.y+1.1,db+0.2,xa,s.y+1.1,da+0.2,lit([214,176,40],1,fg));
+     // parapets and railings run continuously along both edges, following the deck's slope
+     {const pc=s.big?[112,106,98]:[172,168,160],rc=[206,206,212],ph=s.big?4:6;
+      for(const ey of[ya+1.2,yb-1.2]){const out=ey<s.y?-1:1;
+        quad(xa,ey,da,xb,ey,db,xb,ey,db+ph,xa,ey,da+ph,lit(pc,sunK(0,out),fg));quad(xa,ey-0.8*out,da+ph,xb,ey-0.8*out,db+ph,xb,ey+0.8*out,db+ph,xa,ey+0.8*out,da+ph,lit(pc,1.06,fg));
+        quad(xa,ey,da+ph+4,xb,ey,db+ph+4,xb,ey,db+ph+5.4,xa,ey,da+ph+5.4,lit(rc,1,fg));
+        if(s.dash)obox(xa+1,ey,0,0.7,0.7,da+ph,da+ph+5.4,rc,null,fg);}}
      if(s.dash)for(const o of[-32,32])quad(s.x-7,s.y+o-0.9,(da+db)/2+0.2,s.x+7,s.y+o-0.9,(da+db)/2+0.2,s.x+7,s.y+o+0.9,(da+db)/2+0.2,s.x-7,s.y+o+0.9,(da+db)/2+0.2,lit([226,226,220],1,fg));break;}
     case 20:qSign(o.x,o.y,o.h,o.text,o.bg,o.fg);break;
     case 21:{const k=o.hp/100;for(let i=0;i<3;i++){const fx=o.x+Math.sin(game.t*3+i*2)*8,fy=o.y+Math.cos(game.t*2.3+i)*8;obox(fx,fy,game.t+i,5*k+2,5*k+2,0,14*k+6+Math.sin(game.t*9+i)*3,[255,120+i*40,20],[255,220,80],0,0,0,true);}break;}
