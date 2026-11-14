@@ -1,4 +1,4 @@
 {
-  "version": "4.6.1",
-  "notes": "Drivers honk and shout when you block them, bus stops with waiting passengers, and buses pull in at each stop."
+  "version": "4.6.2",
+  "notes": "El stations fixed: the stairs no longer hide your character, and you can walk out onto the tracks (look out for trains)."
 }

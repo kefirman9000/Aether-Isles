@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.6.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.6.2</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.6.1',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.6.2',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -2239,11 +2239,17 @@ function elAt(s){s=((s%EL.L)+EL.L)%EL.L;for(const g of EL.segs)if(s<g.s0+g.l||g=
 for(const g of EL.segs){for(let d=20;d<g.l;d+=40){const p=elAt(g.s0+d);props.push({x:p.x,y:p.y,k:'eltrack',a:g.ang});}
   for(let d=80;d<g.l-40;d+=200){const p=elAt(g.s0+d);props.push({x:p.x,y:p.y,k:'elpillar',a:g.ang});}}
 for(const c of EL_CORNERS)props.push({x:c.x,y:c.y,k:'elpillar',a:0},{x:c.x,y:c.y,k:'elcorner',a:0});
+// the track deck is solid ground up there: you can walk the rails (watch for trains)
+for(const g of EL.segs)WALKS.push({x:(g.a.x+g.b.x)/2,y:(g.a.y+g.b.y)/2,a:g.ang,hl:g.l/2+2,hw:16,h0:EL_H,h1:EL_H});
+for(const c of EL_CORNERS)WALKS.push({x:c.x,y:c.y,a:0,hl:17,hw:17,h0:EL_H,h1:EL_H});
 const EL_STATIONS=EL.segs.map((g,i)=>{const s=g.s0+g.l/2,p=elAt(s),nx=-Math.sin(g.ang),ny=Math.cos(g.ang);
   const ux=Math.cos(g.ang),uy=Math.sin(g.ang),pc={x:p.x+nx*60,y:p.y+ny*60},sc={x:p.x+ux*124+nx*80,y:p.y+uy*124+ny*80};
   const st={s,name:['Uptown Av','Eastside','Downtown Sq','Midtown'][i],x:p.x,y:p.y,a:g.ang,pc,ex:pc.x,ey:pc.y,bx:sc.x+ux*60,by:sc.y+uy*60};
   props.push({x:pc.x,y:pc.y,k:'elplat',a:g.ang,rad:70,ht:EL_H+24},{x:sc.x,y:sc.y,k:'elstair',a:g.ang+PI,rad:64,ht:EL_H});
   for(const q of[[-56,30],[56,30]])props.push({x:pc.x+ux*q[0]+nx*q[1],y:pc.y+uy*q[0]+ny*q[1],k:'elpillar',a:g.ang});
+  // platform edge: fills the gap between the platform and the rails so you can step down onto the tracks
+  props.push({x:p.x+nx*21.5,y:p.y+ny*21.5,k:'elgap',a:g.ang,rad:64,ht:EL_H});
+  WALKS.push({x:p.x+nx*21.5,y:p.y+ny*21.5,a:g.ang,hl:62,hw:7,h0:EL_H,h1:EL_H});
   WALKS.push({x:pc.x,y:pc.y,a:g.ang,hl:62,hw:32,h0:EL_H,h1:EL_H},{x:sc.x,y:sc.y,a:g.ang+PI,hl:60,hw:12,h0:0,h1:EL_H});
   SIGNS.push({x:st.bx,y:st.by,text:'EL · '+st.name.toUpperCase(),bg:'#2b2f8a',fg:'#ffffff',h:40,on:()=>true});return st;});
 const train={s:EL_STATIONS[0].s-600,v:0,wait:0,at:-1,cars:3,len:88};
@@ -2299,7 +2305,11 @@ function enterHall(i,arrived){SUB={from:i};fadeIn=1;player.x=HX1-T*5.4;player.y=
 function subBoard(){if(!SUB||utrain.wait<0.4||player.y<HY0+T*2.2||Math.abs(player.x-(HX0+HX1)/2)>200)return false;
   const opts=SUBWAY.map((o,i)=>[o,i]).filter(([o,i])=>i!==SUB.from).slice(0,5).map(([o,i])=>[o.n.toUpperCase(),()=>{fadeIn=1;sfx('door');note('Riding to '+o.n+'...');utrain.wait=0.01;setTimeout(()=>{enterHall(i,true);utrain.x=(HX0+HX1)/2+utrain.len;utrain.wait=0.01;},900);}]);
   say([['Subway','Where to?']],null,opts.concat([['STAY',()=>{},'no']]));return true;}
-function transitTick(dt){updateTrain(dt);updateUtrain(dt);updateSubway(dt);}
+function trainHit(){if(player.riding||player.car||game.state!=='play'||(player.jz||0)<EL_H-10||train.v<25)return;
+  for(let i=0;i<train.cars;i++){const p=trainCar(i),dx=player.x-p.x,dy=player.y-p.y,ca=Math.cos(p.a),sa=Math.sin(p.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
+    if(Math.abs(f)<train.len/2+4&&Math.abs(l)<16){const sd=l>=0?1:-1;player.x=p.x-sa*sd*44+ca*f;player.y=p.y+ca*sd*44+sa*f;player.jz+=2;player.jv=150;
+      hurtPlayer(35);if(typeof shake!=='undefined')shake=Math.max(shake,10);sfx('crash',0.8);note('Hit by the El! Stay off the tracks when a train comes');return;}}}
+function transitTick(dt){updateTrain(dt);trainHit();updateUtrain(dt);updateSubway(dt);}
 
 // ================= INTERIORS, NIGHT CLUB, WEATHER, CITY RESPONDERS, SMARTER RACERS, FIREWORKS =================
 // ---------- interiors: rooms built off the south edge of the map, like the subway hall ----------
@@ -3493,6 +3503,7 @@ function drawProp3(o,fg){
     case 'eltrack':obox(o.x,o.y,a,20.5,15,EL_H-6,EL_H,[86,74,64],[70,62,56],fg);obox(o.x,o.y,a,20.5,16,EL_H-9,EL_H-6,[60,52,46],null,fg);
       for(const s of[-6,6])obox(o.x-Math.sin(a)*s,o.y+Math.cos(a)*s,a,20.5,0.8,EL_H,EL_H+1.6,[150,150,156],null,fg);return;
     case 'elcorner':obox(o.x,o.y,0,16,16,EL_H-6,EL_H,[86,74,64],[70,62,56],fg);return;
+    case 'elgap':{obox(o.x,o.y,a,62,6.5,EL_H-5,EL_H,[140,136,128],[160,156,146],fg);obox(o.x+Math.sin(a)*5.5,o.y-Math.cos(a)*5.5,a,62,1,EL_H,EL_H+0.4,[230,200,40],null,fg);return;}
     case 'elpillar':obox(o.x,o.y,a,3,3,0,EL_H-8,[70,82,74],null,fg);obox(o.x,o.y,a,4,18,EL_H-12,EL_H-8,[64,74,66],null,fg);return;
     case 'elplat':{const ca=Math.cos(a),sa=Math.sin(a);obox(o.x,o.y,a,62,32,EL_H-5,EL_H,[150,146,138],[170,166,156],fg);obox(o.x-sa*31,o.y+ca*31,a,62,1,EL_H,EL_H+10,[90,96,104],null,fg);
       obox(o.x-sa*4,o.y+ca*4,a,40,18,EL_H+26,EL_H+29,[60,66,92],[70,76,104],fg);for(const s2 of[-34,34])obox(o.x+ca*s2-sa*4,o.y+sa*s2+ca*4,a,1.5,1.5,EL_H,EL_H+26,[70,76,84],null,fg);
@@ -3810,6 +3821,11 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
   for(const cp of crusherPads)add(11,cp,cp.x,cp.y,40,null,52);
   if(mission&&(mission.type==='deliver'||(mission.ring&&!(mission.opts&&mission.opts.race))))add(12,mission,mission.x,mission.y,40,null,40);
   if(heli){const dx=heli.x-CX,dy=heli.y-CY,f=dx*CC+dy*CS;if(f>-40&&f<FOG1+200)ITEMS.push({kind:17,o:heli,f,slot:vb.length});}
+  // standing on the stairs, platform or tracks: draw the player after the pieces underfoot so they can't cover them
+  if(!player.car&&!player.riding&&(player.jz||0)>2){const pi=ITEMS.find(it=>it.kind===14);
+    if(pi)for(const it of ITEMS){if(it.kind!==13||!it.o.k||(it.o.k!=='elstair'&&it.o.k!=='elplat'&&it.o.k!=='eltrack'&&it.o.k!=='elcorner'&&it.o.k!=='elgap'))continue;
+      const dx=it.o.x-player.x,dy=it.o.y-player.y,r=(it.o.rad||24)+14;if(dx*dx+dy*dy>r*r)continue;
+      if(it.slot>pi.slot)pi.slot=it.slot;if(it.slot===pi.slot&&it.f<=pi.f)pi.f=it.f-0.01;}}
   ITEMS.sort((a,b)=>a.slot-b.slot||b.f-a.f);
   let ii=0;
   for(let bi=0;bi<=vb.length;bi++){
