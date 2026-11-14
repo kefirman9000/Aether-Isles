@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.16.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.17.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -59,7 +59,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <b>TAB</b><span>City map (tap the minimap on a phone)</span>
 <b>F at a station</b><span>Board the El when the train is in · walk into a SUBWAY entrance to ride</span>
 <b>W A S D</b><span>On foot: run the way you press, relative to the camera (GTA III style; switch to tank controls in Options) · In a car: gas, brake/reverse, steer</span>
-<b>Mouse</b><span>Click the game to capture the mouse (Esc lets go) · Move it to look around and aim with the crosshair · Left click to shoot · Hold right button to lock on (move the mouse to switch target) · In a car the mouse moves a drive-by cursor</span>
+<b>Mouse</b><span>Click the game to capture the mouse (Esc lets go) · Move it to look around and aim with the crosshair, up and down too (aim at roofs and the helicopter) · Left click to shoot · Hold right button to lock on (move the mouse to switch target) · In a car the mouse moves a drive-by cursor</span>
 <b>F / Enter</b><span>Enter or exit / steal a car</span>
 <b>V</b><span>Camera view: close, normal, far, high (like GTA III)</span>
 <b>Q / E</b><span>On foot: previous / next weapon · In a car: look left / right (both: look behind); click while looking for a drive-by</span>
@@ -85,7 +85,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.16.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.17.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -1449,9 +1449,16 @@ function updateBullets(dt){
     else if(b.kind==='m'){b.spin=(b.spin||0)+dt*14;}
     outer:for(let s=0;s<steps;s++){
       b.x+=sx;b.y+=sy;
-      if(solidPx(b.x,b.y)){if(b.kind==='m'){b.x-=sx*2;b.y-=sy*2;}hitFx(b);b.life=0;break;}
+      const B3=b.dz!=null;
+      if(B3){const g=GH(b.x,b.y);if(b.rel!=null)b.z=g+b.rel;else b.z+=b.dz*hyp(sx,sy); // level shots follow the ground over hills
+        if(b.z<g-1){b.z=g;if(b.kind==='r'){b.life=0;explode(b.x,b.y,b.own);break;}hitFx(b);b.life=0;break;}}
+      if(solidPx(b.x,b.y)){let over=false;
+        // a shot with height flies over buildings lower than it (and over trees when high enough)
+        if(B3){const tt=tileAt(Math.floor(b.x/T),Math.floor(b.y/T)),bb=tt===BLD?bldAt(b.x,b.y):null;over=(bb&&b.z>roofAbs(bb,b.x,b.y)+1)||(tt===TREE&&b.z>GH(b.x,b.y)+70)||(tt===WATER&&b.z>GH(b.x,b.y));}
+        if(!over){if(b.kind==='m'){b.x-=sx*2;b.y-=sy*2;}hitFx(b);b.life=0;break;}}
       for(const p of peds){
         if(p.gone)continue;if(dist2(p.x,p.y,b.x,b.y)<81){
+          if(B3){const pz=GH(p.x,p.y)+(p.jz||0);if(b.z<pz-6||b.z>pz+38)continue;}
           if(b.own==='cop'&&p.cop)continue;
           if(b.own==='gang'&&p.gang!=null)continue;
           if(b.own==='crew'&&(isAlly(p)||(!p.cop&&p.gang==null&&!p.target)))continue;
@@ -1471,6 +1478,7 @@ function updateBullets(dt){
         if(c.wreck&&b.kind!=='r')continue;
         if((b.own==='player'||b.own==='crew')&&c===player.car)continue;
         if(dist2(c.x,c.y,b.x,b.y)>c.t.L*c.t.L*0.3)continue;
+        if(B3&&b.z>GH(c.x,c.y)+(c.az||0)+carRoof(c)+8)continue;
         if(pointInCar(c,b.x,b.y,0)){
           if(b.kind==='r'){b.life=0;explode(b.x,b.y,b.own);break outer;}
           if(b.kind==='m'){b.life=0;break outer;}
@@ -1530,13 +1538,13 @@ function mlTick(){if(!mlLocked())return;
   if(!mlWanted()){ML.exiting=true;try{document.exitPointerLock();}catch(_){}return;}
   mouse.used=true;
   if(player.car){mouse.x=VW/2;mouse.y=VH*0.4;}
-  else{mouse.x=VW/2;mouse.y=clamp(VH*0.44+ML.dy,VH*0.3,VH*0.62);}}
+  else{mouse.x=VW/2;mouse.y=VH*0.44;}}
 document.addEventListener('pointerlockchange',()=>{if(mlLocked()){ML.exiting=false;return;}
   // the player pressed Esc to let go of the mouse: pause, so the game doesn't carry on without them
   if(!ML.exiting)setTimeout(()=>{if(!game.paused&&game.started&&game.state!=='menu')togglePause();},60);ML.exiting=false;});
 cv.addEventListener('mousemove',e=>{
   if(mlLocked()){const mx=e.movementX||0,my=e.movementY||0;
-    mouse.look=(mouse.look||0)+mx;if(!player.car)ML.dy=clamp(ML.dy+my*0.6,-VH*0.14,VH*0.18);
+    mouse.look=(mouse.look||0)+mx;mouse.lookY=(mouse.lookY||0)+my;
     if(mouse.rdown)mouse.turn=(mouse.turn||0)+mx;mouse.used=true;return;}
   mouse.x=e.clientX;mouse.y=e.clientY;mouse.used=true;if(mouse.rdown)mouse.turn=(mouse.turn||0)+(e.movementX||0);});
 cv.addEventListener('mousedown',e=>{if(e.button===1){mouse.mdown=true;e.preventDefault();return;}if(BIGMAP&&e.button===0){if(!bigMapTap(e.clientX,e.clientY))BIGMAP=false;return;}
@@ -1758,37 +1766,47 @@ function playerFire(){
     fireBullet(c.x+Math.cos(ta)*42,c.y+Math.sin(ta)*42,ta,600,'player',0,'r',0);sfx('boom',0.5);shake=Math.max(shake,8);
     puff(c.x+Math.cos(ta)*44,c.y+Math.sin(ta)*44,0,0,0.08,22,'#fff2a8','flash');return;}
   if(inCar&&w.kind!=='b'&&w.kind!=='f')return;
-  player.cool=w.rate*(inCar?1.4:1);
+  player.cool=w.rate*(inCar?1.4:1);let aimT=null;
   if(player.ammo[player.w]!==Infinity)player.ammo[player.w]--;
   let a=player.a,ox=player.x,oy=player.y,life;
-  const [wx,wy]=mouseWorld();
+  const [wx,wy,wz]=(mouse.used&&!touchMode)?aimPoint():[0,0,0];
   const hostile=p=>p.state==='cop'||p.angry>0||p.brawl>0||(p.gang!=null&&respect[p.gang]<=-2);
   if(inCar){
     const c=player.car;
     if(!!kd.KeyQ!==!!kd.KeyE&&!c.t.tank)a=c.a+(kd.KeyQ?-PI/2:PI/2); // GTA III drive-by: look left or right and fire
     else if(aimJoy.active)a=joyAng(aimJoy);
     else if(pad.aim)a=pad.aimA;
-    else if(mouse.used&&!touchMode)a=Math.atan2(wy-c.y,wx-c.x);
+    else if(mouse.used&&!touchMode){a=Math.atan2(wy-c.y,wx-c.x);aimT=[wx,wy,wz];}
     else{let best=null,bs=1e9;
       for(const p of peds){if(p.gone)continue;const d=hyp(p.x-c.x,p.y-c.y);if(d<320&&hostile(p)&&d<bs){bs=d;best=p;}}
       for(const o of cars){if(o===c||o.wreck)continue;const d=hyp(o.x-c.x,o.y-c.y);if(d<300&&(o.vip||o.driver==='cop'||(o.gang!=null&&respect[o.gang]<=-2))&&d<bs){bs=d;best=o;}}
       a=best?Math.atan2(best.y-c.y,best.x-c.x):c.a-PI/2;}
     ox=c.x+Math.cos(a)*(c.t.Wd/2+8);oy=c.y+Math.sin(a)*(c.t.Wd/2+8);
   }else{
-    if(LOCK.t){a=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);}
-    else if(aimJoy.active){a=joyAng(aimJoy);let best=null,bs=0.2;for(const p of peds){if(p.gone)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>360)continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),a));if(da<bs){bs=da;best=p;}}if(best)a=Math.atan2(best.y-player.y,best.x-player.x);}
+    if(LOCK.t){a=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);aimT=[LOCK.t.x,LOCK.t.y,GH(LOCK.t.x,LOCK.t.y)+(LOCK.t.jz||0)+15];}
+    else if(mouse.used&&!touchMode&&!aimJoy.active){a=Math.atan2(wy-player.y,wx-player.x);aimT=[wx,wy,wz];}
+    else if(aimJoy.active){a=joyAng(aimJoy);let best=null,bs=0.35;for(const p of peds){if(p.gone)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>360)continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),a));if(da<bs){bs=da;best=p;}}if(best){a=Math.atan2(best.y-player.y,best.x-player.x);aimT=[best.x,best.y,GH(best.x,best.y)+(best.jz||0)+15];}
+      else{const ht=heliAssist(a,0.5);if(ht){a=ht[3];aimT=ht;}}}
     else if(touchMode||!mouse.used){
-      let best=null,bs=0.65;
-      for(const p of peds){if(p.gone)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>340)continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),player.a));const sc=da+(hostile(p)?-0.3:0)+d/1500;if(da<0.65&&sc<bs){bs=sc;best=p;}}
-      if(best){a=Math.atan2(best.y-player.y,best.x-player.x);if(SOFT.t!==best)LOCK.hp0=Math.max(best.hp,1);SOFT.t=best;SOFT.at=game.t;}
+      // touch and controllers get a generous auto-aim (people, then the helicopter if it's roughly where you face)
+      const cone=touchMode?0.85:0.65;let best=null,bs=cone;
+      for(const p of peds){if(p.gone||p.crew||p.follow)continue;const d=hyp(p.x-player.x,p.y-player.y);if(d>(touchMode?400:340))continue;const da=Math.abs(angDiff(Math.atan2(p.y-player.y,p.x-player.x),player.a));const sc=da+(hostile(p)?-0.3:0)+d/1500;if(da<cone&&sc<bs){bs=sc;best=p;}}
+      if(best){a=Math.atan2(best.y-player.y,best.x-player.x);aimT=[best.x,best.y,GH(best.x,best.y)+(best.jz||0)+15];if(SOFT.t!==best)LOCK.hp0=Math.max(best.hp,1);SOFT.t=best;SOFT.at=game.t;}
+      else{const ht=heliAssist(player.a,touchMode?0.9:0.6);if(ht){a=ht[3];aimT=ht;}}
     }
     ox=player.x+Math.cos(a)*14;oy=player.y+Math.sin(a)*14;
     if(w.kind==='m')life=(mouse.used&&!touchMode&&!aimJoy.active)?clamp(hyp(wx-player.x,wy-player.y)/w.spd,0.15,0.9):0.2+throwCharge*0.7;
   }
-  const ivx=inCar?player.car.vx:player.vx,ivy=inCar?player.car.vy:player.vy;
+  const ivx=inCar?player.car.vx:player.vx,ivy=inCar?player.car.vy:player.vy,nB=bullets.length;
   if(w.fan){for(const deg of w.fan)fireBullet(ox,oy,a+deg*PI/180,w.spd*rr(.92,1.05),'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
   else if(w.dual){for(const sd of [-1,1])fireBullet(ox-Math.sin(a)*5*sd,oy+Math.cos(a)*5*sd,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,ivx,ivy);}
   else{fireBullet(ox,oy,a+rr(-w.spread,w.spread),w.spd,'player',w.dmg,w.kind,w.cdmg,life,w.kind==='b'?ivx:0,w.kind==='b'?ivy:0);if(w.gren)bullets[bullets.length-1].gren=true;}
+  // give your shots a height: they fly toward the 3D point you aimed at (over cars, up to roofs, at the chopper)
+  {const gz=GH(player.x,player.y),z0=gz+(inCar?(player.car.az||0)+14:(player.jz||0)+16);
+   for(let i=nB;i<bullets.length;i++){const b=bullets[i];if(b.kind!=='b'&&b.kind!=='r')continue;b.z=z0;b.dz=0;b.rel=z0-gz;if(b.kind==='b')b.life=1.05;
+     if(aimT){const hd=Math.max(20,hyp(aimT[0]-ox,aimT[1]-oy)),dz=(aimT[2]-z0)/hd;
+       // a plain ground point at your own level: shoot level, the way it always worked
+       if(AIMSNAP||Math.abs(aimT[2]-(gz+(inCar?0:(player.jz||0))))>12||aimT[2]>gz+40||aimT.length>3){b.dz=clamp(dz,-1.2,1.2);b.rel=null;}}}}
   const n=w.fan?5:1;
   if(w.kick){if(w.kick>=7)shake=Math.max(shake,w.kick*0.6);}
   if(w.kind==='b'){const ca2=Math.cos(a+PI/2),sa2=Math.sin(a+PI/2);puff(ox,oy,ca2*rr(60,110)+rr(-20,20),sa2*rr(60,110)+rr(-20,20),rr(.25,.4),2,'#d9b24a','debris');}
@@ -1849,7 +1867,7 @@ function updateHeli(dt){
   h.snd-=dt;if(h.snd<=0){h.snd=0.11;const v=clamp(1-pd/1100,0,1);if(v>0.02)noise(0.06,130,'lowpass',0.25*v);}
   if(s>=6&&game.state==='play'&&pd<420){h.shootT-=dt;if(h.shootT<=0){h.shootT=rr(1.1,1.8);for(let i=0;i<4;i++)setTimeout(()=>{if(!heli||heli.fall>0)return;const aa=npcAim(Math.atan2(tg.y-heli.y,tg.x-heli.x),true);fireBullet(heli.x,heli.y,aa,900,'cop',6,'b',5);sfx('smg',0.35);},i*90);}}
   // your bullets and rockets can bring it down
-  for(const b of bullets){if(b.own!=='player'||b.life<=0)continue;if(dist2(b.x,b.y,h.x,h.y)<44*44){h.hp-=b.kind==='r'?220:b.kind==='f'?3:(b.dmg||20);b.life=0;puff(h.x,h.y,0,0,0.08,14,'#fff2a8','flash');hitMarks.push({x:h.x,y:h.y,t:0.12,kill:h.hp<=0});
+  for(const b of bullets){if(b.own!=='player'||b.life<=0)continue;if(dist2(b.x,b.y,h.x,h.y)<(b.dz!=null?54:44)**2&&(b.dz==null||Math.abs(b.z-(h.z+7))<(b.kind==='r'?60:42))){h.hp-=b.kind==='r'?220:b.kind==='f'?3:(b.dmg||20);b.life=0;puff(h.x,h.y,0,0,0.08,14,'#fff2a8','flash');hitMarks.push({x:h.x,y:h.y,t:0.12,kill:h.hp<=0});
     if(h.hp<=0){h.fall=1.6;crime(1500,0);showBig('CHOPPER DOWN','','#ff9a2e',2);chaos();break;}}}
 }
 function heliSees(){if(!heli||heli.fall>0)return false;const tg=player.car||player;return hyp(tg.x-heli.x,tg.y-heli.y)<380;}
@@ -3426,7 +3444,7 @@ function update(dt){
       circleTiles(player,7,player.jz>4,player.jz);
       player.moving=m>0.1&&player.jz<=0;
       if(player.moving)player.anim+=dt*m*13;
-      if(mouse.used&&!touchMode){const [wx,wy]=mouseWorld();player.a=Math.atan2(wy-player.y,wx-player.x);}
+      if(mouse.used&&!touchMode){const [wx,wy]=aimPoint();player.a=Math.atan2(wy-player.y,wx-player.x);}
       else player.a=lerpAng(player.a,player.body,Math.min(1,dt*14));
       if(aimJoy.active&&hyp(aimJoy.x,aimJoy.y)>0.3)player.a=joyAng(aimJoy);else if(pad.aim&&!GTA3MOVE())player.a=pad.aimA;
       if(LOCK.t)player.a=Math.atan2(LOCK.t.y-player.y,LOCK.t.x-player.x);
@@ -3723,6 +3741,10 @@ function update(dt){
     else if(GTA3MOVE()&&cam.base!=null&&!player.riding){want=cam.base;dist=LOCK.t?84:92;hgt=LOCK.t?44:40;rate=mlLocked()?30:14;}
     else{want=player.body;dist=96;hgt=40;rate=7;}
     if(kd.KeyC||mouse.mdown||tbtn.look.on){want+=PI;rate=18;cam.lookT=0.25;}else if(cam.lookT>0){cam.lookT-=dt;rate=18;}
+    {const sp=player.car?hyp(player.car.vx,player.car.vy):0,stickY=pad.on&&((!player.car&&GTA3MOVE())||(player.car&&OPT.pad==='classic'));
+     const py=(mouse.lookY||0)*0.0028*(OPT.msens||1)*(OPT.invertY?-1:1)+(stickY?pad.ry*1.7*dt*(OPT.invertY?-1:1):0);mouse.lookY=0;
+     if(py){cam.pitch=clamp((cam.pitch||0)+py,-0.5,0.62);cam.pidle=0;}else{cam.pidle=(cam.pidle||0)+dt;if(player.car&&cam.pidle>1.4&&sp>40)cam.pitch=lerp(cam.pitch||0,0,Math.min(1,dt*1.5));}
+     const pt=cam.pitch||0;cam.hx=pt>0?pt*95:pt*22;hgt+=cam.hx;}
     {const m=CAMV[camMode()];if(m.top){const sp=player.car?hyp(player.car.vx,player.car.vy):0;dist=(player.car?175+Math.min(80,sp*0.12):135);hgt=(player.car?112+Math.min(50,sp*0.07):84);rate=Math.min(rate,player.car?2.6:6);}else{dist*=m.d;hgt*=m.h;}}
     if(game.state==='wasted'||game.state==='busted'){const k=clamp(1-game.timer/DEATH_T,0,1);dist+=k*k*110;hgt+=k*k*90;rate*=0.15;}
     cam.yaw=lerpAng(cam.yaw,want,Math.min(1,dt*rate));
@@ -3733,7 +3755,7 @@ function update(dt){
     for(let s2=10;s2<=dist;s2+=6){const qx=player.x-ca*s2,qy=player.y-sa*s2;if(!solidPx(qx,qy)||(inBoat&&tileAt(Math.floor(qx/T),Math.floor(qy/T))===WATER))continue;
       if(hi){const tt=tileAt(Math.floor(qx/T),Math.floor(qy/T));if(tt===TREE)continue;const bb=bldAt(qx,qy);if(bb&&roofAbs(bb,qx,qy)<camZ-6)continue;}
       dd=Math.max(24,s2-10);break;}}
-    cam.dist=lerp(cam.dist,dd,Math.min(1,dt*(dd<cam.dist?16:2.5)));cam.h=lerp(cam.h,hgt,Math.min(1,dt*3));
+    cam.dist=lerp(cam.dist,dd,Math.min(1,dt*(dd<cam.dist?16:2.5)));cam.h=lerp(cam.h,Math.max(10,hgt),Math.min(1,dt*(cam.pidle<0.3?14:3)));
     cam.x=player.x-ca*cam.dist;cam.y=player.y-sa*cam.dist;{const gz=GH(player.x,player.y)+(player.riding?EL_H+6:player.car?(player.car.az||0)*0.85:(player.jz||0)>18?player.jz-6:(player.jz||0)*0.4);cam.gz=cam.gz==null?gz:lerp(cam.gz,gz,Math.min(1,dt*(player.car&&player.car.air>0?9:5)));}}
   updateAudio();
 }
@@ -3801,6 +3823,21 @@ function setCam(){CX=cam.x;CY=cam.y;CZ=Math.max(cam.h+(cam.gz||0),GH(cam.x,cam.y
 function proj(x,y,z){const dx=x-CX,dy=y-CY,f=dx*CC+dy*CS;if(f<NEAR)return false;const k=FOC/f;PX=HW+(-dx*CS+dy*CC)*k;PY=HOR+(CZ-z-ZOFF)*k;PK=k;PF=f;return true}
 function projFull(x,y,z){ZOFF=GH(x,y);if(!proj(x,y,z))return null;return[OX+PX*SCL,OY+PY*SCL,PF]}
 const joyAng=j=>cam.yaw+Math.atan2(j.x,-j.y);
+// ---- 3D aiming: the world point under the crosshair, including height, so you can aim up at roofs and the
+// police helicopter or down from a roof. A little aim assist pulls onto a target near the crosshair
+// (very little with a mouse; touch and controllers get the stronger auto-aim in playerFire).
+let AIMSNAP=null;
+function heliAssist(a,cone){const h=heli;if(!h||h.fall>0)return null;const d=hyp(h.x-player.x,h.y-player.y);if(d>1000)return null;const ha=Math.atan2(h.y-player.y,h.x-player.x);if(Math.abs(angDiff(ha,a))>cone)return null;return[h.x,h.y,h.z+7,ha];}
+function aimPoint(){const lx=(mouse.x-OX)/SCL,ly=(mouse.y-OY)/SCL,asst=4;let best=null,bd=1e9;AIMSNAP=null;
+  const z0=ZOFF;
+  if(heli&&heli.fall<=0){ZOFF=0;if(proj(heli.x,heli.y,heli.z+7)){const d=hyp(PX-lx,PY-ly),r=Math.max(6,24*PK)+asst;if(d<r&&d<bd){bd=d;best=[heli.x,heli.y,heli.z+7];AIMSNAP=heli;}}}
+  for(const p of peds){if(p.gone||p._fr!==frameNo||p.crew||p.follow)continue;const b=p._b,cx=(b[0]+b[2])/2,cy=(b[1]*0.4+b[3]*0.6),d=hyp(cx-lx,cy-ly),r=(b[2]-b[0])/2+asst;
+    if(d<r+((b[3]-b[1])/2)*(Math.abs(cx-lx)<r?1:0)&&d<bd){bd=d;best=[p.x,p.y,GH(p.x,p.y)+(p.jz||0)+15];AIMSNAP=p;}}
+  for(const c of cars){if(c===player.car||c._fr!==frameNo)continue;const b=c._b;if(lx>=b[0]-asst&&lx<=b[2]+asst&&ly>=b[1]-asst&&ly<=b[3]+asst){const d=hyp((b[0]+b[2])/2-lx,(b[1]+b[3])/2-ly)+20;if(d<bd){bd=d;best=[c.x,c.y,GH(c.x,c.y)+(c.az||0)+12];AIMSNAP=c;}}}
+  ZOFF=z0;if(best)return best;
+  const dy=ly-HOR,gz=GH(player.x,player.y);
+  if(dy>1.2){let f=(CZ-gz)*FOC/dy;if(f<=900){const r=(lx-HW)*f/FOC,x=CX+CC*f-CS*r,y=CY+CS*f+CC*r;return[x,y,GH(x,y)];}}
+  const f=900,r=(lx-HW)*f/FOC;return[CX+CC*f-CS*r,CY+CS*f+CC*r,CZ-(ly-HOR)*f/FOC];}
 // world point under the mouse (snaps to a person or car under the crosshair)
 function mouseWorld(){
   const lx=(mouse.x-OX)/SCL,ly=(mouse.y-OY)/SCL;
@@ -4658,8 +4695,9 @@ function drawPart3(p,fg){const f=p.life/p.max;let z;
   L3.globalAlpha=1;}
 function drawBullet3(b){
   if(b.kind==='f')return;
-  if(b.kind==='r'||b.kind==='m'){if(!proj(b.x,b.y,b.kind==='m'?16:12))return;const s=Math.max(1,3*PK);L3.fillStyle=b.gren?'#3b4a2a':b.kind==='r'?'#556b2f':'#5c7a2e';L3.fillRect(R2(PX-s),R2(PY-s/2),R2(s*2),Math.max(1,R2(s)));glow(PX,PY,2.5*PK,'#ffb300',0.9);return;}
-  if(!proj(b.x,b.y,13))return;const x1=PX,y1=PY;if(!proj(b.x-b.vx*0.03,b.y-b.vy*0.03,13))return;
+  const bz=b.dz!=null?b.z-ZOFF:null;
+  if(b.kind==='r'||b.kind==='m'){if(!proj(b.x,b.y,bz!=null?bz:b.kind==='m'?16:12))return;const s=Math.max(1,3*PK);L3.fillStyle=b.gren?'#3b4a2a':b.kind==='r'?'#556b2f':'#5c7a2e';L3.fillRect(R2(PX-s),R2(PY-s/2),R2(s*2),Math.max(1,R2(s)));glow(PX,PY,2.5*PK,'#ffb300',0.9);return;}
+  if(!proj(b.x,b.y,bz!=null?bz:13))return;const x1=PX,y1=PY;const tl=hyp(b.vx,b.vy)*0.03;if(!proj(b.x-b.vx*0.03,b.y-b.vy*0.03,bz!=null?bz-(b.dz||0)*tl:13))return;
   L3.strokeStyle='rgba(255,240,170,.95)';L3.lineWidth=1;L3.beginPath();L3.moveTo(x1,y1);L3.lineTo(PX,PY);L3.stroke();}
 
 // raised things the player can stand on or climb: drawn before the player whenever the player is up on them
@@ -4726,7 +4764,7 @@ function drawHeli3(h,fg){
 
 // ---------- frame ----------
 const ITEMS=[];
-function render(){{const want=CAMV[camMode()].top&&game.started&&!SCENE.on&&!MENUVIEW?-LH*0.2:player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0;HORA=lerp(HORA,want,0.06);HOR=Math.round(HOR0+HORA);}
+function render(){{const live=game.started&&!SCENE.on&&!MENUVIEW,want=(CAMV[camMode()].top&&live?-LH*0.2:player.car&&player.car.t.heli?-clamp((player.car.alt||0)*0.13,0,LH*0.16):0)-(live?((cam.pitch||0)>0?(cam.hx||0)*FOC/Math.max(20,cam.dist)+(cam.pitch||0)*LH*0.1:(cam.pitch||0)*LH*0.5):0);HORA=lerp(HORA,want,cam.pidle<0.3?0.35:0.06);HOR=Math.round(HOR0+HORA);}
   frameNo++;setCam();
   const lightLvl=0.5-0.5*Math.cos(clock*TAU),night=clamp(darkness/0.8,0,1),warm=clamp(1-Math.abs(lightLvl-0.4)/0.16,0,1)*(1-night*0.5);
   let top=mixA([70,128,206],[92,64,128],warm),bot=mixA([196,212,230],[255,150,96],warm);
@@ -5278,6 +5316,7 @@ function openPanel(kind){
     <div class="opt"><span>Lane assist (straightens you onto the road)</span><button data-opt="assist">${onoff(OPT.assist)}</button></div>
     <div class="opt"><span>On-foot controls</span><button data-opt="gta3">${OPT.gta3!==false?'GTA III (CAMERA)':'CLASSIC (TANK)'}</button></div>
     <div class="opt"><span>Mouse look (click the game to capture the mouse, Esc to let go)</span><button data-opt="mouselook">${onoff(OPT.mouselook!==false)}</button></div>
+    <div class="opt"><span>Invert look up/down</span><button data-opt="invertY">${onoff(OPT.invertY)}</button></div>
     <div class="opt"><span>Mouse sensitivity</span><button data-opt="msens">${OPT.msens<1?'SLOW':OPT.msens>1?'FAST':'NORMAL'}</button></div>
     <div class="opt"><span>Controller vibration</span><button data-opt="rumble">${onoff(OPT.rumble)}</button></div>
     <div class="opt"><span>Touch driving</span><button data-opt="steer">${OPT.steer==='wheel'?'WHEEL + PEDALS':'JOYSTICK'}</button></div>

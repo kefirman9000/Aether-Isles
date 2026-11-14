@@ -1,4 +1,4 @@
 {
-  "version": "4.16.0",
-  "notes": "GTA III controls and camera: V cycles camera views, Q/E switch weapons on foot and look left/right in a car (drive-bys out the side), the mouse swings the camera round your car, and an optional GTA III PS2 controller layout."
+  "version": "4.17.0",
+  "notes": "Aim up and down: the camera tilts with the mouse or right stick and shots fly to the height you aim at, so you can hit the helicopter, people on roofs, or the street from a roof. Light aim assist with a mouse, stronger on touch and controllers."
 }
