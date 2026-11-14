@@ -2,7 +2,7 @@
 
 An open-city crime game in the spirit of the original GTA games, for PC and mobile browsers, played from a pseudo-3D chase camera in a low-res pixel style. Steal cars, answer ringing payphones for jobs, cause chaos and try to lose the cops.
 
-**Play:** open `index.html` in any modern browser, or play on GitHub Pages at https://kefirman9000.github.io/Gridlock-City/
+**Play:** open `index.html` in any modern browser (the scripts live in `js/`), or play on GitHub Pages at https://kefirman9000.github.io/Gridlock-City/
 
 **Top-down 2D version:** the original top-down game is kept as `2d.html` (https://kefirman9000.github.io/Gridlock-City/2d.html).
 
@@ -32,6 +32,7 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 **Controller:** left stick move/steer · RT gas · LT brake (on foot: hold to lock on) · right stick camera on foot (flick to switch locked target) · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **v4.19:** the installed app now really works offline (a proper service worker). While the bridges are shut, taxi fares, ambulance calls, side jobs and races stay on the west bank, and Mother Lin's first job runs on the west beach. Shoot a rider off a motorbike instead of shooting the bike (and the cops can shoot you off yours). The assault rifle shows in your hands in first person. CHATTER 96.1 talks out loud using your browser's text-to-speech. Touch screens get VIEW, SCOPE and look-left/right buttons. Cars leaving a diagonal avenue join a real street instead of nosing into the river, the south-east avenue runs between two proper crossings, and the coast road now crosses the river mouth on its own bridge. Towed cars can't be dragged through walls (the line snaps). Old saves: the moved avenue resets hidden packages, roof stashes and tags once more.
 - **Mission markers (v4.18.1):** when a boss has a job for you, a glowing yellow circle with a beam of light sits on the ground beside them. Step into it to start the mission, like GTA III. No circle means no work right now.
 - **Long guns (v4.18):** a sniper rifle and an assault rifle at Ammu-Nation. Hold right mouse (or the lock-on button) to look down the scope in first person; the mouse wheel zooms the sniper scope. A sniper round can blow a tire or a fuel tank.
 - **GTA III police:** one star still fades if they lose you, but two or more stay until you hit a spray shop or grab a bribe. At four stars the chopper comes out, and a SWAT team ropes down from it.
@@ -163,6 +164,9 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 Your cash, saves and options are kept in your browser (localStorage).
 
 Gameplay systems are modeled on how GTA2 works (studied from the community GTA2 decompilation). All code here is original.
+
+## Testing
+`python tests/smoke.py` loads the game in headless Chrome and checks the core systems (walking, driving, shooting, lock-on, the scope, grenades, the bridges, mission markers, the police, towing). GitHub runs it on every push.
 
 ## 💜 Support
 Gridlock City is free, with no ads or purchases. If you enjoy it, you can support development through [GitHub Sponsors](https://github.com/sponsors/kefirman9000).
