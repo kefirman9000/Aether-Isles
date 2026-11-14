@@ -56,6 +56,12 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Install it like an app:** on a phone, use Install as an app on the title screen (or Share → Add to Home Screen on an iPhone). It gets its own icon, opens full screen and works offline. On a computer, Chrome and Edge show an install icon in the address bar.
 - **Turf wars:** take out five gang members in one of their blocks within a minute and the block becomes yours (purple on the maps). Every block pays you every two minutes, and gangs sometimes come back to take one: kill the attackers within 90 seconds or lose it.
 - **Stunt trials:** pull up at the STUNT TRIAL sign by the construction site and land three jumps in a row, each needing more air; the trials get harder each level.
+- **Cheats:** type a code while playing (or enter it under Pause → Cheats): GUNSGUNSGUNS, HEALME, LEAVEMEALONE, MOREPOLICE, CASHMONEY, GIVEMETANK, FLYBOY, RAINYDAY, SUNNYDAY, SNOWDAY, BIGBANG, NIGHTOWL, EARLYBIRD.
+- **Retry:** fail a story mission or race and you're offered a retry as soon as you're back on your feet.
+- **Baseball bat:** buy one at Ammu-Nation ($100) for close-up fights (Q to switch to it).
+- **More traffic:** city buses, stretch limos and Mr. Whippy ice cream vans join the traffic, and drivers slow down and let sirens through.
+- **Boss calls:** when a boss has new work, they phone you over the radio feed.
+- **Minimap zoom:** the minimap zooms out as you speed up so you can see further ahead.
 - **Helicopter:** two Sparrows sit on helipads. SPACE (or UP) climbs, SHIFT (or DOWN) descends, W/S and A/D fly. Tall buildings block you, so climb over them. The camera tilts down the higher you fly.
 - **Motorcycles:** Shredder bikes show up in traffic. They're the fastest thing on the road, but crash hard and you'll be thrown off.
 - **Clock:** the time of day (and rain or snow) shows above the minimap.

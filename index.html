@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.4.2</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.5.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -74,7 +74,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.4.2',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='4.5.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -451,7 +451,7 @@ function acquireLane(c){
   const k=(d===0||d===2)?clamp(Math.round((c.y/T-2)/P),0,NB):clamp(Math.round((c.x/T-2)/P),0,NB);
   c.ai=newAI('lane',d,k,rr(140,200));
 }
-const TRAFFIC_TYPES=['bike','bike','firetruck','sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police','ambulance'];
+const TRAFFIC_TYPES=['bus','limo','icecream','bike','bike','firetruck','sedan','sedan','sedan','compact','compact','compact','taxi','truck','sports','police','ambulance'];
 
 // ===== Driving: a port of GTA2's per-tick car physics (CarPhysics in the GTA2 decompilation) =====
 // GTA2 works in "tile units per tick" at 30 ticks/s. We scale one GTA2 tile to GT pixels (about one car
@@ -1137,7 +1137,7 @@ function aiLane(c,dt){
   if(d===0||d===2){gx=c.x+DX[d]*look;gy=lc}else{gx=lc;gy=c.y+DY[d]*look}
   const diff=angDiff(Math.atan2(gy-c.y,gx-c.x),c.a);
   let steer=clamp(diff*2.2,-1,1);
-  let target=ai.cruise;
+  let target=ai.cruise;if(c.driver==='ai'&&sirenBehind(c)){target=Math.min(target,60);ai.pull=1;}
   if(ai.turn>=0){const along=(d===0||d===2)?c.x:c.y;if(Math.abs(along-ai.sw)<120)target=Math.min(target,100)}
   if(Math.abs(diff)>0.5)target=Math.min(target,100);
   if(!(c.driver==='cop'&&heat>0)&&ai.cruise<250){const sd=tlStopDist(c);if(sd!=null)target=sd<5?0:Math.min(target,sd*1.7+4);}
@@ -1525,6 +1525,7 @@ function playerFire(){
   const w=WEAPONS[player.w];
   if(player.cool>0||player.ammo[player.w]<=0)return;
   const inCar=!!player.car;
+  if(WEAPONS[player.w].kind==='x'){if(inCar)return;player.cool=WEAPONS[player.w].rate;meleeSwing();return;}
   if(inCar&&player.car.t.tank){ // stolen tank: main gun
     if(player.cool>0)return;player.cool=1.1;const c=player.car;
     const [wx2,wy2]=mouseWorld();
@@ -1910,7 +1911,7 @@ function storyPass(){const m=mission;mission=null;ringT=6;
   else{STORY.prog[m.g]++;addRespect(m.g,1.5);showBig('MISSION PASSED','+$'+d.pay.toLocaleString(),'#3ee07a',3);
     const next=storyAvail(m.g);note(next?GANGS[m.g].name+': see the boss for the next job':'Every gang trusts you now... maybe too much. Visit Vince.');}
   if(OPT.autosave&&stars()===0)writeSave('auto');}
-function storyFail(msg){const m=mission;if(!m)return;for(const c of m.rivals||[]){c.driver=null;c.vip=false;c.traffic=true;c.race=null;}for(const s of m.steps){if(s.st&&s.st.c&&s.st.c!==player.car)s.st.c.vip=false;if(s.st&&s.st.list)for(const p of s.st.list)p.target=false;}
+function storyFail(msg){const m=mission;if(!m)return;if(!(m.def&&m.def.pizza))offerRetry(m);for(const c of m.rivals||[]){c.driver=null;c.vip=false;c.traffic=true;c.race=null;}for(const s of m.steps){if(s.st&&s.st.c&&s.st.c!==player.car)s.st.c.vip=false;if(s.st&&s.st.list)for(const p of s.st.list)p.target=false;}
   mission=null;ringT=8;dlgClose();if(msg!==false){showBig(m.opts.race?'RACE FAILED':'MISSION FAILED',msg||'','#ff4040',2.6);sfx('fail');}}
 // boss peds stand at their hideouts; walk up to one on foot to get the next job
 const bossPeds=[null,null,null];
@@ -2134,7 +2135,8 @@ function phoneMenu(){if(DLG.open||game.state!=='play'||mission&&mission.opts&&mi
   say([['Phone','Who are you calling?']],null,ORDERS.map(([n,p,t])=>[n.toUpperCase()+' $'+p,()=>orderCar(n,p,t)]).concat([['HANG UP',()=>{},'no']]));}
 function orderCar(n,p,t){if(money<p){note('Not enough cash');return;}let s=null;for(let i=0;i<60&&!s;i++){const a=R()*TAU,d=rr(160,320);s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);}
   if(!s){note('Nobody can reach you here');return;}addMoney(-p);const c=makeCar(t,s.x,s.y,s.dir*PI/2);c.special=false;delivery={c,t:40};sfx('ring',0.5);note(n+' on its way. Look for the marker');}
-window.addEventListener('keydown',e=>{if(e.code==='KeyG'&&game.started&&!game.paused&&!e.repeat)phoneMenu();});
+let lastKeyT=0;window.addEventListener('keydown',e=>{const now=performance.now();if(e.key.length===1)lastKeyT=now;
+  if(e.code==='KeyG'&&game.started&&!game.paused&&!e.repeat){const t0=now;setTimeout(()=>{if(lastKeyT===t0)phoneMenu();},400);}},true);
 // showroom
 const SHOWROOM=(()=>{const l=nearestLot((15*P+9)*T,(11*P+9)*T)||lotBlocks[0];return{x:l.x,y:l.y-50,px:l.x,py:l.y+40};})();
 SIGNS.push({x:SHOWROOM.x,y:SHOWROOM.y,text:'AUTO SHOWROOM',bg:'#7a1a1a',fg:'#ffffff',h:44,on:()=>true});
@@ -2147,13 +2149,14 @@ function extTick2(dt){updateShowroom(dt);if(player.car){STATS.dist+=hyp(player.c
 
 // ---------- Ammu-Nation, body armor, export docks, pizza runs ----------
 player.armor=0;
+const BATIDX=()=>WEAPONS.findIndex(w=>w.kind==='x');
 const GUNSHOPS=[[3,9],[14,12]].map(([bx,by])=>{const l=nearestLot((bx*P+9)*T,(by*P+9)*T)||lotBlocks[0];const s={x:l.x+50,y:l.y-50};SIGNS.push({x:s.x,y:s.y,text:'AMMU-NATION',bg:'#2a2a2a',fg:'#ff4040',h:42,on:()=>true});return s;});
-const GUNSTOCK=[['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Body armor',500,-1,100]];
+const GUNSTOCK=[['Baseball bat',100,'bat',Infinity],['SMG + 200',800,1,200],['Shotgun + 40',1200,2,40],['Flamethrower + 300',1500,3,300],['Molotovs + 10',600,4,10],['Rockets + 8',3000,5,8],['Body armor',500,-1,100]];
 let gunCool=0;
 function updateGunShops(dt){}
 function gunMenu(){
     say([['Ammu-Nation','Protect yourself. Pick something.']],null,GUNSTOCK.map(([n,p,w,a])=>[n.toUpperCase()+' $'+p.toLocaleString(),()=>{if(money<p){note('Not enough cash');return;}addMoney(-p);sfx('pickup');
-      if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}]).concat([['LEAVE',()=>{},'no']]));}
+      if(w==='bat')w=BATIDX();if(w<0){player.armor=100;note('Body armor on');}else{player.ammo[w]=(player.ammo[w]||0)+a;player.w=w;note(WEAPONS[w].name+' ready');}}]).concat([['LEAVE',()=>{},'no']]));}
 // a crane by the river buys particular cars, once each
 const EXPORTS=[['compact',600],['sedan',700],['taxi',900],['sports',2000],['truck',1200],['ambulance',1800],['police',2500],['firetruck',2200],['swat',3500],['tank',10000]];
 const EXPORTED={};
@@ -2372,7 +2375,7 @@ function updateFireworks(dt){const night=darkness>0.45;
     if(f.life<=0){if(f.shell){for(let k=0;k<26;k++){const a=R()*TAU,e=rr(-1,1),s=rr(80,140);FW.push({x:f.x,y:f.y,z:f.z,vx:Math.cos(a)*s*Math.sqrt(1-e*e),vy:Math.sin(a)*s*Math.sqrt(1-e*e),vz:e*s,life:rr(1,1.6),col:f.col});}if(dist2(f.x,f.y,player.x,player.y)<2000*2000)sfx('boom',0.25);}FW.splice(i,1);}}
   if(FW.length>600)FW.splice(0,FW.length-600);}
 
-function extTick5(dt){extTick6(dt);extTick7(dt);updateRooms(dt);updateWeather(dt);updateResponders(dt);updateFireworks(dt);}
+function extTick5(dt){extTick6(dt);extTick7(dt);extTick8(dt);updateRooms(dt);updateWeather(dt);updateResponders(dt);updateFireworks(dt);}
 
 function raceAI(c,dt){const m=mission;if(!m||!m.opts.race||!c.race){c.driver=null;c.traffic=true;c.vip=false;return;}
   const r=m.opts.race,R2=c.race;if(m.cd>0||R2.done){driveCar(c,0,0,true,dt);return;}
@@ -2495,6 +2498,53 @@ function extTick7(dt){updateTurf(dt);updateStunt(dt);}
 CT.bike={name:'Shredder',L:30,Wd:11,max:640,acc:600,grip:9.5,turn:3.5,hp:60,mass:0.45,cols:['#d8382a','#151515','#2a7ae0','#f0c020','#e0e0e0'],bike:true};
 // thrown off on a hard crash
 function bikeCrash(c,imp){if(c!==player.car||!c.t.bike||imp<230||game.state!=='play')return;const vx=c.vx,vy=c.vy;exitCar(true);player.vx=vx*0.4;player.vy=vy*0.4;player.jz=6;player.jv=140;hurtPlayer(12);showBig('BAILED!','','#ff9a2e',1);}
+// ---------- melee: a baseball bat ----------
+WEAPONS.push({name:'Baseball Bat',rate:.55,dmg:0,spd:0,spread:0,kind:'x',cdmg:0,kick:0});
+const BAT=WEAPONS.length-1;
+function meleeSwing(){const ca=Math.cos(player.a),sa=Math.sin(player.a);sfx('door',0.5);let hit=false;
+  for(const p of peds){if(p.gone)continue;const dx=p.x-player.x,dy=p.y-player.y,f=dx*ca+dy*sa,l=Math.abs(-dx*sa+dy*ca);if(f<0||f>34||l>18)continue;hit=true;
+    p.hp-=40;p.flash=0.1;p.stagger=0.5;hitMarks.push({x:p.x,y:p.y,t:0.18,kill:p.hp<=0});
+    if(p.hp<=0)killPed(p,'player',ca*160,sa*160);else{p.x+=ca*10;p.y+=sa*10;if(p.cop)crime(0,1);else if(p.gang!=null)p.angry=12;else{p.state='flee';p.panic=6;p.fx=player.x;p.fy=player.y;}}}
+  for(const c of cars){if(c.wreck||c===player.car)continue;const dx=c.x-player.x,dy=c.y-player.y;if(dx*ca+dy*sa<0||hyp(dx,dy)>c.t.L/2+16)continue;damageCar(c,8,'player');hit=true;}
+  if(hit){sfx('hit');shake=Math.max(shake,2);}}
+// ---------- cheats: type them during play (or enter them in the pause menu) ----------
+const CHEATS={
+  GUNSGUNSGUNS:()=>{for(let i=1;i<WEAPONS.length;i++)player.ammo[i]=i===BAT?Infinity:Math.max(player.ammo[i]||0,i===5?20:i===4?20:300);return 'All weapons';},
+  HEALME:()=>{player.hp=100;player.armor=100;if(player.car)player.car.hp=player.car.t.hp;return 'Health and armor';},
+  LEAVEMEALONE:()=>{clearHeat();return 'Wanted level cleared';},
+  MOREPOLICE:()=>{crime(0,Math.min(6,stars()+2));return 'More police';},
+  CASHMONEY:()=>{addMoney(10000);return '+$10,000';},
+  GIVEMETANK:()=>{spawnNear('tank');return 'Tank delivered';},
+  FLYBOY:()=>{const c=spawnNear('heli');if(c)c.alt=0;return 'Helicopter delivered';},
+  RAINYDAY:()=>{rainTarget=1;rain=0.9;weatherT=120;return 'Storm';},
+  SUNNYDAY:()=>{rainTarget=0;rain=0;FOGK=0;fogTarget=0;return 'Clear skies';},
+  SNOWDAY:()=>{OPT.season='winter';rainTarget=1;rain=0.8;return 'Let it snow';},
+  BIGBANG:()=>{for(const c of cars)if(c!==player.car&&!c.wreck&&dist2(c.x,c.y,player.x,player.y)<400*400){c.hp=0;ignite(c,null);}return 'Boom';},
+  NIGHTOWL:()=>{clock=0.95;return 'Midnight';},EARLYBIRD:()=>{clock=0.3;return 'Morning';},
+};
+function spawnNear(type){const a=player.a,x=player.x+Math.cos(a)*70,y=player.y+Math.sin(a)*70;if(solidPx(x,y))return null;return makeCar(type,x,y,a);}
+function tryCheat(code){code=String(code).toUpperCase().replace(/[^A-Z]/g,'');const f=CHEATS[code];if(!f)return false;const r=f();showBig('CHEAT ACTIVATED',r,'#7dff8a',2);sfx('pass');STATS.cheats=(STATS.cheats||0)+1;return true;}
+let cheatBuf='';
+window.addEventListener('keydown',e=>{if(!game.started||e.key.length!==1||e.target&&e.target.tagName==='INPUT')return;cheatBuf=(cheatBuf+e.key.toUpperCase()).slice(-16);for(const k in CHEATS)if(cheatBuf.endsWith(k)){cheatBuf='';if(DLG.open)dlgClose();tryCheat(k);break;}},true);
+// ---------- GTA-style retry after a failed mission ----------
+let RETRY=null;
+function offerRetry(m){if(!m||!m.def||m.def===FINALE&&false)return;RETRY={def:m.def,opts:m.opts,g:m.g};}
+function updateRetry(){if(!RETRY||DLG.open||mission||game.state!=='play'||game.paused)return;const r=RETRY;RETRY=null;
+  say([['','Mission failed. Try again?']],null,[['RETRY',()=>{if(r.opts&&r.opts.race){if(player.car)startRace(r.opts.race);else note('You need a car to race');return;}runMission(r.def,r.opts);mission.g=r.g;}],['NOT NOW',()=>{},'no']]);}
+// ---------- new traffic: city buses, limos, ice cream vans ----------
+CT.bus={name:'City Bus',L:98,Wd:30,max:330,acc:200,grip:12,turn:1.9,hp:320,mass:3.4,cols:['#d8a020','#2a6ad8','#e0e0e0'],bus:true};
+CT.limo={name:'Stretch',L:76,Wd:25,max:420,acc:300,grip:11,turn:2.2,hp:150,mass:1.8,cols:['#111111','#f0f0f0'],limo:true};
+CT.icecream={name:'Mr. Whippy',L:56,Wd:26,max:360,acc:260,grip:11,turn:2.6,hp:160,mass:1.9,cols:['#f6c8e0'],icecream:true};
+// ---------- traffic pulls over for sirens ----------
+function sirenBehind(c){const fx=Math.cos(c.a),fy=Math.sin(c.a);for(const o of cars){if(o===c||o.wreck)continue;
+  const on=(o.t.police&&o.ai&&(o.ai.mode==='chase'||o.ai.pursuit))||(o===player.car&&o.t.police&&(heat>0||duty))||(o.t.ambulance&&o.ai&&o.ai.cruise>260)||(o.t.fire&&o.vip)||(o===player.car&&(o.t.ambulance||o.t.fire)&&duty);
+  if(!on)continue;const dx=o.x-c.x,dy=o.y-c.y,f=dx*fx+dy*fy;if(f>-15||f<-180)continue;if(Math.abs(-dx*fy+dy*fx)<40)return true;}return false;}
+// ---------- bosses call when they have work; the minimap zooms out with speed ----------
+let callT=30,MMZ=1;
+function updateCalls(dt){callT-=dt;if(callT<=0){callT=150;if(!mission&&stars()===0)for(const b of BOSSES)if(storyAvail(b.g)){radioMsg('PHONE: '+b.name+' has a job for you. Look for the ! on the map.');break;}}
+  const sp=player.car?hyp(player.car.vx,player.car.vy):0;MMZ=lerp(MMZ,1+clamp((sp-150)/650,0,0.75),0.03);}
+function extTick8(dt){updateRetry();updateCalls(dt);}
+
 window.__roomsReady=true;
 
 // ================= CAMERA =================
@@ -3316,6 +3366,10 @@ function drawCarBody(c,fg,t,hl,hw,a){if(t.boat){drawBoat3(c,fg,t,hl,hw,a);return
   let fv;
   // two-box vehicles: draw whichever box is farther from the camera first, so the near one covers it
   const front=(CX-c.x)*ca+(CY-c.y)*sa>0;
+  if(t.bus){obox(c.x,c.y,a,hl,hw,4,36,col,mixA(col,[255,255,255],0.2),fg);NOTOP=true;obox(c.x,c.y,a,hl*0.94,hw+0.3,20,29,GLASS,null,fg);NOTOP=false;obox(c.x+ca*hl*0.97,c.y+sa*hl*0.97,a,hl*0.04,hw*0.86,12,30,GLASS,null,fg);return;}
+  if(t.icecream){const cab=()=>{obox(c.x+ca*hl*0.7,c.y+sa*hl*0.7,a,hl*0.3,hw,4,20,col,null,fg);obox(c.x+ca*hl*0.92,c.y+sa*hl*0.92,a,hl*0.08,hw*0.86,12,19,GLASS,null,fg);};
+    const box=()=>{obox(c.x-ca*hl*0.3,c.y-sa*hl*0.3,a,hl*0.7,hw,4,30,col,[250,250,250],fg);obox(c.x-ca*hl*0.3,c.y-sa*hl*0.3,a,3,3,30,38,[230,190,120],[255,240,250],fg);};
+    if(front){box();cab();}else{cab();box();}return;}
   if(t.truck){
     const cab=()=>{fv=obox(c.x+ca*hl*0.66,c.y+sa*hl*0.66,a,hl*0.34,hw,4,26,col,null,fg);obox(c.x+ca*hl*0.66+ca*hl*0.28,c.y+sa*hl*0.66+sa*hl*0.28,a,hl*0.07,hw*0.86,14,24,GLASS,null,fg);};
     const box=()=>obox(c.x-ca*hl*0.34,c.y-sa*hl*0.34,a,hl*0.66,hw,4,34,c.wreck?col:mixA(col,[255,255,255],.14),null,fg);
@@ -3860,7 +3914,7 @@ function drawHUD(){
       const d=Math.round(hyp(tg.x-player.x,tg.y-player.y)/T*4);hudText(d+'m',ax,ay+40*sc,Math.round(15*sc),'#fff','center',`bold ${Math.round(12*sc)}px system-ui`);}
   }
   // minimap (rotates so the way the camera faces is up)
-  const ms=msz,mpx=touchMode?12*sc:16*sc,mpy=touchMode?12*sc:VH-ms-16*sc,span=touchMode?44:52,k=ms/span,mcx=mpx+ms/2,mcy=mpy+ms/2,rot=-cam.yaw-PI/2,rc=Math.cos(rot),rs=Math.sin(rot);
+  const ms=msz,mpx=touchMode?12*sc:16*sc,mpy=touchMode?12*sc:VH-ms-16*sc,span=(touchMode?44:52)*MMZ,k=ms/span,mcx=mpx+ms/2,mcy=mpy+ms/2,rot=-cam.yaw-PI/2,rc=Math.cos(rot),rs=Math.sin(rot);
   ctx.save();rrect(mpx,mpy,ms,ms,10);ctx.fillStyle='#111';ctx.fill();ctx.clip();
   ctx.save();ctx.translate(mcx,mcy);ctx.rotate(rot);ctx.scale(k,k);ctx.translate(-player.x/T,-player.y/T);
   ctx.imageSmoothingEnabled=false;ctx.globalAlpha=0.92;ctx.drawImage(mmc,0,0);ctx.globalAlpha=1;
@@ -4014,7 +4068,7 @@ function applySave(s){money=s.money||0;saveMoney();player.ammo=(s.ammo||[]).map(
 const fmtPlay=t=>{t=Math.floor(t/60);return Math.floor(t/60)+'h '+String(t%60).padStart(2,'0')+'m'};
 const slotSummary=s=>s?`$${(s.money||0).toLocaleString()} · ${(s.pkg||[]).filter(Boolean).length}/${PACKAGES.length} packages · ${fmtPlay(s.play||0)} played<br><small>${new Date(s.ts).toLocaleString()}</small>`:'<i>Empty</i>';
 function menuItems(){
-  if(menuMode==='pause')return[['RESUME',()=>togglePause()],['SAVE GAME',()=>openPanel('save')],['LOAD GAME',()=>openPanel('load')],['STATS',()=>openPanel('stats')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')],['QUIT TO TITLE',()=>quitTitle()]];
+  if(menuMode==='pause')return[['RESUME',()=>togglePause()],['SAVE GAME',()=>openPanel('save')],['LOAD GAME',()=>openPanel('load')],['STATS',()=>openPanel('stats')],['CHEATS',()=>openPanel('cheats')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')],['QUIT TO TITLE',()=>quitTitle()]];
   const any=latestSave();
   return[...(any?[['CONTINUE',()=>loadFrom(any.s)]]:[]),['NEW GAME',()=>newGame()],['LOAD GAME',()=>openPanel('load')],['OPTIONS',()=>openPanel('options')],['CONTROLS',()=>openPanel('controls')]];
 }
@@ -4048,8 +4102,10 @@ function openPanel(kind){
     <div class="opt"><span>New city layout</span><button data-opt="city">GENERATE</button></div><p class="note">A new layout moves the hidden packages, so package progress in old saves won't carry over.</p>`;}
   else if(kind==='controls'){h='<h2>CONTROLS</h2>'+document.getElementById('ctlSrc').innerHTML;}
   else if(kind==='stats'){h=statsHTML();}
+  else if(kind==='cheats'){h='<h2>CHEATS</h2><p>Type a code while playing, or enter it here.</p><div class="opt"><input id="cheatIn" style="flex:1;padding:8px;font:16px system-ui;background:#111;color:#fff;border:1px solid #555;border-radius:4px" placeholder="code"><button id="cheatGo">ENTER</button></div><p class="note" id="cheatMsg"></p>';}
   else if(kind==='newcity'){h='<h2>NEW CITY?</h2><p>The page will reload with a freshly generated city. Your saves are kept, but their hidden-package progress belongs to the old city.</p><div class="opt"><button data-yes="city">GENERATE</button><button data-back="options">CANCEL</button></div>';}
   h+='<button class="back" data-back="1">BACK</button>';p.innerHTML=h;
+  {const ci=p.querySelector('#cheatGo');if(ci)ci.onclick=()=>{const v=p.querySelector('#cheatIn').value;const ok=tryCheat(v);p.querySelector('#cheatMsg').textContent=ok?'Activated!':'Nothing happened.';};}
   p.querySelectorAll('[data-load]').forEach(b=>b.onclick=()=>{const s=readSave(b.dataset.load);if(s)loadFrom(s);});
   p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
   p.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{const k=b.dataset.opt;
