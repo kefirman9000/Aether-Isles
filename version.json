@@ -1,4 +1,4 @@
 {
-  "version": "4.13.1",
-  "notes": "Mouse look on foot: click to capture the mouse, move it to turn the camera and aim with a crosshair. The camera follows better with keys, controllers and touch."
+  "version": "4.14.0",
+  "notes": "People fight back: some drivers you jack (and people you punch) come at you with their fists, and a jacked driver will drag you out of their car. Every 10 hidden packages now puts a weapon at your safehouses."
 }

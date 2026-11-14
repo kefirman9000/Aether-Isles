@@ -48,7 +48,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v4.13.1</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v4.14.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><br><button id="instBtn">&#128242; Install as an app</button><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -81,7 +81,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='4.13.1',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
+const VERSION='4.14.0',REPO='kefirman9000/Gridlock-City',REPO_OLD='kefirman9000/aether-isles',PAGES_URL=/\.github\.io$/.test(location.hostname)?location.origin+location.pathname.replace(/[^/]*$/,''):'https://kefirman9000.github.io/Gridlock-City/'; // the site's own address, so links keep working whatever the repo is called
 async function fetchLatest(){for(const rp of[REPO,REPO_OLD]){try{const r=await fetch('https://raw.githubusercontent.com/'+rp+'/main/version.json?t='+Date.now(),{cache:'no-store'});if(r.ok)return await r.json();}catch(_){}}throw new Error('offline');}
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -887,6 +887,29 @@ function updateDrops(dt){for(let i=DROPS.length-1;i>=0;i--){const d=DROPS[i];d.t
   if(game.state!=='play'||dist2(d.x,d.y,player.x,player.y)>(player.car?28:18)**2||(player.jz||0)>10)continue;
   if(d.kind==='cash'){addMoney(d.n);}else if(d.kind==='smg'){if(player.ammo[1]===Infinity)continue;player.ammo[1]=(player.ammo[1]||0)+40;note('SMG +40');}else if(d.kind==='shotgun'){if(player.ammo[2]===Infinity)continue;player.ammo[2]=(player.ammo[2]||0)+8;note('Shotgun +8');}
   sfx('pickup',0.4);DROPS.splice(i,1);}}
+// ---- GTA III-style tempers: some people you punch, and some drivers you jack, fight back with their fists.
+// A jacked driver will even drag you back out of their car if you sit still next to them.
+const BRAWL_SAY=['Hey! That\'s my car!','You want some?','Come here!','Big mistake, pal.','Oh, it\'s ON.'];
+function startBrawl(p,t,car){p.brawl=t;p.punchT=0.6;p.dragT=0;p.jackCar=car||p.jackCar||null;p.state='walk';p.panic=0;p.say={text:pick(BRAWL_SAY),t:2};}
+function brawlTick(p,dt){p.brawl-=dt;if(game.state!=='play'){p.brawl=0;return false;}
+  const inMine=player.car&&player.car===p.jackCar,tg=inMine?player.car:player.car?null:player;
+  if(!tg){p.brawl=Math.min(p.brawl,1);return false;}
+  const dx=tg.x-p.x,dy=tg.y-p.y,d=hyp(dx,dy),reach=inMine?tg.t.Wd/2+14:15;if(d>520){p.brawl=0;return false;}
+  p.a=lerpAng(p.a,Math.atan2(dy,dx),Math.min(1,dt*12));
+  if(d>reach){const sp=inMine?150:138;p.vx=dx/d*sp;p.vy=dy/d*sp;p.x+=p.vx*dt;p.y+=p.vy*dt;p.moving=true;p.anim+=dt*sp*0.18;circleTiles(p,6);p.dragT=0;return true;}
+  p.vx=p.vy=0;p.moving=false;
+  if(inMine){if(hyp(tg.vx,tg.vy)<30){p.dragT+=dt;if(p.dragT>1.3){exitCar(true);player.hurt=0.3;hurtPlayer(5);note('Dragged out of the car!');p.dragT=0;
+      // and they drive off in it
+      const c=p.jackCar;if(c&&!player.car&&!c.wreck){c.driver='ai';c.traffic=true;acquireLane(c);c.ai.cruise=240;p.gone=true;}}}else p.dragT=0;return true;}
+  p.punchT-=dt;if(p.punchT<=0){p.punchT=rr(0.7,1.1);hurtPlayer(rr(3,6));sfx('hit',0.45);shake=Math.max(shake,1.5);player.vx+=Math.cos(p.a)*60;player.vy+=Math.sin(p.a)*60;}
+  return true;}
+// ---- hidden packages unlock weapons at your safehouses (every 10), like GTA III ----
+const PKG_REWARDS=[['smg','SMG'],['grenade','Grenades'],['shotgun','Shotgun'],['rocket','Rocket launcher'],['armor','Body armor']];
+let safeTier=-1;
+function pkgTier(){const n=PACKAGES.filter(k=>k.got).length;return Math.min(PKG_REWARDS.length,Math.floor(n/10)+(n>=PACKAGES.length?1:0));}
+function syncSafePickups(){const t=pkgTier();if(t===safeTier)return;safeTier=t;
+  for(let i=pickups.length-1;i>=0;i--)if(pickups[i].sh)pickups.splice(i,1);
+  for(const sh of SAFEHOUSES)for(let i=0;i<t;i++)pickups.push({x:sh.x-44+i*22,y:sh.y+46,kind:PKG_REWARDS[i][0],taken:false,t:0,sh});}
 function killPed(p,by,fvx,fvy,burnt){
   if(p.gone)return;if(p.boss){p.hp=9999;return;}if(by==='player'&&!p.follow&&!p.crew&&!burnt)dropLoot(p);if(by==='player'){STATS.kills++;if(p.cop)STATS.cops++;turfKill(p);}
   p.gone=true;
@@ -1294,6 +1317,7 @@ function updatePed(p,dt){
   if(p.boss){p.vx=p.vy=0;p.moving=false;return;}
   if((p.crew||p.follow)&&crewTick(p,dt))return;
   if(p.gang!=null&&isAlly(p)&&(stars()>0||dist2(p.x,p.y,player.x,player.y)<400*400)){p.scanT=(p.scanT||0)-dt;if(p.scanT<=0){p.scanT=0.5;p.foe=dist2(p.x,p.y,player.x,player.y)<600*600?crewTarget(p.x,p.y,300):null;}if(p.foe&&!p.foe.gone&&!p.foe.wreck){crewShoot(p,p.foe,dt);return;}}
+  if(p.brawl>0&&brawlTick(p,dt))return;
   if(lifePed(p,dt))return;
   if(p.fare){p.vx=p.vy=0;if(player.car)p.a=Math.atan2(player.car.y-p.y,player.car.x-p.x);return;}
   if(p.gang!=null){
@@ -1640,7 +1664,7 @@ function tryEnterCar(){
   if(!best)return;
   if(best.driver&&hyp(best.vx,best.vy)>90)return;
   const wasCop=best.driver==='cop',hadDriver=!!best.driver;
-  if(hadDriver){ejectDriver(best,!wasCop);
+  if(hadDriver){const jp=ejectDriver(best,!wasCop);if(jp&&!wasCop&&best.gang==null&&!best.vip&&R()<0.3)startBrawl(jp,10,best);
     let witness=false;for(const c of cars)if(c.driver==='cop'&&c!==best&&dist2(c.x,c.y,player.x,player.y)<450*450)witness=true;
     for(const p of peds)if(p.cop&&!p.gone&&dist2(p.x,p.y,player.x,player.y)<400*400)witness=true;
     if(witness||wasCop)crime(0,1);
@@ -1679,7 +1703,7 @@ function playerFire(){
   if(player.ammo[player.w]!==Infinity)player.ammo[player.w]--;
   let a=player.a,ox=player.x,oy=player.y,life;
   const [wx,wy]=mouseWorld();
-  const hostile=p=>p.state==='cop'||p.angry>0||(p.gang!=null&&respect[p.gang]<=-2);
+  const hostile=p=>p.state==='cop'||p.angry>0||p.brawl>0||(p.gang!=null&&respect[p.gang]<=-2);
   if(inCar){
     const c=player.car;
     if(aimJoy.active)a=joyAng(aimJoy);
@@ -1821,7 +1845,7 @@ const PACKAGES=[];
   if(!((t===GRASS&&PARKT[ty*W+tx])||t===LOT))continue;if(PACKAGES.some(k=>hyp(k.x-x,k.y-y)<600))continue;PACKAGES.push({x,y,got:false});}}
 let pkgGot=0;
 function updatePackages(){const o=player.car||player;for(const k of PACKAGES){if(k.got||dist2(k.x,k.y,o.x,o.y)>28*28)continue;k.got=true;pkgGot++;addMoney(500);sfx('pickup');
-  showBig('HIDDEN PACKAGE',pkgGot+' of '+PACKAGES.length+'  ·  +$500','#5fffb0',2);if(pkgGot%10===0){addMoney(5000);note('Bonus for '+pkgGot+' packages: +$5,000');}}}
+  showBig('HIDDEN PACKAGE',pkgGot+' of '+PACKAGES.length+'  ·  +$500','#5fffb0',2);if(pkgGot%10===0||pkgGot===PACKAGES.length){addMoney(5000);const t=pkgTier();note('Bonus for '+pkgGot+' packages: +$5,000');if(t>0)note(PKG_REWARDS[t-1][1]+' now waits at your safehouses');}}}
 
 // ---- standing on things: car roofs and ramps can be landed on and walked over ----
 function carRoof(c){const t=c.t;if(t.roofH)return t.roofH;return(t.tank?24:t.truck?34:t.swat?28:t.ambulance?30:c.type==='sports'?18:21);}
@@ -2708,7 +2732,7 @@ const BAT=WEAPONS.findIndex(w=>w.kind==='x');
 function meleeSwing(){const ca=Math.cos(player.a),sa=Math.sin(player.a),fist=!!WEAPONS[player.w].fist;sfx('door',fist?0.3:0.5);let hit=false;
   for(const p of peds){if(p.gone)continue;const dx=p.x-player.x,dy=p.y-player.y,f=dx*ca+dy*sa,l=Math.abs(-dx*sa+dy*ca);if(f<0||f>34||l>18)continue;hit=true;
     p.hp-=fist?14:40;p.flash=0.1;p.stagger=fist?0.35:0.5;hitMarks.push({x:p.x,y:p.y,t:0.18,kill:p.hp<=0});
-    if(p.hp<=0)killPed(p,'player',ca*160,sa*160);else{p.x+=ca*10;p.y+=sa*10;if(p.cop)crime(0,1);else if(p.gang!=null)p.angry=12;else{p.state='flee';p.panic=6;p.fx=player.x;p.fy=player.y;}}}
+    if(p.hp<=0)killPed(p,'player',ca*160,sa*160);else{p.x+=ca*10;p.y+=sa*10;if(p.cop)crime(0,1);else if(p.gang!=null)p.angry=12;else if(p.brawl>0||(!p.target&&!p.fare&&!p.injured&&R()<0.35))startBrawl(p,8);else{p.state='flee';p.panic=6;p.fx=player.x;p.fy=player.y;}}}
   for(const c of cars){if(c.wreck||c===player.car)continue;const dx=c.x-player.x,dy=c.y-player.y;if(dx*ca+dy*sa<0||hyp(dx,dy)>c.t.L/2+16)continue;damageCar(c,fist?2:8,'player');hit=true;}
   if(hit){sfx('hit');shake=Math.max(shake,2);}}
 // ---------- cheats: type them during play (or enter them in the pause menu) ----------
@@ -3230,7 +3254,7 @@ const cam={x:0,y:0,zoom:1.4,yaw:-PI/2,h:40,dist:90,base:null,idle:9,px:0,py:0,wa
 const GTA3MOVE=()=>OPT.gta3!==false;
 const LOCK={t:null,held:false,flick:0,rx0:0,hp0:1},SOFT={t:null,at:-9};
 function lockable(p){return!p.gone&&!p.boss&&!p.follow&&!p.crew}
-const lockHostile=p=>p.state==='cop'||p.angry>0||(p.gang!=null&&respect[p.gang]<=-2)||!!p.target;
+const lockHostile=p=>p.state==='cop'||p.angry>0||p.brawl>0||(p.gang!=null&&respect[p.gang]<=-2)||!!p.target;
 // best person to lock onto: near the way you (or the camera) face, hostiles first; side=-1/1 flicks to the next one left/right
 function pickLock(baseA,cur,side){let best=null,bs=1e9;const ca=cur?Math.atan2(cur.y-player.y,cur.x-player.x):baseA;
   for(const p of peds){if(p===cur||!lockable(p))continue;const dx=p.x-player.x,dy=p.y-player.y,d=hyp(dx,dy);if(d>400||d<6)continue;
@@ -3498,7 +3522,9 @@ function update(dt){
   peds=peds.filter(p=>!p.gone&&(p.target||dist2(p.x,p.y,player.x,player.y)<(viewR+600)**2));
 
   // ---- pickups ----
+  syncSafePickups();
   for(const k of pickups){
+    if(k.sh&&!k.sh.owned)continue;
     if(k.taken){k.t-=dt;if(k.t<=0)k.taken=false;continue;}
     if(game.state==='play'&&dist2(k.x,k.y,player.x,player.y)<(player.car?30:20)**2){
       if(k.kind==='health'&&player.hp>=100)continue;
@@ -3510,6 +3536,8 @@ function update(dt){
       else if(k.kind==='flame'){player.ammo[3]+=300;player.w=3;note('Flamethrower');}
       else if(k.kind==='molotov'){player.ammo[4]+=6;player.w=4;note('Molotovs +6');}
       else if(k.kind==='rocket'){player.ammo[5]+=5;player.w=5;note('Rocket launcher +5');}
+      else if(k.kind==='grenade'){const g=GRENIDX();player.ammo[g]=(player.ammo[g]||0)+8;player.w=g;note('Grenades +8');}
+      else if(k.kind==='armor'){if(player.armor>=100)continue;player.armor=100;note('Body armor');}
       else if(k.kind==='health'){player.hp=Math.min(PMAX(),player.hp+50);note('Health +50');}
       else if(k.kind==='cash'){const n=Math.round(rr(2,6))*50;addMoney(n);note('Found $'+n);}
       k.taken=true;k.t=k.kind==='frenzy'?150:k.kind==='bribe'?90:60;sfx('pickup');
@@ -4482,8 +4510,8 @@ function drawLamp3(s,fg){
   obox(hx,hy,a,3.2,2.2,58,61,[60,62,66],[60,62,66],fg);
   if(!inBlackout(s.x,s.y)&&proj(hx,hy,57.8)){const s2=Math.max(1,2.6*PK);L3.fillStyle=lit([240,228,190],1,fg,LIGHTK>0.1);L3.fillRect(R2(PX-s2),R2(PY-s2*0.3),R2(s2*2),Math.max(1,R2(s2*0.5)));if(LIGHTK>0.05)glow(PX,PY,5*PK,'#ffb050',0.75*LIGHTK);
     if(rain>0.3){const ly=PY;if(proj(hx,hy,0))wetGlint(PX,PY,ly,'#ffb050',1);}}}
-const PK_LAB={smg:'SMG',rocket:'RKT',health:'+',cash:'$',shotgun:'SG',flame:'FLM',molotov:'MOL',frenzy:'X',bribe:'-*',dual:'x2'};
-const PK_COL={smg:'#7a5a2e',rocket:'#4d6b2e',health:'#e4e4e4',cash:'#2e7b3a',shotgun:'#6a4a2a',flame:'#a8401c',molotov:'#5c7a2e',frenzy:'#151515',bribe:'#1f3f9f',dual:'#7a5a2e'};
+const PK_LAB={grenade:'GRN',armor:'ARM',smg:'SMG',rocket:'RKT',health:'+',cash:'$',shotgun:'SG',flame:'FLM',molotov:'MOL',frenzy:'X',bribe:'-*',dual:'x2'};
+const PK_COL={grenade:'#3f5a2a',armor:'#2c5aa8',smg:'#7a5a2e',rocket:'#4d6b2e',health:'#e4e4e4',cash:'#2e7b3a',shotgun:'#6a4a2a',flame:'#a8401c',molotov:'#5c7a2e',frenzy:'#151515',bribe:'#1f3f9f',dual:'#7a5a2e'};
 function drawPickup3(k,fg){const bob=Math.sin(game.t*4+k.x)*2.5;if(!proj(k.x,k.y,0))return;BX=PX;BY=PY;BK=PK;
   L3.fillStyle='rgba(0,0,0,.3)';L3.fillRect(R2(PX-6*PK),R2(PY-1.5*PK),R2(12*PK),Math.max(1,R2(2*PK)));
   bb(-6,6+bob,6,18+bob,litH(PK_COL[k.kind],1,fg,true));bb(-6,6+bob,6,7+bob,'rgba(0,0,0,.35)');
@@ -4690,7 +4718,7 @@ function worldPass(top,bot,lightLvl,warm){if(!MIRROR)SIGNQ.length=0;
     case 13:if(o.rad){add(13,o,o.x,o.y,o.rad,null,o.ht);break;}add(13,o,o.x,o.y,o.k==='hedge'||o.k==='rail'||o.k==='seawall'||o.k==='brail'||o.k==='deck'||o.k==='fence'||o.k==='eltrack'?24:o.k==='elplat'?64:o.k==='elcorner'||o.k==='elpillar'?20:o.k==='elstair'?30:o.k==='fountain'?30:o.k==='crane'?100:8,null,o.k==='fountain'?34:o.k==='crane'?176:o.k[0]==='e'&&o.k[1]==='l'?EL_H+12:12);break;
     case 15:add(15,o,o.x,o.y,5,null,47);break;case 16:add(16,o,o.x,o.y,32,null,16);break;case 19:if(!o.got)add(19,o,o.x,o.y,8,null,16);break;}}});
   if(fare&&fare.stage==='ride')add(18,fare,fare.x,fare.y,40,null,40);
-  for(const k of pickups)if(!k.taken)add(4,k,k.x,k.y,8);
+  for(const k of pickups)if(!k.taken&&!(k.sh&&!k.sh.owned))add(4,k,k.x,k.y,8);
   for(const k of DROPS)add(4,k,k.x,k.y,8);
   for(const k of STASH)if(!k.got)add(25,k,k.x,k.y,10,null,12,k.z);
   for(const g of GOLDG)if(!GOLDGOT[g.w])add(27,g,g.x,g.y,10,null,14,g.z);
