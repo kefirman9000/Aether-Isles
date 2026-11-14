@@ -43,11 +43,11 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 - **Fire truck:** a water cannon instead of guns. Fire calls send you to put out blazes; it also douses burning cars and knocks people over.
 - **Spray shop upgrades:** stop at a spray shop with no wanted level to buy armor plating, bulletproofing, nitro (SHIFT / NOS) or a respray.
 - **Street races:** three checkpoint time trials (Gridlock Sprint, River Loop, Beach Dash) with gold, silver and bronze times. Stop on the R marker in any car to start.
-- **Natural street layout:** about a fifth of the street grid is closed off into pedestrian plazas and park lawns, so the city has superblocks, T-junctions and bends instead of a perfect grid. Traffic lights are only at real junctions.
+- **Street layout:** two diagonal avenues cut across the grid (a Broadway through Times Square, and one across Westside Island) with their own traffic, little triangle parks where they slice through blocks, narrow alleys through some blocks (with dumpsters and the odd ramp), and about a quarter of the grid closed off into pedestrian plazas and park lawns, so the city has superblocks, T-junctions and bends. Traffic lights are only at real junctions.
 - **Street life:** people wait at corners for the light before crossing, buskers play in Times Square, joggers run through the parks, and South Beach fills up on sunny days.
 - **Smarter cops:** they see less far at night and in the rain, and half as far while you sit still in a parking lot, a park or under a bridge. The minimap rings show the reduced range.
-- **No see-through ground:** things behind hills and under bridge decks are now hidden by the ground in front of them.
-- **On phones:** a city map (tap the minimap), a wheel-and-pedals driving option, adjustable button size, a fullscreen option, vibration, automatic resolution scaling when the frame rate drops, pause and autosave when you switch apps, the screen kept awake, and a prompt to turn the phone sideways.
+- **No see-through ground:** things behind hills are hidden by the ground in front of them, and bridge decks are open slabs over the water, so you can see under them.
+- **On phones:** a city map (tap the minimap), a wheel-and-pedals driving option, adjustable button size, a fullscreen option, vibration, automatic resolution scaling when the frame rate drops, pause and autosave when you switch apps, and the screen kept awake. It plays upright or sideways.
 - **Standing on things:** on foot you can jump onto car roofs and ramps, walk across them and ride on top of a moving car.
 - **Police helicopter:** at 4+ stars a chopper circles you with a searchlight and can see you over buildings, which makes you harder to lose. At 5+ stars it shoots. Bring it down with gunfire or rockets.
 - **Taxi fares:** drive a taxi and passengers hail you. Stop beside them, then get them to the marker before the timer runs out. Fares in a row pay more.

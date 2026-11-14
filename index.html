@@ -40,7 +40,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 <div class="logo">GRIDLOCK<span>CITY</span></div>
 <div class="tag" id="tagline">Steal cars. Answer payphones. Lose the cops.</div>
 <nav id="mmNav"></nav>
-<div class="foot"><span id="verTxt">v3.6.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
+<div class="foot"><span id="verTxt">v3.7.0</span> &middot; <button id="updBtn">Check for updates</button> &middot; <a href="https://github.com/sponsors/kefirman9000" target="_blank" rel="noopener">&#128156; Sponsor</a><div id="upd"></div></div>
 </div>
 <div class="mmPanel" id="mmPanel"></div>
 <button id="play" style="display:none">PLAY</button>
@@ -65,7 +65,7 @@ canvas{display:block;position:fixed;left:0;top:0;width:100vw;height:100vh;height
 </div></div>
 <script>
 'use strict';
-const VERSION='3.6.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
+const VERSION='3.7.0',REPO='kefirman9000/aether-isles',PAGES_URL='https://kefirman9000.github.io/Aether-Isles/';
 // ================= SETUP =================
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 let VW=800,VH=600,DPR=1;
@@ -123,6 +123,51 @@ const RAMPS=[];
 // the East River: a wide channel cutting Westside Island off from the city, crossed by three bridges
 const RIVX0=88,RIVX1=112,BRIDGES=[3,9,15],BIGB=9;
 const bridgeRow=ty=>ty%P<4&&BRIDGES.includes(Math.floor(ty/P));
+const BRT=new Uint8Array(W*W),DECKS=[];
+// ---- diagonal avenues (a Broadway through Times Square, and one across Westside Island) ----
+const DIAGT=new Uint8Array(W*W);
+const DIAGS=[[114,30,218,238],[2,240,86,72]].map(([ax,ay,bx,by])=>{ax*=T;ay*=T;bx*=T;by*=T;const L=hyp(bx-ax,by-ay),ux=(bx-ax)/L,uy=(by-ay)/L;return{ax,ay,bx,by,L,ux,uy,nx:-uy,ny:ux};});
+const DHW=56,DSW=84;
+function diagRel(d,x,y){const px=x-d.ax,py=y-d.ay;return[px*d.ux+py*d.uy,px*d.nx+py*d.ny];} // [along, signed side]
+function diagDist(d,x,y){const[t,sd]=diagRel(d,x,y);if(t<0)return hyp(x-d.ax,y-d.ay);if(t>d.L)return hyp(x-d.bx,y-d.by);return Math.abs(sd);}
+const nearDiag=(x,y,r)=>DIAGS.some(d=>diagDist(d,x,y)<r);
+function diagPix(i,xi,yi,nz,tx,ty){const d=DIAGS[i],[t,sd]=diagRel(d,xi,yi),a=Math.abs(sd);if(t<-DHW||t>d.L+DHW)return null;
+  if(a<DHW){let r=43+nz,g=44+nz,b=47+nz;const grid=MXT[tx]<4||MXT[ty]<4;
+    if(!grid){if(a<2.4&&a>0.6){r=168;g=137;b=58;}else if(Math.abs(a-28)<1&&(((t/18)|0)&1)){r=200;g=200;b=194;}else if(a>DHW-3){r=85;g=87;b=92;}}
+    return[r,g,b];}
+  if(a<DSW){if(a<DHW+3)return[150,147,140];const c=140+nz;return[c,c-3,c-10];}
+  return null;}
+function diagAvenues(){const sp=new Set();for(const k in SPECIAL)sp.add(k);
+  const isSpecialTile=(tx,ty)=>{const bx=Math.floor(tx/P),by=Math.floor(ty/P);return sp.has(bx+','+by)&&tx%P>=4&&ty%P>=4;};
+  DIAGS.forEach((d,i)=>{const x0=Math.floor(Math.min(d.ax,d.bx)/T)-4,x1=Math.ceil(Math.max(d.ax,d.bx)/T)+4,y0=Math.floor(Math.min(d.ay,d.by)/T)-4,y1=Math.ceil(Math.max(d.ay,d.by)/T)+4;
+    for(let ty=Math.max(0,y0);ty<Math.min(W,y1);ty++)for(let tx=Math.max(0,x0);tx<Math.min(W,x1);tx++){const ti=ty*W+tx,t=map[ti];if(t===WATER||RIV[ti]||BRT[ti]||isSpecialTile(tx,ty))continue;
+      const dd=diagDist(d,(tx+.5)*T,(ty+.5)*T);if(dd<DSW+18)DIAGT[ti]=i+1;
+      if(dd<DHW+10){map[ti]=ROAD;PARKT[ti]=0;}else if(dd<DSW+12&&t!==ROAD){map[ti]=WALK;PARKT[ti]=0;}}});
+  // buildings, trees and props in the way are cleared; leftover slivers become little triangle parks
+  for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];let hit=false;
+    for(const d of DIAGS){for(let k=0;k<=8&&!hit;k++){const qx=b.x+b.w*((k%3)/2),qy=b.y+b.h*(Math.floor(k/3)/2);if(diagDist(d,qx,qy)<DSW+14)hit=true;}}
+    if(!hit)continue;buildings.splice(i,1);
+    for(let ty=Math.floor(b.y/T);ty<Math.ceil((b.y+b.h)/T);ty++)for(let tx=Math.floor(b.x/T);tx<Math.ceil((b.x+b.w)/T);tx++){const ti=ty*W+tx;if(map[ti]===BLD){map[ti]=GRASS;PARKT[ti]=1;if(R()<0.25)addTree((tx+.5)*T,(ty+.5)*T,pick(['round','round','sakura']),0.8);}}}
+  const clear=o=>!nearDiag(o.x,o.y,DSW+6);
+  for(const arr of[trees,props,lotBlocks,parkedSpots,RAMPS]){const keep=arr.filter(clear);arr.length=0;arr.push(...keep);}
+  for(let ty=0;ty<W;ty++)for(let tx=0;tx<W;tx++){const ti=ty*W+tx;if(map[ti]===BLD&&nearDiag((tx+.5)*T,(ty+.5)*T,DSW+10)){map[ti]=WALK;PARKT[ti]=0;}}
+  // street trees along the avenue
+  for(const d of DIAGS)for(let t=60;t<d.L-60;t+=110)for(const s2 of[-1,1]){const x=d.ax+d.ux*t+d.nx*s2*(DHW+14),y=d.ay+d.uy*t+d.ny*s2*(DHW+14),tx=Math.floor(x/T),ty=Math.floor(y/T);
+    if(map[ty*W+tx]===WALK&&tx%P>=4&&ty%P>=4&&R()<0.7)addTree(x,y,'round',0.6);}}
+// ---- alleys: narrow service lanes cut through some downtown and old-town blocks (dumpsters, the odd jump) ----
+function alleys(){for(let by=0;by<NB;by++)for(let bx=0;bx<NB;bx++){const k=BLOCKK[by*NB+bx];if(k!=='bld'||R()>0.32)continue;
+    const x0=bx*P,y0=by*P;if(nearDiag((x0+9)*T,(y0+9)*T,9*T))continue;const hz=R()<0.5,m=pick([7,8,9]);
+    const inA=(tx,ty)=>hz?(ty-y0===m||ty-y0===m+1)&&tx-x0>=4&&tx-x0<=13:(tx-x0===m||tx-x0===m+1)&&ty-y0>=4&&ty-y0<=13;
+    const ax0=hz?(x0+4)*T:(x0+m)*T,ay0=hz?(y0+m)*T:(y0+4)*T,aw=hz?10*T:2*T,ah=hz?2*T:10*T;
+    for(let i=buildings.length-1;i>=0;i--){const b=buildings[i];if(b.x<ax0+aw&&b.x+b.w>ax0&&b.y<ay0+ah&&b.y+b.h>ay0){buildings.splice(i,1);
+      for(let ty=Math.floor(b.y/T);ty<Math.ceil((b.y+b.h)/T);ty++)for(let tx=Math.floor(b.x/T);tx<Math.ceil((b.x+b.w)/T);tx++)if(map[ty*W+tx]===BLD){map[ty*W+tx]=LOT;PARKT[ty*W+tx]=0;}}}
+    for(let ty=y0+4;ty<=y0+13;ty++)for(let tx=x0+4;tx<=x0+13;tx++)if(inA(tx,ty)){map[ty*W+tx]=LOT;PARKT[ty*W+tx]=0;}
+    for(const o of[0.3,0.7])props.push({x:hz?ax0+aw*o:ax0+T*(R()<0.5?0.3:1.7),y:hz?ay0+T*(R()<0.5?0.3:1.7):ay0+ah*o,k:'bin'});
+    if(R()<0.35)addRamp(ax0+aw/2,ay0+ah/2,hz?(R()<0.5?0:PI):(R()<0.5?PI/2:-PI/2),'wood');}}
+// traffic on the avenues
+function diagSpotNear(x,y){for(let i=0;i<DIAGS.length;i++){const d=DIAGS[i],[t,sd]=diagRel(d,x,y);if(t<d.L*0.05||t>d.L*0.95||Math.abs(sd)>350)continue;
+    const dir=R()<0.5?1:-1,ux=d.ux*dir,uy=d.uy*dir,lx=-uy,ly=ux;const px=d.ax+d.ux*t+lx*26,py=d.ay+d.uy*t+ly*26;
+    if(map[Math.floor(py/T)*W+Math.floor(px/T)]!==ROAD)continue;return{x:px,y:py,a:Math.atan2(uy,ux),di:i,dir};}return null;}
 // is the road from intersection (ix,iy) heading dd still land (or a bridge)?
 // Some street segments are closed and turned into pedestrian plazas and park paths, so the city isn't a perfect grid:
 // blocks merge into superblocks, streets end in T-junctions and bends.
@@ -143,7 +188,7 @@ function cutStreets(){
   const base=reach(),cands=[];
   for(let iy=0;iy<=NB;iy++)for(let ix=0;ix<=NB;ix++)for(const d of[0,1])if(linkBase(ix,iy,d)&&!keep.has(segKey(ix,iy,d)))cands.push([ix,iy,d]);
   for(let i=cands.length-1;i>0;i--){const j=Math.floor(R()*(i+1));[cands[i],cands[j]]=[cands[j],cands[i]];}
-  let want=Math.round(cands.length*0.2);
+  let want=Math.round(cands.length*0.24);
   for(const[ix,iy,d]of cands){if(want<=0)break;const nx=ix+DX[d],ny=iy+DY[d];if(nodeDeg(ix,iy)<=2||nodeDeg(nx,ny)<=2)continue;
     const k=segKey(ix,iy,d);CUT.add(k);if(reach()<base){CUT.delete(k);continue;}want--;}}
 // turn each closed segment into a pedestrian plaza, or a lawn with trees where it runs between parks
@@ -315,6 +360,8 @@ function genMap(){
   }
   for(let y=0;y<W;y++)for(let x=RIVX0;x<RIVX1;x++)if(!bridgeRow(y)){map[y*W+x]=WATER;RIV[y*W+x]=1;}
   fillCuts();
+  for(const iy of BRIDGES){for(let y=iy*P;y<iy*P+4;y++)for(let x=RIVX0;x<RIVX1;x++)BRT[y*W+x]=1;for(let x=RIVX0*T+16;x<RIVX1*T;x+=32)DECKS.push({x,y:(iy*P+2)*T,big:iy===BIGB,dash:((x>>5)&1)===0});}
+  diagAvenues();alleys();
   for(let y=0;y<W;y++)for(let x=0;x<W;x++)if(map[y*W+x]===WALK)walkTiles.push([x,y]);
   {const x0=RIVX0*T,x1=RIVX1*T;
    for(const iy of BRIDGES){const yn=iy*P*T,ys=(iy*P+4)*T,big=iy===BIGB;
@@ -322,7 +369,7 @@ function genMap(){
      if(!big){for(let x=x0+150;x<x1-100;x+=230)props.push({x,y:(yn+ys)/2,k:'pier'});continue;}
      // the big one: two stone towers, main cables swooping between them and down to anchorages on each shore
      const tA=x0+170,tB=x1-170;
-     for(const tx of[tA,tB])props.push({x:tx,y:(yn+ys)/2,k:'btower',rad:90,ht:230});
+     for(const tx of[tA,tB]){const yc=(yn+ys)/2;props.push({x:tx,y:yc,yc,k:'bcrown',rad:96,ht:240});for(const sd of[-1,1])props.push({x:tx,y:yc+sd*82,yc,k:'bleg',rad:18,ht:230});}
      for(const cy of[yn-9,ys+9]){for(const ax of[x0+8,x1-8])props.push({x:ax,y:cy,k:'anchor'});}
      for(const cy of[yn-9,ys+9])for(let x=x0+8;x<x1-8;x+=24)props.push({x:x+12,y:cy,k:'cable',x0:x,x1:x+24,tA,tB,rad:22,ht:200});}
    for(let y=0;y<WPX;y+=40){const ty=Math.floor(y/T);if(bridgeRow(ty))continue;props.push({x:x0-3,y:y+20,k:'brail',a:PI/2},{x:x1+3,y:y+20,k:'brail',a:PI/2});}}
@@ -964,6 +1011,9 @@ let viewR=800;
 function spawnTraffic(forcePolice,chase){
   for(let i=0;i<16;i++){
     const a=R()*TAU,d=viewR+rr(80,420);
+    const dsp=R()<0.3?diagSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d):null;
+    if(dsp&&!carNear(dsp.x,dsp.y,100)&&!camSees(dsp.x,dsp.y)){const c=makeCar(forcePolice?(typeof forcePolice==='string'?forcePolice:'police'):pick(TRAFFIC_TYPES),dsp.x,dsp.y,dsp.a);c.traffic=true;c.driver=c.t.police?'cop':'ai';if(c.t.tank||c.t.army||c.t.fbi||c.t.swat)c.traffic=false,c.special=true;
+      c.ai=newAI('diag',0,0);c.ai.di=dsp.di;c.ai.dir=dsp.dir;if(chase)c.ai.mode='chase';const sp=c.ai.cruise*0.8;c.vx=Math.cos(dsp.a)*sp;c.vy=Math.sin(dsp.a)*sp;return c;}
     const s=laneSpotNear(player.x+Math.cos(a)*d,player.y+Math.sin(a)*d);
     if(!s||carNear(s.x,s.y,100)||camSees(s.x,s.y))continue;
     const z=zoneOf(s.x,s.y),gangCar=!forcePolice&&z>=0&&R()<0.22;
@@ -1965,7 +2015,7 @@ function drawBigMap(sc){const s=Math.min(VW,VH)*0.92,ox=(VW-s)/2,oy=(VH-s)/2,k=s
 let frameAvg=16,dynT=0,DYN=1;
 function mobileTick(dt){if(!touchMode)return;frameAvg=lerp(frameAvg,dt*1000,0.05);dynT+=dt;
   if(dynT>3){dynT=0;const old=DYN;if(frameAvg>30&&DYN>0.7)DYN-=0.1;else if(frameAvg<19&&DYN<1)DYN+=0.1;DYN=Math.round(DYN*10)/10;if(DYN!==old)resizeLow();}
-  const rot=document.getElementById('rotate');rot.style.display=VH>VW*1.15&&game.started?'flex':'none';}
+}
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&game.started&&game.state==='play'){if(!game.paused)togglePause();if(OPT.autosave&&stars()===0)writeSave('auto');hornStop();}});
 let wakeLock=null;async function keepAwake(){try{if(navigator.wakeLock&&!wakeLock){wakeLock=await navigator.wakeLock.request('screen');wakeLock.addEventListener('release',()=>{wakeLock=null;});}}catch(_){}}
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&game.started)keepAwake();});
@@ -1975,6 +2025,20 @@ function extTick(dt){transitTick(dt);updateBosses();updateSafehouses(dt);updateB
 function extSave(){return{story:STORY,sh:SAFEHOUSES.map(s=>({o:s.owned,g:s.garage})),best:BEST,fire:fireLevel};}
 function extLoad(e){if(!e)return;if(e.story){STORY.prog=e.story.prog||[0,0,0];STORY.fin=e.story.fin||0;}(e.sh||[]).forEach((q,i)=>{const s=SAFEHOUSES[i];if(s){s.owned=!!q.o;s.garage=q.g||null;if(s.gcar){const k=cars.indexOf(s.gcar);if(k>=0&&s.gcar!==player.car)cars.splice(k,1);s.gcar=null;}}});
   for(const k in BEST)delete BEST[k];Object.assign(BEST,e.best||{});fireLevel=e.fire||0;}
+
+// ---------- traffic on the diagonal avenues ----------
+function aiDiag(c,dt){const ai=c.ai,d=DIAGS[ai.di],[t,sd]=diagRel(d,c.x,c.y),dir=ai.dir,ux=d.ux*dir,uy=d.uy*dir,lx=-uy,ly=ux;
+  if((dir>0&&t>d.L-70)||(dir<0&&t<70)||Math.abs(sd)>110){acquireLane(c);return;}
+  const spd=hyp(c.vx,c.vy),look=50+spd*0.35,ta=t+dir*look,gx=d.ax+d.ux*ta+lx*26,gy=d.ay+d.uy*ta+ly*26;
+  const diff=angDiff(Math.atan2(gy-c.y,gx-c.x),c.a);let steer=clamp(diff*2.2,-1,1),target=ai.cruise;if(Math.abs(diff)>0.5)target=Math.min(target,100);
+  const fx=Math.cos(c.a),fy=Math.sin(c.a),D=c.t.L/2+22+spd*0.45,hw=c.t.Wd/2;let blocked=false;
+  for(const o of cars){if(o===c)continue;const rx=o.x-c.x,ry=o.y-c.y;if(rx*rx+ry*ry>(D+80)**2)continue;const f=rx*fx+ry*fy;if(f<=0)continue;if(f<D+o.t.L/2&&Math.abs(-rx*fy+ry*fx)<hw+o.t.Wd/2+2){blocked=true;break;}}
+  if(!blocked)for(const p of peds){if(p.gone)continue;const rx=p.x-c.x,ry=p.y-c.y;if(rx*rx+ry*ry>(D+20)**2)continue;const f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+9){blocked=true;break;}}
+  if(!blocked&&!player.car){const rx=player.x-c.x,ry=player.y-c.y,f=rx*fx+ry*fy;if(f>0&&f<D&&Math.abs(-rx*fy+ry*fx)<hw+10)blocked=true;}
+  if(blocked){ai.blockT+=dt;if(ai.blockT<3.5)target=0;if(ai.blockT>5.5)ai.blockT=0;}else ai.blockT=Math.max(0,ai.blockT-dt*2);
+  const vf=c.vx*fx+c.vy*fy;let thr=vf<target-10?1:vf>target+15?-1:0.15;if(target===0)thr=vf>5?-1:0;
+  if(target>0&&spd<12){ai.stuckT+=dt;if(ai.stuckT>2){ai.revT=1;ai.stuckT=0}}else ai.stuckT=0;if(ai.revT>0){ai.revT-=dt;thr=-1;steer=-steer;}
+  driveCar(c,thr,steer,false,dt);}
 
 // ================= ELEVATED TRAIN (the El) AND THE SUBWAY =================
 // The El runs a loop above the streets of the east side on steel pillars. Board it at a station and ride to the next one.
@@ -2096,9 +2160,9 @@ function update(dt){
     if(c.wreck){c.wreckT+=dt;driveCar(c,0,0,true,dt);}
     else if(c.driver==='ai'||c.driver==='cop'){
       if(!c.ai)acquireLane(c);
-      if(c.driver==='cop'&&c.ai.mode==='lane'&&stars()>0&&dist2(c.x,c.y,player.x,player.y)<650*650)c.ai.mode='chase';
+      if(c.driver==='cop'&&(c.ai.mode==='lane'||c.ai.mode==='diag')&&stars()>0&&dist2(c.x,c.y,player.x,player.y)<650*650)c.ai.mode='chase';
       if(c.ai.mode==='chase'&&stars()===0)acquireLane(c);
-      if(c.ai.mode==='chase')aiChase(c,dt);else aiLane(c,dt);
+      if(c.ai.mode==='chase')aiChase(c,dt);else if(c.ai.mode==='diag')aiDiag(c,dt);else aiLane(c,dt);
       if(c.t.tank&&c.driver==='cop'){const tg=player.car||player,want=Math.atan2(tg.y-c.y,tg.x-c.x);c.turret=lerpAng(c.turret==null?c.a:c.turret,want,Math.min(1,dt*2.5));
         c.shootT-=dt;const d=hyp(tg.x-c.x,tg.y-c.y);if(game.state==='play'&&c.shootT<=0&&d<480&&Math.abs(angDiff(want,c.turret))<0.15&&los(c.x,c.y,tg.x,tg.y)){c.shootT=rr(2.4,3.4);fireBullet(c.x+Math.cos(c.turret)*42,c.y+Math.sin(c.turret)*42,c.turret,560,'cop',0,'r',0);sfx('boom',0.35);shake=Math.max(shake,4);}}
       else if(game.state==='play'&&((c.gang!=null&&respect[c.gang]<=-3)||(c.driver==='cop'&&c.ai&&c.ai.mode==='chase'&&(stars()>=4||c.t.fbi||c.t.army)))){
@@ -2557,9 +2621,10 @@ function renderGround(heads){
   const pix=(wx,wy,f,water)=>{
     let r,g,b;
     if(wx>=0&&wy>=0&&wx<WPX&&wy<WPX){
-      const xi=wx|0,yi=wy|0,tx=xi>>5,ty=yi>>5,ti=ty*W+tx,t=map[ti],u=xi&31,v=yi&31,h=TILEH[ti];
+      const xi=wx|0,yi=wy|0,tx=xi>>5,ty=yi>>5,ti=ty*W+tx,t=BRT[ti]?8:map[ti],u=xi&31,v=yi&31,h=TILEH[ti];
       const nz=((((xi>>1)*73856093)^((yi>>1)*19349663))>>>9)&7;
-      switch(t){
+      const dp=DIAGT[ti]?diagPix(DIAGT[ti]-1,xi,yi,nz,tx,ty):null;
+      if(dp){r=dp[0];g=dp[1];b=dp[2];}else switch(t){
           case 0:{r=43+nz;g=44+nz;b=47+nz;if((h&3)===0){r-=3;g-=3;b-=3;}
             const mx=MXT[tx],my=MXT[ty];
             if(mx<4&&my>=4){
@@ -2630,7 +2695,7 @@ function renderGround(heads){
     let yb=LH,f=f0,ob=0;
     while(f<FOG1&&yb>0){
       while(ob<OCCN&&f>=OCCE[ob]){OCC[ob*lw+x]=yb;ob++;}
-      const wx=CX+dx*f,wy=CY+dy*f;let h=GH(wx,wy);const water=h<0&&(wx<0||wy<0||wx>=WPX||wy>=WPX);if(water)h=0;else if(wx>=0&&wy>=0&&wx<WPX&&wy<WPX&&RIV[((wy|0)>>5)*W+((wx|0)>>5)])h=RIVL;
+      const wx=CX+dx*f,wy=CY+dy*f;let h=GH(wx,wy);let water=h<0&&(wx<0||wy<0||wx>=WPX||wy>=WPX);if(water)h=0;else if(wx>=0&&wy>=0&&wx<WPX&&wy<WPX){const ti=((wy|0)>>5)*W+((wx|0)>>5);if(RIV[ti])h=RIVL;else if(BRT[ti]){h=RIVL;water=true;}}
       const sy=HOR+(CZ-h)*FOC/f;let yi=Math.ceil(sy-0.5);if(yi<0)yi=0;
       if(yi<yb){const col=pix(wx,wy,f,water);for(let y=yi;y<yb;y++)buf[y*lw+x]=col;yb=yi;}
       const rel=CZ-h;let st=rel>8?f*f/(rel*FOC)*0.9:f*0.02;if(st<0.5)st=0.5;else if(st>f*0.04)st=f*0.04;f+=st;
@@ -2891,12 +2956,8 @@ function drawProp3(o,fg){
       for(const s of[-1,1]){obox(o.x+ca*10+(-sa*s*7),o.y+sa*10+(ca*s*7),0,0.8,0.8,0,15,[40,110,60],null,fg);obox(o.x+ca*10+(-sa*s*7),o.y+sa*10+(ca*s*7),0,1.8,1.8,15,18.5,[120,230,140],null,fg,0,0,true);}return;}
     case 'pier':{const d=ZOFF;ZOFF=0;obox(o.x,o.y,0,9,58,RIVL,d-2,[150,144,134],null,fg);ZOFF=d;return;}
     case 'girder':obox(o.x,o.y,a,20,3,-16,1,[118,112,104],[150,146,140],fg);obox(o.x,o.y,a,20,3.4,-19,-16,[84,80,76],null,fg);return;
-    case 'btower':{const d=GH(o.x,o.y);ZOFF=0;const st=[178,162,134],tp=[196,182,154];
-      for(const s of[-1,1])obox(o.x,o.y+s*82,0,15,11,RIVL,d+150,st,tp,fg);           // the two legs
-      obox(o.x,o.y,0,15,93,d+104,d+150,st,tp,fg);                                     // crown spanning the road
-      obox(o.x,o.y,0,16.5,95,d+150,d+156,[160,146,120],tp,fg);                         // cornice
-      for(const s of[-1,1])obox(o.x,o.y+s*82,0,5,5,d+156,d+164,[90,86,80],[120,116,108],fg);
-      ZOFF=d;return;}
+    case 'bleg':{const d=GH(o.x,o.yc);ZOFF=0;obox(o.x,o.y,0,15,11,RIVL,d+150,[178,162,134],[196,182,154],fg);obox(o.x,o.y,0,5,5,d+156,d+164,[90,86,80],[120,116,108],fg);ZOFF=d;return;}
+    case 'bcrown':{const d=GH(o.x,o.yc);ZOFF=0;obox(o.x,o.y,0,15,93,d+104,d+150,[178,162,134],[196,182,154],fg);obox(o.x,o.y,0,16.5,95,d+150,d+156,[160,146,120],[196,182,154],fg);ZOFF=d;return;}
     case 'anchor':obox(o.x,o.y,0,6,6,0,8,[140,134,124],[160,154,144],fg);return;
     case 'cable':{const z0=cableZ(o,o.x0),z1=cableZ(o,o.x1),d=GH(o.x0,o.y);ZOFF=0;
       if(proj(o.x0,o.y,z0)){const ax=PX,ay=PY;if(proj(o.x1,o.y,z1)){L3.strokeStyle=lit([62,62,70],1,fg);L3.lineWidth=PK>0.6?2:1;L3.beginPath();L3.moveTo(ax,ay);L3.lineTo(PX,PY);L3.stroke();}
@@ -3095,7 +3156,7 @@ const occBin=f=>f<=0?0:Math.min(OCCN-1,Math.floor(Math.sqrt(f/OCCF)*OCCN));
 // clip L3 to what's above the ground nearer than depth f, but only when that ground actually covers part of [x0,x1] above yBot
 function occClip(f,x0,x1,yBot){const b=occBin(f);if(b<=0)return false;const o=b*OCCW;x0=Math.max(0,x0|0);x1=Math.min(OCCW-1,x1|0);if(x1<x0)return false;
   let need=false;for(let x=x0;x<=x1;x++)if(OCC[o+x]<yBot-1){need=true;break;}if(!need)return false;
-  L3.save();L3.beginPath();L3.moveTo(0,-50);L3.lineTo(OCCW,-50);for(let x=OCCW-1;x>=0;x--){const y=OCC[o+x];L3.lineTo(x+1,y);L3.lineTo(x,y);}L3.closePath();L3.clip();return true;}
+  L3.save();L3.beginPath();L3.moveTo(0,-50);L3.lineTo(OCCW,-50);for(let x=OCCW-1;x>=0;x--){const y=OCC[o+x];L3.lineTo(x+1,y);L3.lineTo(x,y);}L3.closePath();L3.clip();L3.beginPath();return true;}
 function worldPass(top,bot,lightLvl,warm){
   // headlights that light up the road
   const heads=[];
@@ -3106,6 +3167,10 @@ function worldPass(top,bot,lightLvl,warm){
   // ---- flat things on the ground (drawn before anything stands on them) ----
   const R0=FOG1+60;
   const vis=(x,y,rad)=>{const dx=x-CX,dy=y-CY,f=dx*CC+dy*CS;if(f<-rad||f>R0)return false;const r=-dx*CS+dy*CC;return Math.abs(r)<=(f+rad)*HALF+rad*2;};
+  {const sl=[];for(const s of DECKS){if(!vis(s.x,s.y,70))continue;sl.push([(s.x-CX)*CC+(s.y-CY)*CS,s]);}sl.sort((a,b)=>b[0]-a[0]);
+   for(const[f,s]of sl){const fg=fogAt(f),d=GH(s.x,s.y);ZOFF=0;obox(s.x,s.y,0,16.4,64,d-(s.big?9:7),d,[82,78,74],[60,60,64],fg);
+     if(s.big)obox(s.x,s.y,0,16.4,66,d-14,d-9,[58,54,52],null,fg);
+     obox(s.x,s.y,0,16,1.1,d,d+0.2,[214,176,40],null,fg);if(s.dash)for(const o of[-32,32])obox(s.x,s.y+o,0,7,0.9,d,d+0.2,[226,226,220],null,fg);}}
   for(const c of cars){if(!vis(c.x,c.y,60))continue;ZOFF=GH(c.x,c.y);const fg=fogAt((c.x-CX)*CC+(c.y-CY)*CS);flat(c.x+2,c.y+2,c.a,c.t.L/2+2,c.t.Wd/2+2,0.3,`rgba(0,0,0,${0.3*(1-fg)})`);}
   for(const m of marks){if(m.k!=='body'||!vis(m.x,m.y,20))continue;ZOFF=GH(m.x,m.y);proj(m.x,m.y,0);drawBody3(m,0.4);}
   if(mission){const pulse=0.5+0.5*Math.sin(game.t*5);
@@ -3166,7 +3231,7 @@ function worldPass(top,bot,lightLvl,warm){
   for(let bi=0;bi<=vb.length;bi++){
     while(ii<ITEMS.length&&ITEMS[ii].slot<=bi){drawItem(ITEMS[ii]);ii++;}
     if(bi<vb.length){const b=vb[bi];const f=b.dn;let mnx=1e9,mxx=-1e9,mxy=-1e9;for(const q of b.hull){if(q[0]<mnx)mnx=q[0];if(q[0]>mxx)mxx=q[0];if(q[1]>mxy)mxy=q[1];}
-      const cl=occClip(b.fm-6,mnx,mxx,mxy);drawBuilding(b,fogAt(f));if(cl)L3.restore();}
+      const cl=occClip(b.fm-6,mnx,mxx,mxy);drawBuilding(b,fogAt(f));if(cl){L3.restore();L3.beginPath();}}
   }
   // ---- weather ----
   if(rain>0.03){L3.fillStyle=`rgba(200,215,240,${0.45*rain})`;const n=Math.floor(110*rain);for(let i=0;i<n;i++){const fx=((i*61.3-game.t*40+cam.yaw*120)%LW+LW)%LW,fy=((i*37.1+game.t*(190+i%5*25))%LH+LH)%LH;L3.fillRect(fx|0,fy|0,1,4);}}
@@ -3202,8 +3267,8 @@ function drawBehindWarnings(sc){
 
 function boostLines(){const c=player.car;return !!(c&&!c.wreck&&hyp(c.vx,c.vy)>430);}
 function drawItem(it){let cl=false;{const o=it.o,ox=it.kind===9?o.b.x:o.x,oy=it.kind===9?o.b.y:o.y;ZOFF=GH(ox,oy);
-  if(it.kind!==17&&it.kind!==8&&it.f>20){const r=it.rad||8;if(proj(ox,oy,it.kind===13&&o.rad?RIVL-ZOFF:0)){const w=r*PK*1.3+2;cl=occClip(it.f-r,PX-w,PX+w,PY);}}}
-  drawItem2(it);if(cl)L3.restore();}
+  if(it.kind!==17&&it.kind!==8&&it.f>20){const r=it.rad||8;const inRiv=it.kind===13&&ox>=RIVX0*T-40&&ox<RIVX1*T+40;if(proj(ox,oy,inRiv?Math.min(0,RIVL-ZOFF):0)){const w=r*PK*1.3+2;cl=occClip(it.f-r,PX-w,PX+w,PY);}}}
+  drawItem2(it);if(cl){L3.restore();L3.beginPath();}}
 function drawItem2(it){const o=it.o,fg=fogAt(it.f);{const ox=it.kind===9?o.b.x:o.x,oy=it.kind===9?o.b.y:o.y;ZOFF=GH(ox,oy);}
   switch(it.kind){
     case 0:drawCar3(o,fg);if(!MIRROR&&proj(o.x,o.y,0)){const k=PK,w=Math.max(o.t.L,o.t.Wd)*k*0.75;o._b=[PX-w,PY-24*k,PX+w,PY+4*k];o._f=PF;o._fr=frameNo;}break;
@@ -3465,7 +3530,7 @@ function renderNav(){const nav=document.getElementById('mmNav');nav.innerHTML=''
 function markSel(){[...document.querySelectorAll('#mmNav button')].forEach((b,i)=>b.className=i===menuSel?'sel':'');}
 function menuShow(mode){menuMode=mode;menuSel=0;closePanel();document.getElementById('menu').style.display='flex';document.getElementById('tagline').textContent=mode==='pause'?'PAUSED':'Steal cars. Answer payphones. Lose the cops.';renderNav();}
 function hideMenu(){document.getElementById('menu').style.display='none';closePanel();}
-function beginPlay(){hideMenu();initAudio();if(!game.started)startGame();}
+function beginPlay(){hideMenu();initAudio();try{if(matchMedia('(pointer:coarse)').matches||'ontouchstart' in window){touchMode=true;mouse.used=false;}}catch(_){}if(!game.started)startGame();}
 function newGame(){money=0;saveMoney();beginPlay();}
 function loadFrom(s){
   if(game.started){applySave(s);clearHeat();respawnAt(hospitalSpawn);applySave(s);game.paused=false;hideMenu();note('Game loaded');return;}
@@ -3494,7 +3559,7 @@ function openPanel(kind){
   p.querySelectorAll('[data-save]').forEach(b=>b.onclick=()=>{if(writeSave(b.dataset.save)){note('Saved to '+slotName(b.dataset.save));openPanel('save');}});
   p.querySelectorAll('[data-opt]').forEach(b=>b.onclick=()=>{const k=b.dataset.opt;
     if(k==='cam')OPT.cam=OPT.cam<1?1:OPT.cam>1?0.8:1.25;else if(k==='steer')OPT.steer=OPT.steer==='wheel'?'stick':'wheel';else if(k==='btn')OPT.btn=OPT.btn<1?1:OPT.btn>1?0.85:1.2;
-    else if(k==='fs'){try{if(document.fullscreenElement)document.exitFullscreen();else{document.documentElement.requestFullscreen().then(()=>{try{screen.orientation.lock('landscape').catch(()=>{})}catch(_){}}).catch(()=>{});}}catch(_){}setTimeout(()=>openPanel('options'),300);return;}else if(k==='sound'){toggleMute();}else if(k==='city'){openPanel('newcity');return;}else{OPT[k]=!OPT[k];if(k==='mirror')mirrorOn=OPT.mirror;}
+    else if(k==='fs'){try{if(document.fullscreenElement)document.exitFullscreen();else{document.documentElement.requestFullscreen().catch(()=>{});}}catch(_){}setTimeout(()=>openPanel('options'),300);return;}else if(k==='sound'){toggleMute();}else if(k==='city'){openPanel('newcity');return;}else{OPT[k]=!OPT[k];if(k==='mirror')mirrorOn=OPT.mirror;}
     saveOpts();openPanel('options');});
   p.querySelectorAll('[data-yes]').forEach(b=>b.onclick=()=>{try{localStorage.setItem('gc_city_seed',String(((Math.random()*2**31)|0)||7))}catch(_){}location.reload();});
   p.querySelectorAll('[data-back]').forEach(b=>b.onclick=()=>{if(b.dataset.back==='options')openPanel('options');else closePanel();});
