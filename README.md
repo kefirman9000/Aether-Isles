@@ -23,8 +23,20 @@ An open-city crime game in the spirit of the original GTA games, for PC and mobi
 | R | RADIO | Change radio station |
 | P / Esc | II (top middle) | Pause |
 | M | | Mute |
+| SHIFT (on foot) | Push the stick all the way | Sprint |
+| 1-9 / arrows + Enter | Tap | Pick a dialog answer |
+
+**Controller:** left stick move/steer · RT gas · LT brake · A jump/handbrake · Y enter/exit car · RB fire · right stick aim · LB switch weapon · X horn · B look behind · L3 sprint (nitro in a car) · D-pad up radio, down phone, right mirror · Back map · Start pause.
 
 ## Features
+- **Climb the city (v4.8):** brick walk-ups have fire escapes you can climb from the sidewalk, zigzagging up floor by floor to a ladder onto the roof, and every flat roof can be walked on, so you can run and jump across the rooftops (watch the drop: long falls hurt). The El stairs are proper steps now, a ladder at each station leads up onto the platform canopy, and you can jump down onto the tracks or onto the train's roof and ride it around the loop. The subway exit stairs are climbable too.
+- **Curbside parking:** cars sit parked along the curbs mid-block, half up on the sidewalk, filling in as you move around town. They're all stealable.
+- **Garbage routes and taco service:** tap the horn in a Trash Hauler to run a garbage route (stop next to each bin to empty it), or in a Taco Truck to serve hungry crowds at the parks, plazas, Times Square and the beach. Both level up like the other duty jobs.
+- **Visible damage:** beaten-up cars get dents and scrapes on their flanks, sag lower, lose a headlight, then steam and smoke.
+- **Busier sidewalks:** more people downtown and in Times Square (fewer late at night), and people line up at hot dog carts and parked food trucks.
+- **Night life:** some neon signs flicker, open shops glow with an OPEN sign, and late at night some shops pull their shutters down.
+- **Radio that suits the car:** muscle cars and pickups tune to punk, sports cars and SUVs to synth, everyday cars to street beats; each car remembers its station. Emergency vehicles and buses start with the radio off.
+- **Better controls:** controller support (left stick, triggers for gas and brake, right stick to aim, rumble on crashes), sprint on foot (SHIFT, L3, or push the touch stick all the way), easier car entry, dialog choices you can pick with the arrow keys or 1-9, and new options for lane assist, mouse turn speed and controller vibration.
 - **More vehicles (v4.7):** eight new rides, each with its own shape and handling: the Ranchhand pickup (sometimes with cargo in the bed), Ridgeback SUV with roof rails, Bruiser muscle car (rear-drive, hood scoop, wing, racing stripes), Homestead station wagon (some with wood panelling), Courier van (with company liveries), Trash Hauler garbage truck, Breeze open-top roadster and a Taco Truck. Paint varies too: two-tone roofs and stripes. Buses, limos, ice cream vans and fire trucks now have their own handling instead of borrowing the sedan's.
 - **Traffic that fits the neighborhood:** SUVs and roadsters uptown, vans, pickups and garbage trucks in Old Town, wagons and pickups in the suburbs, taxis, limos and buses downtown. The gangs drive their own kinds of car: Red Sabres muscle cars, Chrome Saints SUVs, Jade Lotus tuned imports.
 - **A more lived-in city:** suburban houses have driveways with the family car and a mailbox, wooden utility poles with sagging wires line the suburban streets, food trucks park in the plazas and hot dog carts sit on corners. Old brick walk-ups have iron fire escapes and cornices, flat roofs have stair bulkheads and vents, and at night windows glow warm, cool office-white or flickering TV-blue.

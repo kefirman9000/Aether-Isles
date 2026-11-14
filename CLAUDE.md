@@ -7,6 +7,11 @@ Read the **RENDERING RULES** block at the top of the `RENDER: PSEUDO-3D CHASE CA
 There is no depth buffer, so draw order is depth. Past bugs from breaking those rules: see-through ambulance,
 windshield glass showing through the bus and SWAT van roofs, the player vanishing on the El stairs.
 
+## Climbable things
+Everything the player can stand on is a walk surface in `WALKS` (plus building roofs via `bldAt`/`roofAbs`, car roofs
+and the El train in `footFloor`). Rules 8 and 9 of the RENDERING RULES cover keeping walk surfaces and visuals in step.
+To test climbing, set keys (`keys.KeyW=true`) and step the game with `update(1/60)` in a loop while logging `player.jz`.
+
 ## Checking visuals
 Load `index.html` in headless Chrome (Playwright), call `newGame()`, then for a still shot set `game.paused=true`,
 place the camera (`cam.x/cam.y/cam.yaw/cam.h`, `cam.gz=GH(cam.x,cam.y)`, `setCam()`) and screenshot. Look at new
