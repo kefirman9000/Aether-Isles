@@ -214,7 +214,7 @@ function hallTile(tx,ty){return tx>HTX0&&tx<HTX1-1&&ty>HTY0&&ty<HTY1-1?WALK:BLD;
 const CUT=new Set();
 const segKey=(ix,iy,dd)=>dd===0?'h'+ix+','+iy:dd===2?'h'+(ix-1)+','+iy:dd===1?'v'+ix+','+iy:'v'+ix+','+(iy-1);
 function linkBase(ix,iy,dd){if(dd===0&&ix>=NB||dd===2&&ix<=0||dd===1&&iy>=NB||dd===3&&iy<=0)return false;if(dd===1||dd===3)return ix!==7;const a=dd===0?ix:ix-1;return(a!==6&&a!==7)||BRIDGES.includes(iy);}
-function linkOK(ix,iy,dd){return linkBase(ix,iy,dd)&&!CUT.has(segKey(ix,iy,dd));}
+function linkOK(ix,iy,dd){if(barriersUp&&(dd===0||dd===2)){const a=dd===0?ix:ix-1;if(a===6||a===7)return false;}return linkBase(ix,iy,dd)&&!CUT.has(segKey(ix,iy,dd));}
 function nodeDeg(ix,iy){let n=0;for(let d=0;d<4;d++)if(linkOK(ix,iy,d))n++;return n;}
 function cutStreets(){
   const keep=new Set();const K=(k)=>keep.add(k);
@@ -1088,22 +1088,23 @@ function startMission(g){
   if(g==null)g=-1;
   const types=g>=0?MISSION_TYPES.concat(['turf','turf']):MISSION_TYPES;
   let type;do{type=pick(types)}while(type===lastMissionType);
+  if(!cityOpen()&&type==='turf'&&!WOK(...(()=>{const zc=[[NB/4,NB/4],[NB*3/4,NB/4],[NB/4,NB*3/4]][rivalOf(g)];return[zc[0]*P*T,zc[1]*P*T];})()))type='deliver';
   lastMissionType=type;
   sfx('pass');
   if(type==='deliver'){
-    const far=lotBlocks.filter(l=>dist2(l.x,l.y,player.x,player.y)>(T*30)**2);
+    const far=lotBlocks.filter(l=>dist2(l.x,l.y,player.x,player.y)>(T*30)**2&&WOK(l.x,l.y));
     const dest=far.length?pick(far):pick(lotBlocks);
     const d=hyp(dest.x-player.x,dest.y-player.y);
     mission={type,title:'Special Delivery',desc:'Steal any car and bring it to the drop zone',x:dest.x,y:dest.y,timer:Math.round(clamp(d/170+30,45,120)),max:0};
   }else if(type==='hit'){
     let c=null;
-    for(let i=0;i<60&&!c;i++){const a=R()*TAU,dd=rr(800,1500);const s=laneSpotNear(player.x+Math.cos(a)*dd,player.y+Math.sin(a)*dd);if(s&&!carNear(s.x,s.y,90)){c=makeCar('sports',s.x,s.y,s.dir*PI/2,'#d4af37');c.driver='ai';c.ai=newAI('lane',s.dir,s.k,230);c.vip=true;c.t=Object.assign({},CT.sports,{hp:160});c.hp=160;if(g>=0)c.gang=rivalOf(g);}}
+    for(let i=0;i<60&&!c;i++){const a=R()*TAU,dd=rr(800,1500);const s=laneSpotNear(player.x+Math.cos(a)*dd,player.y+Math.sin(a)*dd);if(s&&WOK(s.x,s.y)&&!carNear(s.x,s.y,90)){c=makeCar('sports',s.x,s.y,s.dir*PI/2,'#d4af37');c.driver='ai';c.ai=newAI('lane',s.dir,s.k,230);c.vip=true;c.t=Object.assign({},CT.sports,{hp:160});c.hp=160;if(g>=0)c.gang=rivalOf(g);}}
     if(!c){mission=null;ringT=2;return startMission(g);}
     mission={type,title:'Hit the Golden Viper',desc:'A '+(g>=0?GANGS[rivalOf(g)].name:'rival')+' boss is cruising in a gold sports car. Wreck it.',car:c,timer:150};
   }else if(type==='cases'){
     const items=[];let tries=0;
     while(items.length<4&&tries<3000){tries++;const [tx,ty]=pick(walkTiles);const x=(tx+.5)*T,y=(ty+.5)*T;const d=hyp(x-player.x,y-player.y);
-      if(d>T*10&&d<T*38&&farApart(items,x,y,T*9))items.push({x,y,got:false});}
+      if(d>T*10&&d<T*38&&WOK(x,y)&&farApart(items,x,y,T*9))items.push({x,y,got:false});}
     mission={type,title:'Briefcase Run',desc:'Grab the 4 briefcases before the cops do',items,timer:110};
   }else if(type==='turf'){
     const rv=rivalOf(g),zc=[[NB/4,NB/4],[NB*3/4,NB/4],[NB/4,NB*3/4]][rv];
@@ -2026,6 +2027,17 @@ function bossBlip(cx,x,y,b,sz){const av=storyAvail(b.g),s=Math.round(sz*(av?1:0.
    b.pt=best?{x:best.x,y:best.y}:blockPt(zc[i][0],zc[i][1]);
    SIGNS.push({x:b.pt.x,y:b.pt.y-46,text:GANGS[i].name.toUpperCase(),bg:GANGS[i].car,fg:'#f5f1e2',h:44,on:()=>true});});}
 const STORY={prog:[0,0,0],fin:0};
+// ---- the city opens up in stages, like GTA III's islands: you start on the west bank (Old Town, the Lotus Quarter).
+// The bridges east stay closed until you've done two jobs for Vince; then the rest of the city opens.
+const cityOpen=()=>!!(STORY.fin||STORY.prog[0]>=2||STORY.prog[1]>0||STORY.prog[2]>0||OPT.openCity);
+const WOK=(x,y)=>cityOpen()||x<RIVX0*T;
+const BARRIERS=[];
+{for(const iy of BRIDGES){const y0=iy*P,x=RIVX0+1;for(let ty=y0;ty<y0+4;ty++)BARRIERS.push({tx:x,ty,orig:map[ty*W+x]});
+  props.push({x:(x+.5)*T,y:(y0+2)*T,k:'closed',rad:80,ht:40});}}
+var barriersUp=false;
+function syncBarriers(){const want=!cityOpen();if(want===barriersUp)return;barriersUp=want;
+  for(const b of BARRIERS)map[b.ty*W+b.tx]=want?BLD:b.orig;
+  if(!want&&game.started){showBig('THE CITY IS OPEN','The bridges are open. The east side is yours to explore','#ffd24a',4);radioMsg('NEWS: All three East River bridges reopen to traffic.');}}
 const VINCE=BOSSES[0].name,DEX=BOSSES[1].name,LIN=BOSSES[2].name,YOU='You';
 // step kinds: talk, steal, drive, wreck, kill, collect, heat, lose, boat
 const CHAPTERS=[
@@ -2128,7 +2140,7 @@ const FINALE={title:'Gridlock',pay:25000,steps:[
   {k:'wreck',at:()=>({x:LM.bridgeMid.x+260,y:LM.bridgeMid.y+20}),type:'fbi',col:'#c0c0c8',hp:420,cruise:300,timer:120,desc:'Wreck Dex\'s car'},
   {k:'lose',timer:240,desc:'Lose the cops'},
   {k:'talk',lines:[[VINCE,'(on the phone) Heard Dex took a swim. Shame.'],[LIN,'(on the phone) The city has a new name for you now.'],[YOU,'Gridlock City is mine.']]}]};
-function storyAvail(g){if(STORY.prog[g]<CHAPTERS[g].length)return CHAPTERS[g][STORY.prog[g]];if(!STORY.fin&&STORY.prog.every((p,i)=>p>=CHAPTERS[i].length)&&g===0)return FINALE;return null;}
+function storyAvail(g){if(!cityOpen()&&g!==0)return null;if(STORY.prog[g]<CHAPTERS[g].length)return CHAPTERS[g][STORY.prog[g]];if(!STORY.fin&&STORY.prog.every((p,i)=>p>=CHAPTERS[i].length)&&g===0)return FINALE;return null;}
 // ---- the mission runner (story missions and races use it) ----
 function runMission(def,opts){
   sfx('pass');mission={type:'story',def,opts:opts||{},title:def.title,desc:'',timer:9999,max:9999,steps:def.steps,si:-1,gang:-1,tgt:null,ring:false,x:0,y:0,clock:0};
@@ -2222,7 +2234,7 @@ function updateBosses(){for(const b of BOSSES){if(dist2(b.pt.x,b.pt.y,player.x,p
     p.x=b.pt.x;p.y=b.pt.y;p.a=Math.atan2(player.y-p.y,player.x-p.x);
     if(!mission&&!DLG.open&&!player.car&&game.state==='play'&&dist2(p.x,p.y,player.x,player.y)<44*44&&!b.cool){
       const ch=storyAvail(b.g);b.cool=true;
-      if(!ch){say([[b.name,STORY.fin?'Gridlock City is yours. Enjoy it.':'Nothing for you today. Check with the others.']]);}
+      if(!ch){say([[b.name,STORY.fin?'Gridlock City is yours. Enjoy it.':!cityOpen()?'I don\'t know you yet. Go see Vince in Old Town, then we\'ll talk.':'Nothing for you today. Check with the others.']]);}
       else if(stars()>0){say([[b.name,'You\'re bringing heat to my door! Lose the cops first.']]);}
       else{const g=b.g;runMission(ch,{sub:GANGS[g].name,boss:p});mission.g=g;mission.gang=-1;}}
     if(dist2(p.x,p.y,player.x,player.y)>90*90)b.cool=false;}}
@@ -2256,7 +2268,7 @@ const HOSPITALS=[],STATIONS=[];
   HOSPITALS.push(hospitalSpawn);STATIONS.push(policeSpawn);
   for(const[bx,by]of[[13,5],[3,13],[16,16]]){const b=pickB(bx,by);if(!b)continue;const sp=sideWalk(b);if(!sp)continue;b.kind='hospital';HOSPITALS.push(sp);}
   for(const[bx,by]of[[3,5],[11,2],[4,16]]){const b=pickB(bx,by);if(!b)continue;const sp=sideWalk(b);if(!sp)continue;b.kind='police';STATIONS.push(sp);}})();
-const nearestOf=list=>{let best=list[0],bd=1e18;for(const q of list){const d=dist2(q.x,q.y,player.x,player.y);if(d<bd){bd=d;best=q;}}return best;};
+const nearestOf=list=>{let best=list[0],bd=1e18;for(const q of list){if(!WOK(q.x,q.y))continue;const d=dist2(q.x,q.y,player.x,player.y);if(d<bd){bd=d;best=q;}}return best;};
 function wastedSpot(){const hs=nearestOf(HOSPITALS);let best=hs,bd=dist2(hs.x,hs.y,player.x,player.y);for(const sh of SAFEHOUSES)if(sh.owned){const d=dist2(sh.x,sh.y,player.x,player.y);if(d<bd){bd=d;best={x:sh.x,y:sh.y+40};}}return best;}
 
 // ---------- boats ----------
@@ -2623,7 +2635,7 @@ function updateSubway(dt){subCool-=dt;if(subCool>0||player.car||player.riding||D
 function enterHall(i,arrived){SUB={from:i};fadeIn=1;player.x=HX1-T*5.4;player.y=HY0+T*2;player.jz=HPL;player.jv=0;player.a=player.body=PI;
   showBig(SUBWAY[i].n.toUpperCase()+' STATION',arrived?'Take the stairs up to the street':'Wait for the train on the platform','#7dff8a',2.2);}
 function subBoard(){if(!SUB||utrain.wait<0.4||player.y<HY0+T*2.2||Math.abs(player.x-(HX0+HX1)/2)>200)return false;
-  const opts=SUBWAY.map((o,i)=>[o,i]).filter(([o,i])=>i!==SUB.from).slice(0,5).map(([o,i])=>[o.n.toUpperCase(),()=>{fadeIn=1;sfx('door');note('Riding to '+o.n+'...');utrain.wait=0.01;setTimeout(()=>{enterHall(i,true);utrain.x=(HX0+HX1)/2+utrain.len;utrain.wait=0.01;},900);}]);
+  const opts=SUBWAY.map((o,i)=>[o,i]).filter(([o,i])=>i!==SUB.from&&WOK(o.x,o.y)).slice(0,5).map(([o,i])=>[o.n.toUpperCase(),()=>{fadeIn=1;sfx('door');note('Riding to '+o.n+'...');utrain.wait=0.01;setTimeout(()=>{enterHall(i,true);utrain.x=(HX0+HX1)/2+utrain.len;utrain.wait=0.01;},900);}]);
   say([['Subway','Where to?']],null,opts.concat([['STAY',()=>{},'no']]));return true;}
 function trainHit(){if(player.riding||player.car||game.state!=='play'||(player.jz||0)<EL_H-10||(player.jz||0)>EL_H+18||train.v<25)return;
   for(let i=0;i<train.cars;i++){const p=trainCar(i),dx=player.x-p.x,dy=player.y-p.y,ca=Math.cos(p.a),sa=Math.sin(p.a),f=dx*ca+dy*sa,l=-dx*sa+dy*ca;
@@ -3379,7 +3391,9 @@ function initCountry(){{const ys=[3,9,15].map(iy=>(iy*P+2)*T);
   for(const yy of ys)for(const dx of[380,900])addRamp(WPX+dx,yy,0,'dirt');
   for(let i=0;i<26;i++){const x=WPX+rr(200,1100),y=rr(300,WPX-300);if(ys.some(q=>Math.abs(q-y)<60)||Math.abs(x-(WPX+640))<60||GH(x,y)>150)continue;props.push({x,y,k:'hay',a:rr(0,PI),rad:12,ht:14});}
   props.push({x:WPX+760,y:(9*P+2)*T-140,k:'windmill',rad:40,ht:120});}}
-function extTick14(dt){updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
+function updateStages(dt){syncBarriers();if(cityOpen()||game.state!=='play'||SUB||ROOM)return;const o=player.car||player;
+  if(o.x>RIVX1*T&&o.y>0&&o.y<WPX+400){if(stars()<4){crime(0,4);showBig('KEEP OUT','The east side is closed to you for now','#ff4040',2.4);}}}
+function extTick14(dt){updateStages(dt);updateTow(dt);updateDrops(dt);updatePlaces(dt);updateRoofRun(dt);updateGold();updateSecret();updateTags(dt);updateWeatherFx(dt);}
 function extTick13(dt){extTick14(dt);updateWaypoint();updateGangWar(dt);updateReputation(dt);updateTurfPressure(dt);updatePolice(dt);updateEscapes(dt);}
 function extTick12(dt){updateCrew(dt);extTick13(dt);}
 function extTick11(dt){updateCurb(dt);updateSideJob(dt);updateQueues(dt);updateStash();extTick12(dt);}
@@ -4667,6 +4681,9 @@ function drawProp3(o,fg){
     case 'ghook':{const sw=Math.sin(game.t*0.7+o.x)*3,hz=70+Math.sin(game.t*0.25+o.x*0.01)*24;obox(o.x,o.y,0,10,7,o.top-12,o.top-6,[70,70,74],[90,90,94],fg);
       obox(o.x+sw*0.3,o.y,0,0.7,0.7,hz+10,o.top-12,[40,40,40],null,fg);obox(o.x+sw,o.y,0,16,10,hz,hz+8,[90,92,96],[110,112,116],fg);return;}
     case 'ship':drawShip(o,fg);return;
+    case 'closed':{if(!barriersUp)return;for(let i=-1;i<=1;i++){const y=o.y+i*40;obox(o.x,y,PI/2,18,5,0,12,[220,220,214],[236,236,230],fg);NOTOP=true;obox(o.x,y,PI/2,18.3,5.3,4,8,[200,60,30],null,fg);NOTOP=false;}
+      obox(o.x-24,o.y-56,0,1.2,1.2,0,40,[90,90,94],null,fg);obox(o.x-24,o.y+56,0,1.2,1.2,0,40,[90,90,94],null,fg);sign3(o.x-24,o.y,34,'BRIDGE CLOSED','#c03020','#ffffff',9,fg);
+      if(proj(o.x,o.y-56,14)&&Math.floor(game.t*2)%2)glow(PX,PY,4*PK,'#ffb020',0.8);if(proj(o.x,o.y+56,14)&&Math.floor(game.t*2+1)%2)glow(PX,PY,4*PK,'#ffb020',0.8);return;}
     case 'lanterns':{const ca=Math.cos(o.a),sa=Math.sin(o.a),L=o.L;
       for(const sd of[-1,1])obox(o.x+ca*L*sd,o.y+sa*L*sd,0,1.4,1.4,0,82,[60,40,36],null,fg); // poles at the curbs
       for(let i=0;i<8;i++){const t=(i/7)*2-1,sag=(1-t*t)*10,x=o.x+ca*L*t,y=o.y+sa*L*t,z=80-sag;obox(x,y,o.a,L/7+0.2,0.4,z-0.4,z+0.4,[30,30,30],null,fg);
